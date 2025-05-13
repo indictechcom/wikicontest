@@ -4,8 +4,8 @@
 
 This project contains both frontend and backend code for a contest platform.
 
-### Demo video
-<video controls src="demo.mp4" title="Title"></video>
+### Demo 
+![alt text](demo.gif)
 ---
 
 ##  Project Structure
