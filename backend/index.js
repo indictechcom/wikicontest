@@ -43,6 +43,20 @@ init().catch((err) => {
 app.use('/api/user', userRoutes);
 app.use('/api/contest', contestRoutes);
 app.use('/api/submission', submissionRoutes);
+app.use('/api/cookie', (req, res) => {
+  const tokenCookie = req.cookies?.uid;
+
+  if (!tokenCookie || !req.user) {
+    return res.status(401).json({ error: 'You are not logged in' });
+  }
+
+  res.status(200).json({
+    userId: req.user.id,
+    username: req.user.username,
+    email: req.user.email,
+  });
+});
+
 
 app.listen(port, () => {
   console.log(`app listening on port ${port}`);

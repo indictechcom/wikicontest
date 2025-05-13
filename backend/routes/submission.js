@@ -10,7 +10,7 @@ const {
 } = require('../controllers/submission');
 
 router.get('/', restrictTo(['admin']), getAllSubmissions);
-router.get('/:id', restrictTo(['owner', 'jury_submission','admin', ]), getSubmissionById);
-router.put('/:id', restrictTo(['jury_submission', 'admin',]), updateSubmissionStatusandScore);
+router.get('/:id', restrictTo(['owner', 'jury_submission','admin' ]), getSubmissionById);
+router.put('/:id', restrictTo(['jury_submission', 'admin']), updateSubmissionStatusandScore);
 
 module.exports = router;

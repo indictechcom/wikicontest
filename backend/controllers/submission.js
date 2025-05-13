@@ -3,6 +3,7 @@ const {getUserFromRequest} = require('../service/auth');
 
 async function handlePOSTsubmission(req, res) {
   const { article_title, article_link } = req.body;
+  console.log(article_link,article_title);
   const status = req.body.status || 'pending'; // Default to 'pending' if not provided
   
   let user;

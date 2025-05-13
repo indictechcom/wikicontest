@@ -14,7 +14,7 @@ async function handlePOSTuser(req, res) {
       console.error('Error inserting user:', err);
       res.status(500).json({ error: 'Internal server error' });
     } else {
-      res.status(201).json({ message: 'User created successfully', userId: this.lastID });
+      res.status(201).json({ message: 'User created successfully', userId: this.lastID , Username :  this.username});
     }
   });
 }
@@ -37,7 +37,7 @@ async function handleUserLogin(req, res) {
       } else {
         const token = setUser(user);
         res.cookie('uid', token, { httpOnly: true });
-        res.status(200).json({ message: 'Login successful', userId: user.id });
+        res.status(200).json({ message: 'Login successful', userId: user.id, Username :  user.username });
       }
     }
   });
