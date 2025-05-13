@@ -1,8 +1,8 @@
 
 
-##  Contest App – Setup Guide
+##  WikiContest  – Setup Guide
 
-This project contains both frontend and backend code for a contest platform.
+This project contains both frontend and backend code for wikicontest platform.
 
 ### Demo 
 ![alt text](demo.gif)
@@ -11,7 +11,7 @@ This project contains both frontend and backend code for a contest platform.
 ##  Project Structure
 
 ```
-contest-app/
+wikicontest/
 ├── backend/
 │   ├── index.js
 │   └── ...other server files
@@ -49,7 +49,7 @@ contest-app/
    npm start
    ```
 
-   The backend will start on [http://localhost:5000](http://localhost:3000).
+   The backend will start on [http://localhost:3000](http://localhost:3000).
 
 ---
 
