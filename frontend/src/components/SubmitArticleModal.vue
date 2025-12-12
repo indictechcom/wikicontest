@@ -10,13 +10,6 @@
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
-            <!-- Info message about URL submission -->
-            <div class="alert alert-info mb-3">
-              <i class="fas fa-info-circle me-2"></i>
-              <strong>Note:</strong> Please submit the URL of your article.
-              The system will automatically fetch article information including title and author.
-            </div>
-
             <div class="mb-3">
               <label for="articleUrl" class="form-label">
                 <i class="fas fa-link me-2 text-primary"></i>Article URL <span class="text-danger">*</span>
@@ -34,28 +27,22 @@
                 Enter the full URL of your MediaWiki article (e.g., Wikipedia, Wikiversity, etc.)
               </small>
             </div>
-            <!-- SUBMISSION TYPE -->
-            <div class="mb-3" v-if="contest">
-              <label class="form-label">
-                <i class="fas fa-edit me-2 text-primary"></i>
-                Submission Type <span class="text-danger">*</span>
-              </label>
 
-              <select v-model="formData.submission_type" class="form-control" required>
-                <option 
-                  value="new"
-                  v-if="contest.allowed_submission_type === 'new' || contest.allowed_submission_type === 'both'"
-                >
-                  New Article
-                </option>
-
-                <option 
-                  value="expansion"
-                  v-if="contest.allowed_submission_type === 'expansion' || contest.allowed_submission_type === 'both'"
-                >
-                  Expansion
-                </option>
-              </select>
+            <!-- Rules Declaration Checkbox -->
+            <div class="mb-3">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="rulesDeclaration"
+                  v-model="rulesAccepted"
+                  required
+                />
+                <label class="form-check-label" for="rulesDeclaration">
+                  <strong>I declare that I have read and understood all the contest rules and guidelines.</strong>
+                  <span class="text-danger">*</span>
+                </label>
+              </div>
             </div>
 
             <div v-if="error" class="alert alert-danger" role="alert">
@@ -71,7 +58,7 @@
             type="button"
             class="btn btn-primary"
             @click="handleSubmit"
-            :disabled="loading"
+            :disabled="loading || !rulesAccepted"
           >
             <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="fas fa-paper-plane me-2"></i>Submit Article
@@ -99,6 +86,7 @@ export default {
   setup(props, { emit }) {
     const loading = ref(false)
     const error = ref('')
+    const rulesAccepted = ref(false)
 
     const formData = reactive({
       article_link: ''
@@ -114,6 +102,10 @@ export default {
       }
       if (!formData.article_link.startsWith('http://') && !formData.article_link.startsWith('https://')) {
         error.value = 'Article URL must start with http:// or https://'
+        return
+      }
+      if (!rulesAccepted.value) {
+        error.value = 'Please confirm that you have read and understood all contest rules'
         return
       }
 
@@ -136,6 +128,7 @@ export default {
 
         // Reset form
         formData.article_link = ''
+        rulesAccepted.value = false
       } catch (err) {
         error.value = 'Failed to submit article: ' + err.message
         showAlert(error.value, 'danger')
@@ -148,6 +141,7 @@ export default {
       formData,
       loading,
       error,
+      rulesAccepted,
       handleSubmit
     }
   }
@@ -316,6 +310,34 @@ export default {
   border-width: 0.15em;
   border-color: currentColor;
   border-right-color: transparent;
+}
+
+/* Checkbox styling - simple and clean */
+.form-check-input {
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+
+.form-check-input:focus {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
+}
+
+.form-check-label {
+  cursor: pointer;
+  color: var(--wiki-text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-left: 0.5rem;
+}
+
+.form-check-label strong {
+  color: var(--wiki-dark);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .form-check-label strong {
+  color: #ffffff;
 }
 </style>
 

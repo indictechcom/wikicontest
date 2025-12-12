@@ -229,7 +229,7 @@ def get_dashboard():
         Contest.name.label('contest_name'),
         db.func.sum(Submission.score).label('contest_score'),
         db.func.count(Submission.id).label('submission_count')
-    ).join(Submission).filter(
+    ).join(Submission, Contest.id == Submission.contest_id).filter(
         Submission.user_id == user.id
     ).group_by(Contest.id, Contest.name).order_by(Contest.name).all()
 
@@ -237,7 +237,7 @@ def get_dashboard():
     submissions_query = db.session.query(
         Submission,
         Contest.name.label('contest_name')
-    ).join(Contest).filter(
+    ).join(Contest, Submission.contest_id == Contest.id).filter(
         Submission.user_id == user.id
     ).order_by(Submission.submitted_at.desc()).all()
 

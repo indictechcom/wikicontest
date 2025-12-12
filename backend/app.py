@@ -138,7 +138,7 @@ def create_app():
 
     # Initialize database with the app
     db.init_app(flask_app)
-    
+
     # Initialize JWT manager for token handling
     JWTManager(flask_app)
 
@@ -751,36 +751,73 @@ def migrate_database():
     try:
         # Get table inspector to check existing columns
         inspector = inspect(db.engine)
-        columns = [col['name'] for col in inspector.get_columns('submissions')]
 
-        # Check which columns need to be added
-        columns_to_add = []
-        if 'article_author' not in columns:
-            columns_to_add.append(('article_author', 'VARCHAR(200) NULL'))
-        if 'article_created_at' not in columns:
-            columns_to_add.append(('article_created_at', 'VARCHAR(50) NULL'))
-        if 'article_word_count' not in columns:
-            columns_to_add.append(('article_word_count', 'INT NULL'))
-        if 'article_page_id' not in columns:
-            columns_to_add.append(('article_page_id', 'VARCHAR(50) NULL'))
+        # =====================================================================
+        # Migrate submissions table: Add article metadata columns
+        # =====================================================================
+        try:
+            columns = [col['name'] for col in inspector.get_columns('submissions')]
 
-        # Add missing columns
-        if columns_to_add:
-            print("📦 Running database migration: Adding article metadata columns...")
-            for col_name, col_type in columns_to_add:
+            # Check which columns need to be added
+            columns_to_add = []
+            if 'article_author' not in columns:
+                columns_to_add.append(('article_author', 'VARCHAR(200) NULL'))
+            if 'article_created_at' not in columns:
+                columns_to_add.append(('article_created_at', 'VARCHAR(50) NULL'))
+            if 'article_word_count' not in columns:
+                columns_to_add.append(('article_word_count', 'INT NULL'))
+            if 'article_page_id' not in columns:
+                columns_to_add.append(('article_page_id', 'VARCHAR(50) NULL'))
+
+            # Add missing columns
+            if columns_to_add:
+                print("📦 Running database migration: Adding article metadata columns...")
+                for col_name, col_type in columns_to_add:
+                    try:
+                        db.session.execute(
+                            text(f"ALTER TABLE submissions ADD COLUMN {col_name} {col_type}")
+                        )
+                        print(f"  ✓ Added column: {col_name}")
+                    except (ProgrammingError, OperationalError) as error:
+                        # Column might already exist or there's a SQL/database error
+                        print(f"  ⚠ Could not add column {col_name}: {error}")
+
+                db.session.commit()
+                print("✓ Submissions table migration completed")
+        except (OperationalError, SQLAlchemyError, AttributeError) as error:
+            # Catch database errors or missing table inspector
+            # This is a broad catch but necessary for migration safety
+            print(f"⚠ Submissions table migration check skipped: {error}")
+
+        # =====================================================================
+        # Migrate contests table: Add allowed_submission_type column
+        # =====================================================================
+        try:
+            contest_columns = [col['name'] for col in inspector.get_columns('contests')]
+
+            # Check if allowed_submission_type column exists
+            if 'allowed_submission_type' not in contest_columns:
+                print("📦 Running database migration: Adding allowed_submission_type to contests...")
                 try:
                     db.session.execute(
-                        text(f"ALTER TABLE submissions ADD COLUMN {col_name} {col_type}")
+                        text(
+                            "ALTER TABLE contests ADD COLUMN allowed_submission_type "
+                            "VARCHAR(20) NOT NULL DEFAULT 'both'"
+                        )
                     )
-                    print(f"  ✓ Added column: {col_name}")
+                    db.session.commit()
+                    print("  ✓ Added column: allowed_submission_type")
+                    print("✓ Contests table migration completed")
                 except (ProgrammingError, OperationalError) as error:
                     # Column might already exist or there's a SQL/database error
-                    print(f"  ⚠ Could not add column {col_name}: {error}")
-
-            db.session.commit()
-            print("✓ Database migration completed")
-        else:
-            print("✓ Database schema is up to date")
+                    print(f"  ⚠ Could not add column allowed_submission_type: {error}")
+                    db.session.rollback()
+            else:
+                print("✓ Database schema is up to date")
+        except (OperationalError, SQLAlchemyError, AttributeError) as error:
+            # Catch database errors or missing table inspector
+            # This is a broad catch but necessary for migration safety
+            print(f"⚠ Contests table migration check skipped: {error}")
 
     except (OperationalError, SQLAlchemyError) as error:
         # If table doesn't exist yet, db.create_all() will handle it

@@ -235,7 +235,15 @@ def handle_errors(f):
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
         except Exception as e:
-            current_app.logger.error(f"Error in {f.__name__}: {str(e)}")
-            return jsonify({'error': 'Internal server error'}), 500
+            # Log the full error for debugging
+            error_message = str(e)
+            current_app.logger.error(f"Error in {f.__name__}: {error_message}", exc_info=True)
+            
+            # In debug mode, show the actual error message for easier debugging
+            # In production, show generic message for security
+            if current_app.config.get('DEBUG', False):
+                return jsonify({'error': f'Internal server error: {error_message}'}), 500
+            else:
+                return jsonify({'error': 'Internal server error'}), 500
     
     return decorated_function
