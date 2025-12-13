@@ -109,7 +109,7 @@ def require_contest_permission(permission_type):
                 return jsonify({'error': 'Contest ID required'}), 400
             
             # Get contest from database
-            from models.contest import Contest
+            from app.models.contest import Contest
             contest = Contest.query.get(contest_id)
             if not contest:
                 return jsonify({'error': 'Contest not found'}), 404
@@ -159,7 +159,7 @@ def require_submission_permission(permission_type):
                 return jsonify({'error': 'Submission ID required'}), 400
             
             # Get submission from database
-            from models.submission import Submission
+            from app.models.submission import Submission
             submission = Submission.query.get(submission_id)
             if not submission:
                 return jsonify({'error': 'Submission not found'}), 404

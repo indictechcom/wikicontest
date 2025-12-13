@@ -36,7 +36,12 @@ backend/
 │   │   └── auth.py              # JWT and permission handling
 │   └── utils/                   # Utility functions
 │       └── __init__.py          # Utility functions module
-├── migrations/                  # Database migration scripts
+├── alembic/                    # Alembic migration environment
+│   ├── env.py                  # Alembic environment configuration
+│   ├── versions/               # Migration version files
+│   ├── script.py.mako         # Migration template
+│   └── README.md               # Alembic documentation
+├── migrations/                 # Custom migration scripts (one-time/data migrations)
 │   ├── README.md
 │   ├── add_article_metadata_to_submissions.py
 │   ├── add_expansion_bytes_to_submissions.py
@@ -53,7 +58,11 @@ backend/
 │   └── toolforge_requirements.txt
 ├── tests/                       # Test files (pytest)
 ├── logs/                        # Application logs
+├── docs/                        # Documentation
+│   ├── ALEMBIC_USAGE_GUIDE.md  # Detailed Alembic usage guide
 ├── main.py                      # Main entry point for running the app
+├── alembic.ini                  # Alembic configuration file
+├── Makefile                     # Makefile for common commands
 ├── requirements.txt             # Python dependencies
 ├── setup.py                     # Setup script
 ├── deploy_to_toolforge.sh       # Deployment script
@@ -117,7 +126,21 @@ backend/
 
 ## Running the Application
 
-### Development Mode
+### Using Makefile (Recommended)
+
+The Makefile provides convenient commands for common tasks:
+
+```bash
+# Run the development server
+make run
+# or
+make dev
+
+# View all available commands
+make help
+```
+
+### Manual Running
 
 1. **Start the Flask development server:**
    ```bash
@@ -247,6 +270,14 @@ Located in `app/middleware/auth.py`:
 ## Development
 
 ### Running Tests
+
+**Using Makefile:**
+```bash
+make test              # Run tests
+make test-coverage     # Run tests with coverage report
+```
+
+**Direct pytest commands:**
 ```bash
 # Install test dependencies
 pip install pytest pytest-flask
@@ -260,14 +291,58 @@ The code follows Python PEP 8 standards with comprehensive comments and document
 
 ### Database Migrations
 
-The application includes custom migration scripts in the `migrations/` directory. Migrations are automatically run on application startup, or can be run manually:
+The application uses **Alembic** for database migrations, which provides robust database schema versioning and management.
+
+#### Using Alembic
+
+```bash
+# Create a new migration (after modifying models)
+alembic revision --autogenerate -m "Description of changes"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback to previous version
+alembic downgrade -1
+
+# View current migration status
+alembic current
+
+# View migration history
+alembic history
+```
+
+#### How Alembic Works
+
+1. **Migration Files**: Python files in `alembic/versions/` define schema changes
+2. **Version Tracking**: `alembic_version` table in database stores current version
+3. **Migration Chain**: Each migration points to the previous one (linked list structure)
+4. **Upgrade/Downgrade**: Each migration has functions to apply and reverse changes
+
+#### Typical Workflow
+
+1. Modify your models in `app/models/`
+2. Generate migration: `make migrate-create MSG="Add new field"`
+3. Review the generated file in `alembic/versions/`
+4. Apply migration: `make db-upgrade`
+5. Test your application
+6. Commit migration file to version control
+
+For detailed Alembic documentation, see:
+- [`docs/ALEMBIC_USAGE_GUIDE.md`](docs/ALEMBIC_USAGE_GUIDE.md) - Complete usage guide
+- [`docs/ALEMBIC_MODEL_COMPATIBILITY.md`](docs/ALEMBIC_MODEL_COMPATIBILITY.md) - Model compatibility guide
+- [`docs/ALEMBIC_SETUP_VERIFICATION.md`](docs/ALEMBIC_SETUP_VERIFICATION.md) - Setup verification checklist
+
+#### Legacy Migration Scripts
+
+The application also includes custom migration scripts in the `migrations/` directory for reference. These can be run manually if needed:
 
 ```bash
 # Run a specific migration
 python migrations/add_article_metadata_to_submissions.py
 ```
 
-For production deployments, consider using Flask-Migrate (Alembic) for more robust database schema versioning.
+**Note**: For new schema changes, use Alembic migrations instead of custom scripts.
 
 ### Utility Scripts
 
