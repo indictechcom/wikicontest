@@ -8,11 +8,11 @@ from urllib.parse import urlparse
 import requests
 from flask import Blueprint, jsonify, request
 
-from database import db
-from middleware.auth import handle_errors, require_auth, require_submission_permission, validate_json_data
-from models.contest import Contest
-from models.submission import Submission
-from utils import (
+from app.database import db
+from app.middleware.auth import handle_errors, require_auth, require_submission_permission, validate_json_data
+from app.models.contest import Contest
+from app.models.submission import Submission
+from app.utils import (
     validate_contest_submission_access,
     extract_page_title_from_url,
     get_latest_revision_author,

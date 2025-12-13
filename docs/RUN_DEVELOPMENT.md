@@ -12,7 +12,7 @@ Open a terminal and run:
 
 ```bash
 cd backend
-python app.py
+python main.py
 ```
 
 Flask will start on `http://localhost:5000`
@@ -63,7 +63,7 @@ This creates a `dist/` directory with production files.
 
 ```bash
 cd backend
-python app.py
+python main.py
 ```
 
 Flask will automatically detect and serve the built Vue.js files from `frontend/dist/`.
@@ -96,7 +96,7 @@ Create `start-dev.ps1`:
 
 ```powershell
 # Start Flask backend
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python app.py"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; python main.py"
 
 # Wait a moment
 Start-Sleep -Seconds 2
@@ -116,7 +116,7 @@ Create `start-dev.sh`:
 
 # Start Flask backend in background
 cd backend
-python app.py &
+python main.py &
 BACKEND_PID=$!
 
 # Wait a moment
@@ -140,7 +140,7 @@ Run with: `./start-dev.sh`
 ### Port Already in Use
 
 **Flask (port 5000):**
-- Change port in `backend/app.py`: `app.run(port=5001)`
+- Change port in `backend/main.py`: `app.run(port=5001)`
 
 **Vue.js (port 5173):**
 - Change port in `frontend/vite.config.js`: `server: { port: 5174 }`
@@ -148,7 +148,7 @@ Run with: `./start-dev.sh`
 ### API Requests Failing
 
 - Ensure Flask is running on port 5000
-- Check CORS configuration in `backend/app.py`
+- Check CORS configuration in `backend/app/__init__.py`
 - Verify proxy settings in `frontend/vite.config.js`
 
 ### Module Not Found Errors
@@ -169,7 +169,7 @@ npm install
 
 For daily development, use **Option 1** (separate servers):
 
-1. Terminal 1: `cd backend && python app.py`
+1. Terminal 1: `cd backend && python main.py`
 2. Terminal 2: `cd frontend && npm run dev`
 3. Open browser: http://localhost:5173
 

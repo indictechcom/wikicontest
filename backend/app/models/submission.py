@@ -5,8 +5,8 @@ Defines the Submission table and related functionality
 
 from datetime import datetime
 
-from database import db
-from models.base_model import BaseModel
+from app.database import db
+from app.models.base_model import BaseModel
 
 class Submission(BaseModel):
     """

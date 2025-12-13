@@ -33,15 +33,15 @@ from sqlalchemy import text, inspect
 from sqlalchemy.exc import SQLAlchemyError, ProgrammingError, OperationalError
 
 # Local imports
-from database import db
+from app.database import db
 # Import models to ensure they are registered with SQLAlchemy
 # This is required for database migrations and table creation
-from models.user import User  # pylint: disable=unused-import
-from models.contest import Contest  # pylint: disable=unused-import
-from models.submission import Submission  # pylint: disable=unused-import
-from routes.user_routes import user_bp
-from routes.contest_routes import contest_bp
-from routes.submission_routes import submission_bp
+from app.models.user import User  # pylint: disable=unused-import
+from app.models.contest import Contest  # pylint: disable=unused-import
+from app.models.submission import Submission  # pylint: disable=unused-import
+from app.routes.user_routes import user_bp
+from app.routes.contest_routes import contest_bp
+from app.routes.submission_routes import submission_bp
 
 # =============================================================================
 # CONFIGURATION SETUP
@@ -240,12 +240,12 @@ def index():
     In production, serves from frontend/dist directory (built Vue.js app).
     """
     # Check if dist directory exists (production build)
-    dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+    dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
     if os.path.exists(dist_path):
         # Production - serve built Vue.js files
         return send_from_directory(dist_path, 'index.html')
     # Development - serve Vue.js mount point (Vite dev server will handle it)
-    return send_from_directory('../frontend', 'index.html')
+    return send_from_directory('../../frontend', 'index.html')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
@@ -260,7 +260,7 @@ def serve_static(filename):
         return jsonify({'error': 'Endpoint not found'}), 404
 
     # Check if dist directory exists (production build)
-    dist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist')
+    dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
     if os.path.exists(dist_path):
         # Production - serve from dist
         try:
@@ -272,7 +272,7 @@ def serve_static(filename):
             raise
     # Development - serve from frontend directory
     # Vite dev server will handle Vue.js files, Flask serves other static files
-    return send_from_directory('../frontend', filename)
+    return send_from_directory('../../frontend', filename)
 
 # =============================================================================
 # SYSTEM ENDPOINTS
@@ -850,3 +850,4 @@ if __name__ == '__main__':
         host='0.0.0.0',    # Allow connections from any IP
         port=5000          # Default Flask development port
     )
+

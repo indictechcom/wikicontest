@@ -6,8 +6,8 @@ Defines the Contest table and related functionality
 import json
 from datetime import datetime, date
 
-from database import db
-from models.base_model import BaseModel
+from app.database import db
+from app.models.base_model import BaseModel
 
 class Contest(BaseModel):
     """
@@ -210,8 +210,8 @@ class Contest(BaseModel):
             list: List of users with their scores, sorted by score descending
         """
         # Import here to avoid circular imports
-        from models.user import User
-        from models.submission import Submission
+        from app.models.user import User
+        from app.models.submission import Submission
 
         # Query to get user scores for this contest
         leaderboard_query = db.session.query(

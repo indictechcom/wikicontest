@@ -3,7 +3,7 @@ Base Model for WikiContest Application
 Contains common database operations shared by all models
 """
 
-from database import db
+from app.database import db
 
 class BaseModel(db.Model):
     """

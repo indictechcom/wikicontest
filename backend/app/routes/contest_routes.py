@@ -8,12 +8,12 @@ import traceback
 
 from flask import Blueprint, request, jsonify, current_app
 
-from database import db
-from middleware.auth import require_auth, handle_errors, validate_json_data
-from models.contest import Contest
-from models.submission import Submission
-from models.user import User
-from utils import (
+from app.database import db
+from app.middleware.auth import require_auth, handle_errors, validate_json_data
+from app.models.contest import Contest
+from app.models.submission import Submission
+from app.models.user import User
+from app.utils import (
     validate_contest_submission_access,
     get_article_size_at_timestamp,
     extract_page_title_from_url,

@@ -7,13 +7,14 @@ import os
 import sys
 from datetime import datetime, date, timedelta
 
-# Add the current directory to Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the parent directory (backend) to Python path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
 
 from app import app, db
-from models.user import User
-from models.contest import Contest
-from models.submission import Submission
+from app.models.user import User
+from app.models.contest import Contest
+from app.models.submission import Submission
 
 def create_tables():
     """

@@ -10,9 +10,9 @@ from flask import Blueprint, request, jsonify, make_response, session, redirect,
 from flask_jwt_extended import create_access_token, set_access_cookies, unset_jwt_cookies
 import mwoauth
 
-from database import db
-from middleware.auth import require_auth, require_role, handle_errors, validate_json_data
-from models.user import User
+from app.database import db
+from app.middleware.auth import require_auth, require_role, handle_errors, validate_json_data
+from app.models.user import User
 # Temporary storage for OAuth tokens (in-memory cache)
 # This is used as a fallback when session cookies don't persist across redirects
 _oauth_token_cache = {}
@@ -221,8 +221,8 @@ def get_dashboard():
     total_score = user.score
 
     # Get contest-wise scores
-    from models.submission import Submission
-    from models.contest import Contest
+    from app.models.submission import Submission
+    from app.models.contest import Contest
 
     contest_scores = db.session.query(
         Contest.id.label('contest_id'),

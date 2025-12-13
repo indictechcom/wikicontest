@@ -34,14 +34,14 @@ jobs:
           if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pylint
 
-      - name: Run pylint on app.py
+      - name: Run pylint on main.py
         working-directory: backend
-        run: python -m pylint --fail-under=9 app.py
+        run: python -m pylint --fail-under=9 main.py
 
       - name: Run pylint on models
         working-directory: backend
-        run: python -m pylint --fail-under=9 models/
+        run: python -m pylint --fail-under=9 app/models/
 
       - name: Run pylint on routes
         working-directory: backend
-        run: python -m pylint --fail-under=9 routes/
+        run: python -m pylint --fail-under=9 app/routes/
