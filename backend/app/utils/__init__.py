@@ -38,9 +38,28 @@ __all__ = [
 ]
 
 # These functions need to be implemented
-def validate_contest_submission_access(*args, **kwargs):
-    """Placeholder - needs implementation"""
-    raise NotImplementedError("This function needs to be implemented")
+def validate_contest_submission_access(contest_id, user, Contest):
+    contest = Contest.query.get(contest_id)
+
+    if not contest:
+        return None, (jsonify({"error": "Contest not found"}), 404)
+
+    # Admin → always allowed
+    if hasattr(user, "is_admin") and user.is_admin:
+        return contest, None
+
+    # # Contest creator → allowed
+    # # To be discussed: should creators have special permissions?
+    # if contest.created_by == user.id:
+    #     return contest, None
+
+    # Jury members → allowed
+    if hasattr(contest, "jury_members"):
+        jury_ids = [j.id for j in contest.jury_members]
+        if user.id in jury_ids:
+            return contest, None
+
+    return None, (jsonify({"error": "Permission denied"}), 403)
 
 def get_article_size_at_timestamp(*args, **kwargs):
     """Placeholder - needs implementation"""
