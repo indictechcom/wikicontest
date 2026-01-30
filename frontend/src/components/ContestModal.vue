@@ -734,7 +734,7 @@ export default {
 
           // If user is not in store, try to load it via checkAuth
           if (!loadedUser) {
-            console.log('⚠️ User not in store, calling checkAuth()...')
+            console.log(' User not in store, calling checkAuth()...')
             let userLoaded = false
             let retries = 0
             const maxRetries = 3
@@ -807,7 +807,7 @@ export default {
 
           // If permission check didn't work, try a few more times
           if (!canDeleteContest.value) {
-            console.log('⚠️ Delete permission false, retrying permission check...')
+            console.log(' Delete permission false, retrying permission check...')
 
             // Retry up to 3 times with 150ms delay between attempts
             for (let i = 0; i < 3; i++) {
@@ -821,7 +821,7 @@ export default {
 
                 // If we got a result, break
                 if (canDeleteContest.value) {
-                  console.log('✅ Delete permission granted!')
+                  console.log(' Delete permission granted!')
                   break
                 }
               }
@@ -832,7 +832,7 @@ export default {
           if (!canDeleteContest.value) {
             // Gather final user state for debugging
             const finalUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
-            console.error('❌ Delete permission still false after all attempts')
+            console.error(' Delete permission still false after all attempts')
             console.error('Final user check:', finalUser)
             console.error('Contest creator:', newContest.created_by)
 
@@ -844,10 +844,10 @@ export default {
               console.error('Match:', (finalUser.username || '').toLowerCase() === (newContest.created_by || '').toLowerCase())
             }
           } else {
-            console.log('✅ Delete permission check successful!')
+            console.log(' Delete permission check successful!')
           }
         } catch (error) {
-          console.error('❌ Failed to check auth:', error)
+          console.error(' Failed to check auth:', error)
           canDeleteContest.value = false
         } finally {
           checkingAuth.value = false

@@ -1,7 +1,7 @@
 # Critical Issues Report - WikiContest
 
 **Generated:** $(date)  
-**Status:** ⚠️ CRITICAL - Immediate Action Required
+**Status:**  CRITICAL - Immediate Action Required
 
 ## Executive Summary
 
@@ -159,7 +159,7 @@ Debug mode is hardcoded to `True` in the application startup code. This should b
 ```python
 # backend/app/__init__.py:978
 app.run(
-    debug=True,        # ⚠️ Hardcoded!
+    debug=True,        #  Hardcoded!
     host='0.0.0.0',
     port=5000
 )
@@ -202,7 +202,7 @@ Default database connection string includes weak default password `'password'`.
 ```python
 SQLALCHEMY_DATABASE_URI = os.getenv(
     'DATABASE_URL',
-    'mysql+pymysql://root:password@localhost/wikicontest'  # ⚠️ Weak default
+    'mysql+pymysql://root:password@localhost/wikicontest'  #  Weak default
 )
 ```
 
@@ -244,7 +244,7 @@ The `update_contest` route has `@require_auth` but is missing `@handle_errors` d
 ```python
 @contest_bp.route("/<int:contest_id>", methods=["PUT"])
 @require_auth
-# ⚠️ Missing @handle_errors
+#  Missing @handle_errors
 def update_contest(contest_id):
 ```
 
@@ -270,15 +270,15 @@ def update_contest(contest_id):
 
 ### Immediate (Before Any Production Deployment)
 
-1. ✅ **Fix hardcoded secrets** - Remove `'rohank10'` defaults
-2. ✅ **Secure debug endpoint** - Add authentication or remove
-3. ✅ **Revoke OAuth credentials** - Generate new ones, move to env vars
-4. ✅ **Disable debug mode** - Use environment variable
+1.  **Fix hardcoded secrets** - Remove `'rohank10'` defaults
+2.  **Secure debug endpoint** - Add authentication or remove
+3.  **Revoke OAuth credentials** - Generate new ones, move to env vars
+4.  **Disable debug mode** - Use environment variable
 
 ### High Priority (Before Next Release)
 
-5. ✅ **Fix database password default** - Require DATABASE_URL
-6. ✅ **Add error handler** - Fix update_contest route
+5.  **Fix database password default** - Require DATABASE_URL
+6.  **Add error handler** - Fix update_contest route
 
 ### Additional Recommendations
 

@@ -48,7 +48,7 @@ WikiContest Local Development
 ```
 OAuth 1.0a
 ```
-⚠️ **Must match:** Your code uses OAuth 1.0a protocol.
+ **Must match:** Your code uses OAuth 1.0a protocol.
 
 #### Application Description
 ```
@@ -60,7 +60,7 @@ Local development instance of WikiContest for testing and development purposes
 http://localhost:5000/api/user/oauth/callback
 ```
 
-⚠️ **CRITICAL - Must be EXACTLY:**
+ **CRITICAL - Must be EXACTLY:**
 - **Protocol:** `http://` (NOT `https://`)
 - **Host:** `localhost` (NOT `127.0.0.1` or any domain)
 - **Port:** `5000` (must match your Flask server port)
@@ -75,7 +75,7 @@ http://localhost:5000/api/user/oauth/callback
 ```
 ☐ No (Leave unchecked)
 ```
-⚠️ **IMPORTANT:** Must be set to "No" to allow other users to test your application!
+ **IMPORTANT:** Must be set to "No" to allow other users to test your application!
 
 #### Applicable Grants / Permissions
 ```
@@ -92,7 +92,7 @@ After clicking **"Propose consumer"**, you'll receive:
 - **Consumer Key:** (e.g., `3f383c834a07a181723f1a1de566f7cf`)
 - **Consumer Secret:** (e.g., `62c40e0fde2377613d1f82b9b7aabc9fe2a73b30`)
 
-⚠️ **CRITICAL:** Copy BOTH credentials immediately! The consumer secret is only displayed once. If you lose it, you'll need to create a new consumer.
+ **CRITICAL:** Copy BOTH credentials immediately! The consumer secret is only displayed once. If you lose it, you'll need to create a new consumer.
 
 **Save them to a secure location temporarily.**
 

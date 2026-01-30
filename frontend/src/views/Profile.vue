@@ -159,7 +159,6 @@ export default {
         console.log('  - typeof:', typeof currentUser.value.role)
         console.log('  - String value:', String(currentUser.value.role))
         console.log('  - userRole computed:', userRole.value)
-        console.log('  - formattedRole computed:', formattedRole.value)
       }
     })
 

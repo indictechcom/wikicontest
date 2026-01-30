@@ -69,7 +69,7 @@ export function useStore() {
 
         // Special check for Adityakumar0545
         if (response.username === 'Adityakumar0545') {
-          console.log('⚠️ [SPECIAL CHECK] User Adityakumar0545 detected')
+          console.log(' [SPECIAL CHECK] User Adityakumar0545 detected')
           console.log('  - Raw role from response:', roleFromResponse)
           console.log('  - Normalized role:', normalizedRole)
           if (normalizedRole !== 'superadmin') {

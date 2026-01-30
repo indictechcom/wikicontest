@@ -20,6 +20,18 @@
         <button v-if="canDeleteContest" class="btn btn-primary" @click="openEditModal">
           <i class="fas fa-edit me-2"></i>Edit Contest
         </button>
+        <!-- In the top button section, after Leaderboard button -->
+        <button v-if="canViewSubmissions && contest" class="btn btn-success text-white" @click="openReportModal"
+          :disabled="generatingReport" title="Generate and Download Contest Report">
+          <span v-if="generatingReport">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Generating...
+          </span>
+          <span v-else>
+            <i class="fas fa-file-download me-2"></i>
+            Generate Report
+          </span>
+        </button>
       </div>
     </div>
 
@@ -396,7 +408,7 @@
           <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
       </div>
-      
+
       <!-- Content when no Outreach Dashboard URL (no tabs) -->
       <div v-if="!contest.outreach_dashboard_url" class="row">
         <div :class="canViewSubmissions ? 'col-md-12' : 'col-md-12'">
@@ -733,9 +745,6 @@
     :contest-scoring-config="contest?.scoring_parameters" @reviewed="handleSubmissionReviewed"
     @deleted="handleSubmissionDeleted" />
 
-  <!-- ========================================================================== -->
-  <!-- REFACTORED EDIT CONTEST MODAL - CLEAR UX FOR SCORING MODE LOCK -->
-  <!-- ========================================================================== -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
@@ -902,9 +911,6 @@
               </small>
             </div>
 
-            <!-- ====================================================================== -->
-            <!-- SCORING SYSTEM SECTION - REDESIGNED FOR CLARITY -->
-            <!-- ====================================================================== -->
             <div class="edit-section scoring-section-edit">
               <h6 class="section-title">
                 <i class="fas fa-chart-line me-2"></i>Scoring System
@@ -944,7 +950,8 @@
                       </span>
                     </div>
                     <div class="lock-banner-title">
-                      <strong>Scoring Mode is Editable:</strong>No submissions have been reviewed yet. You can change the scoring mode if needed.
+                      <strong>Scoring Mode is Editable:</strong>No submissions have been reviewed yet. You can change
+                      the scoring mode if needed.
                     </div>
                   </div>
                 </div>
@@ -1281,6 +1288,92 @@
       </div>
     </div>
   </div>
+  <!-- Report Type Selection Modal -->
+  <div v-if="showReportModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);"
+    @click.self="closeReportModal">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-file-export me-2"></i>
+            Generate Contest Report
+          </h5>
+          <button type="button" class="btn-close btn-close-white" @click="closeReportModal"
+            :disabled="generatingReport"></button>
+        </div>
+
+        <div class="modal-body">
+          <p class="text-muted mb-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Select a format and the report will be generated and downloaded automatically.
+          </p>
+
+          <!-- Report Format Selection -->
+          <div class="report-format-selection">
+            <label class="form-label fw-bold mb-3">Choose Report Format:</label>
+
+            <div class="row g-3">
+              <!-- CSV Option -->
+              <div class="col-md-6">
+                <div class="format-card" :class="{ 'selected': reportFormat === 'csv' }" @click="reportFormat = 'csv'">
+                  <div class="format-icon">
+                    <i class="fas fa-file-csv fa-3x text-success"></i>
+                  </div>
+                  <h6 class="mt-3 mb-1">CSV Report</h6>
+                  <small class="text-muted">
+                    Excel-compatible spreadsheet<br>
+                    Best for data analysis
+                  </small>
+                </div>
+              </div>
+
+              <!-- PDF Option -->
+              <div class="col-md-6">
+                <div class="format-card" :class="{ 'selected': reportFormat === 'pdf' }" @click="reportFormat = 'pdf'">
+                  <div class="format-icon">
+                    <i class="fas fa-file-pdf fa-3x text-danger"></i>
+                  </div>
+                  <h6 class="mt-3 mb-1">PDF Report</h6>
+                  <small class="text-muted">
+                    Professional document<br>
+                    Includes charts & graphs
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Message (shown during generation) -->
+          <div v-if="generatingReport" class="alert alert-info mt-3 mb-0">
+            <div class="d-flex align-items-center">
+              <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+              <div>
+                <strong>Generating your report...</strong><br>
+                <small>This may take a few moments. Please wait.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeReportModal" :disabled="generatingReport">
+            <i class="fas fa-times me-2"></i>
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" @click="generateAndDownload" :disabled="generatingReport">
+            <span v-if="generatingReport">
+              <span class="spinner-border spinner-border-sm me-2"></span>
+              Generating...
+            </span>
+            <span v-else>
+              <i class="fas fa-download me-2"></i>
+              Generate & Download
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -1328,6 +1421,9 @@ export default {
     let jurySearchTimeout = null
     let organizerSearchTimeout = null
     let editModal = null
+    const showReportModal = ref(false)
+    const reportFormat = ref('csv')
+    const generatingReport = ref(false)
 
     // Scoring system state
     const enableMultiParameterScoring = ref(false)
@@ -1935,7 +2031,7 @@ export default {
         return
       }
       if (jurySearchTimeout) { clearTimeout(jurySearchTimeout) }
-      // Debounce to avoid excessive API calls 
+      // Debounce to avoid excessive API calls
       jurySearchTimeout = setTimeout(async () => {
         try {
           const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
@@ -1957,7 +2053,7 @@ export default {
       if (isCurrentUser(username)) {
         // Show confirmation dialog before adding
         const confirmed = window.confirm(
-          '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
+          ' WARNING: Self-Selection as Jury Member\n\n' +
           'You are about to select yourself as a jury member.\n\n' +
           'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
           'Are you sure you want to proceed with selecting yourself?'
@@ -2044,6 +2140,147 @@ export default {
         editForm.categories.splice(index, 1)
       }
     }
+
+    // Open report modal
+    const openReportModal = () => {
+      reportFormat.value = 'csv' // Default to CSV
+      showReportModal.value = true
+    }
+
+    // Close report modal
+    const closeReportModal = () => {
+      if (!generatingReport.value) {
+        showReportModal.value = false
+      }
+    }
+
+    // Get CSRF token from cookies
+    const getCsrfToken = () => {
+      const cookies = document.cookie.split(';')
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=')
+        if (name === 'csrf_access_token') {
+          return decodeURIComponent(value)
+        }
+      }
+      return null
+    }
+
+    // Main function: Generate AND Download in one step
+    const sanitizeFilename = (name) => {
+  return name
+    .replace(/[^a-z0-9\s-]/gi, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase()
+    .substring(0, 50)
+}
+
+const showDownloadNotification = (filename, type) => {
+  const icon = type === 'pdf' ? 'fa-file-pdf' : 'fa-file-csv'
+  const color = type === 'pdf' ? '#dc3545' : '#28a745'
+
+  const toast = document.createElement('div')
+  toast.innerHTML = `
+    <i class="fas ${icon} me-2"></i>
+    <span>Downloaded: ${filename}</span>
+  `
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: ${color};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+  `
+
+  document.body.appendChild(toast)
+
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease'
+    setTimeout(() => document.body.removeChild(toast), 300)
+  }, 3000)
+}
+
+const generateAndDownload = async () => {
+  if (!contest.value || generatingReport.value) return
+
+  generatingReport.value = true
+
+  try {
+    // Generate report
+    const csrfToken = getCsrfToken()
+    const headers = { 'Content-Type': 'application/json' }
+    if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken
+
+    const generateResponse = await fetch(
+      `/api/report/contest/${contest.value.id}/generate`,
+      {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          report_type: reportFormat.value,
+          top_n: 100
+        })
+      }
+    )
+
+    const generateData = await generateResponse.json()
+
+    if (!generateResponse.ok || !generateData.success) {
+      throw new Error(generateData.error || 'Generation failed')
+    }
+
+    // Download
+    const reportId = generateData.report.id
+    const downloadResponse = await fetch(
+      `/api/report/report/${reportId}/download`,
+      { credentials: 'include' }
+    )
+
+    if (!downloadResponse.ok) throw new Error('Download failed')
+
+    const blob = await downloadResponse.blob()
+    const url = window.URL.createObjectURL(blob)
+
+    // Better filename
+    const timestamp = new Date().toISOString().split('T')[0]
+    const sanitizedName = sanitizeFilename(contest.value.name)
+    const filename = `${sanitizedName}_report_${timestamp}.${reportFormat.value}`
+
+    // For PDF: Open in new tab + download
+    if (reportFormat.value === 'pdf') {
+      window.open(url, '_blank')
+    }
+
+    // Download file
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    // Cleanup
+    setTimeout(() => window.URL.revokeObjectURL(url), 100)
+
+    // Show notification
+    showDownloadNotification(filename, reportFormat.value)
+
+    // Close modal
+    showReportModal.value = false
+  } catch (error) {
+    console.error(' Error:', error)
+    showAlert('Failed: ' + error.message, 'danger')
+  } finally {
+    generatingReport.value = false
+  }
+}
 
     const openEditModal = () => {
       if (!contest.value) return
@@ -2351,7 +2588,13 @@ export default {
       savingContest,
       scoringModeLocked,
       reviewedSubmissionsCount,
-      contestScoringMode
+      contestScoringMode,
+      showReportModal,
+  reportFormat,
+  generatingReport,
+  openReportModal,
+  closeReportModal,
+  generateAndDownload
     }
   }
 }
@@ -3146,8 +3389,8 @@ export default {
 [data-theme="dark"] .scoring-mode-toggle:hover {
   background: rgba(0, 102, 153, 0.15);
 }
- 
-.form-check{
+
+.form-check {
   display: flex;
   align-items: end;
 }
@@ -3230,6 +3473,60 @@ export default {
 [data-theme="dark"] .bg-danger-subtle {
   background-color: rgba(220, 53, 69, 0.15) !important;
   border-color: #f87171 !important;
+}
+
+/* Report Modal Styling */
+.report-format-selection {
+  padding: 0.5rem 0;
+}
+
+.format-card {
+  padding: 1.5rem;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  height: 100%;
+}
+
+.format-card:hover {
+  border-color: var(--wiki-primary, #006699);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.15);
+}
+
+.format-card.selected {
+  border-color: var(--wiki-primary, #006699);
+  background-color: rgba(0, 102, 153, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.2);
+}
+
+.format-icon {
+  margin-bottom: 0.5rem;
+}
+
+.format-card i {
+  transition: transform 0.3s ease;
+}
+
+.format-card:hover i {
+  transform: scale(1.1);
+}
+
+.format-card.selected i {
+  transform: scale(1.15);
+}
+
+[data-theme="dark"] .format-card {
+  background-color: #2a2a2a;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .format-card.selected {
+  background-color: rgba(93, 184, 230, 0.1);
+  border-color: var(--wiki-primary, #5db8e6);
 }
 
 /* --------------------------------------------------------------------------
