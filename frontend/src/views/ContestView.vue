@@ -6,7 +6,7 @@
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
-        <button v-if="contest"
+        <button v-if="contest && contestScoringMode !== 'automated'"
 class="btn btn-primary text-white"
 @click="goToLeaderboard"
           title="View Contest Leaderboard">
@@ -348,11 +348,29 @@ title="Refresh article metadata"
           </div>
         </div>
         <div class="card-body">
+          <!-- Filter Tabs (automated scoring only) -->
+          <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
+            <div class="btn-group" role="group" aria-label="Filter submissions">
+              <button type="button" class="btn btn-sm" :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'" @click="submissionFilter = 'all'">
+                All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
+              </button>
+              <button type="button" class="btn btn-sm" :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'" @click="submissionFilter = 'accepted'">
+                Accepted <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'accepted').length }}</span>
+              </button>
+              <button type="button" class="btn btn-sm" :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'" @click="submissionFilter = 'rejected'">
+                Rejected <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'rejected').length }}</span>
+              </button>
+              <button type="button" class="btn btn-sm" :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'" @click="submissionFilter = 'pending'">
+                Pending <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'pending').length }}</span>
+              </button>
+            </div>
+          </div>
+
           <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
             <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
           </div>
 
-          <div v-else-if="submissions.length > 0" class="table-responsive">
+          <div v-else-if="filteredSubmissions.length > 0" class="table-responsive">
             <table class="table table-sm table-hover">
               <thead>
                 <tr>
@@ -366,7 +384,7 @@ title="Refresh article metadata"
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="submission in submissions" :key="submission.id">
+                <tr v-for="submission in filteredSubmissions" :key="submission.id">
                   <!-- Article Title with Metadata -->
                   <td>
                     <a href="#"
@@ -827,11 +845,29 @@ title="Refresh article metadata"
             </div>
           </div>
           <div class="card-body">
+            <!-- Filter Tabs (automated scoring only) -->
+            <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
+              <div class="btn-group" role="group" aria-label="Filter submissions">
+                <button type="button" class="btn btn-sm" :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'" @click="submissionFilter = 'all'">
+                  All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'" @click="submissionFilter = 'accepted'">
+                  Accepted <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'accepted').length }}</span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'" @click="submissionFilter = 'rejected'">
+                  Rejected <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'rejected').length }}</span>
+                </button>
+                <button type="button" class="btn btn-sm" :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'" @click="submissionFilter = 'pending'">
+                  Pending <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'pending').length }}</span>
+                </button>
+              </div>
+            </div>
+
             <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
               <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
             </div>
 
-            <div v-else-if="submissions.length > 0" class="table-responsive">
+            <div v-else-if="filteredSubmissions.length > 0" class="table-responsive">
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
@@ -845,7 +881,7 @@ title="Refresh article metadata"
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="submission in submissions" :key="submission.id">
+                  <tr v-for="submission in filteredSubmissions" :key="submission.id">
                     <!-- Article Title with Metadata -->
                     <td>
                       <a href="#"
@@ -1319,10 +1355,7 @@ style="cursor: pointer;"
                   <strong>What you can edit:</strong>
                   <ul class="mb-0 mt-2">
                     <li v-if="contestScoringMode === 'automated'">
-                      Eligibility criteria values
-                    </li>
-                    <li v-if="contestScoringMode === 'automated'">
-                      Evaluation points values
+                      Nothing
                     </li>
                     <li v-if="contestScoringMode === 'multi_parameter'">
                       Maximum and minimum score values
@@ -1568,8 +1601,8 @@ step="0.01" />
 
               <!-- UNLOCKED MODE: Allow Switching -->
               <div v-else class="unlocked-edit-mode">
-                <!-- Toggle Switch -->
-                <div class="scoring-mode-toggle mb-2">
+                <!-- Toggle Switch (hidden for automated scoring - modes are mutually exclusive) -->
+                <div v-if="contestScoringMode !== 'automated'" class="scoring-mode-toggle mb-2">
                   <div class="form-check form-switch">
                     <input class="form-check-input"
 type="checkbox"
@@ -1585,8 +1618,103 @@ id="editEnableMultiParam"
                   </small>
                 </div>
 
+                <!-- Automated Scoring Settings (unlocked mode) -->
+                <div v-if="contestScoringMode === 'automated'" class="automated-scoring-form">
+                  <!-- Eligibility Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Edits</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_edits"
+min="0" />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Outgoing Links</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_outgoing_links"
+min="0" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Evaluation Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Evaluation Criteria (Points)</h6>
+                    <div class="row">
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Accepted</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_accepted"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Incoming Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_incoming_link"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Outgoing Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_outgoing_link"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per New Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_new_reference"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Reused Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_reused_reference"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Infobox</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_infobox"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Image</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_image"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Byte</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_byte"
+min="0"
+step="0.0001" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Simple Scoring Form -->
-                <div v-if="!enableMultiParameterScoring" class="simple-scoring-form">
+                <div v-if="contestScoringMode !== 'automated' && !enableMultiParameterScoring" class="simple-scoring-form">
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Accepted Submissions *</label>
@@ -1610,7 +1738,7 @@ min="0"
                 </div>
 
                 <!-- Multi-Parameter Scoring Form -->
-                <div v-else class="multi-param-scoring-form">
+                <div v-else-if="contestScoringMode !== 'automated'" class="multi-param-scoring-form">
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted) *</label>
@@ -2089,6 +2217,16 @@ export default {
         points_per_image: 2
       }
     }
+
+    // Submission filter state (for automated scoring dashboard)
+    const submissionFilter = ref('all') // 'all', 'accepted', 'rejected', 'pending'
+
+    const filteredSubmissions = computed(() => {
+      if (submissionFilter.value === 'all') {
+        return submissions.value
+      }
+      return submissions.value.filter(s => s.status === submissionFilter.value)
+    })
 
     // Category crawler state
     const selectedCategory = ref('')
@@ -3229,6 +3367,9 @@ export default {
       // Evaluation details modal
       showEvaluationDetails,
       selectedEvaluationSubmission,
+      // Submission filter tabs
+      submissionFilter,
+      filteredSubmissions,
     }
   }
 }
