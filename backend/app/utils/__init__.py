@@ -49,6 +49,7 @@ __all__ = [
     "get_article_infobox_count",
     "get_article_incoming_links",
     "get_article_outgoing_links",
+    "crawl_category_articles",
 ]
 
 
@@ -1687,4 +1688,134 @@ def get_article_outgoing_links(article_url: str) -> Optional[int]:
     except Exception:  # pylint: disable=broad-exception-caught
         # If link counting fails, return None to indicate failure
         # This ensures submission process continues even if link counting fails
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Category Crawler Utilities
+# ---------------------------------------------------------------------------
+
+def crawl_category_articles(
+    category_url: str,
+    limit: int = 5000,
+    mw_uri: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Crawl articles from a Wikipedia category using the MediaWiki API.
+
+    Uses the `list=categorymembers` API to fetch all pages in a category,
+    handling pagination via `cmcontinue` tokens.
+
+    Args:
+        category_url: Full URL to a Wikipedia category page.
+            Examples:
+            - https://en.wikipedia.org/wiki/Category:Living_people
+            - https://es.wikipedia.org/wiki/Categoría:Wikipedia
+        limit: Maximum number of articles to fetch (default: 5000, max: 5000).
+        mw_uri: Optional MediaWiki API base URI. If not provided, extracted from category_url.
+
+    Returns:
+        Dictionary with:
+            - "articles": List of dicts with "title" and "url" keys
+            - "total": Total number of articles fetched
+            - "category": Category name extracted from URL
+            - "wiki_base": Wiki base URL (e.g., "https://en.wikipedia.org")
+        Or None if an error occurs.
+    """
+    try:
+        # Enforce maximum limit
+        limit = min(limit, 5000)
+
+        # Extract category name from URL
+        category_name = extract_category_name_from_url(category_url)
+        if not category_name:
+            return None
+
+        # Parse wiki base URL from category URL
+        parsed = urlparse(category_url)
+        wiki_base = f"{parsed.scheme}://{parsed.netloc}"
+        api_url = f"{wiki_base}/w/api.php"
+
+        # Determine MediaWiki URI
+        if mw_uri is None:
+            mw_uri = api_url
+
+        headers = get_mediawiki_headers()
+
+        # Build API params for category members
+        # cmtitle requires the full title with namespace prefix (e.g., "Category:Living_people")
+        params = {
+            "action": "query",
+            "list": "categorymembers",
+            "cmtitle": f"Category:{category_name}",
+            "cmtype": "page",  # Only get actual pages, not subcategories or files
+            "cmlimit": "max",  # Max per request (usually 500)
+            "cmnamespace": "0",  # Only mainspace articles
+            "format": "json",
+        }
+
+        articles = []
+        continue_token = None
+
+        while len(articles) < limit:
+            # Add continue token if we have one
+            if continue_token:
+                params["cmcontinue"] = continue_token
+
+            response = requests.get(
+                mw_uri,
+                params=params,
+                headers=headers,
+                timeout=MEDIAWIKI_API_TIMEOUT
+            )
+
+            if response.status_code != 200:
+                break
+
+            data = response.json()
+
+            if "error" in data:
+                break
+
+            # Extract category members
+            members = data.get("query", {}).get("categorymembers", [])
+
+            for member in members:
+                if len(articles) >= limit:
+                    break
+
+                title = member.get("title")
+                page_id = member.get("pageid")
+
+                if title:
+                    # Build article URL
+                    # Use /wiki/ format for cleaner URLs
+                    encoded_title = title.replace(" ", "_")
+                    article_url = f"{wiki_base}/wiki/{encoded_title}"
+
+                    articles.append({
+                        "title": title,
+                        "url": article_url,
+                        "page_id": page_id,
+                    })
+
+            # Check for continuation
+            continue_data = data.get("continue")
+            if continue_data and "cmcontinue" in continue_data:
+                continue_token = continue_data["cmcontinue"]
+            else:
+                break
+
+        return {
+            "articles": articles,
+            "total": len(articles),
+            "category": category_name,
+            "wiki_base": wiki_base,
+        }
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # If crawling fails, return None to indicate failure
+        # Log the error for debugging
+        import logging
+        logging.error(f"crawl_category_articles failed: {str(e)}")
         return None

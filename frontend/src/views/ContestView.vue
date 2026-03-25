@@ -393,6 +393,73 @@ title="Delete Submission"
         </div>
       </div>
 
+      <!-- Category Crawler Section (for Automated Scoring Contests) -->
+      <!-- DEBUG INFO -->
+      <!--<div class="alert alert-secondary mb-2">
+        <small>
+          <strong>Debug:</strong> automated_settings.enabled = {{ contest.automated_settings?.enabled }}, 
+          categories = {{ contest.categories }}
+        </small>
+      </div>-->
+      <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+          
+          <div class="crawler-form">
+            <select v-model="selectedCategory" class="form-select crawler-select">
+              <option value="">Select a category...</option>
+              <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <input
+              type="number"
+              v-model.number="crawlLimit"
+              placeholder="Limit"
+              min="1"
+              max="5000"
+              class="form-control crawler-limit"
+            />
+            <button
+              class="btn btn-primary crawler-btn"
+              @click="crawlCategory"
+              :disabled="crawling || !selectedCategory"
+            >
+              <span v-if="crawling">
+                <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+              </span>
+              <span v-else>
+                <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+              </span>
+            </button>
+          </div>
+          
+          <div v-if="crawlResult" class="crawl-result mt-3">
+            <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+              <i class="fas fa-check-circle me-2"></i>
+              {{ crawlResult.message }}
+              <br />
+              <small>Category: {{ crawlResult.category }}</small>
+              <br />
+              <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+            </div>
+            <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              All {{ crawlResult.skipped }} articles were duplicates
+            </div>
+            <div class="alert alert-info" v-else>
+              <i class="fas fa-info-circle me-2"></i>
+              No articles found in category
+            </div>
+          </div>
+          <div v-if="crawlError" class="alert alert-danger mt-3">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            {{ crawlError }}
+          </div>
+        </div>
+      </div>
+
       <!-- Bottom Action Row -->
       <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
         <!-- Debug warning for auth issues -->
@@ -797,6 +864,73 @@ title="Delete Submission"
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Crawler Section (for Automated Scoring Contests) -->
+        <!-- DEBUG INFO -->
+        <!-- <div class="alert alert-secondary mb-2">
+          <small>
+            <strong>Debug:</strong> automated_settings.enabled = {{ contest.automated_settings?.enabled }}, 
+            categories = {{ contest.categories }}
+          </small>
+        </div> -->
+        <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+            
+            <div class="crawler-form">
+              <select v-model="selectedCategory" class="form-select crawler-select">
+                <option value="">Select a category...</option>
+                <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+              <input
+                type="number"
+                v-model.number="crawlLimit"
+                placeholder="Limit"
+                min="1"
+                max="5000"
+                class="form-control crawler-limit"
+              />
+              <button
+                class="btn btn-primary crawler-btn"
+                @click="crawlCategory"
+                :disabled="crawling || !selectedCategory"
+              >
+                <span v-if="crawling">
+                  <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                </span>
+                <span v-else>
+                  <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                </span>
+              </button>
+            </div>
+            
+            <div v-if="crawlResult" class="crawl-result mt-3">
+              <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ crawlResult.message }}
+                <br />
+                <small>Category: {{ crawlResult.category }}</small>
+                <br />
+                <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+              </div>
+              <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                All {{ crawlResult.skipped }} articles were duplicates
+              </div>
+              <div class="alert alert-info" v-else>
+                <i class="fas fa-info-circle me-2"></i>
+                No articles found in category
+              </div>
+            </div>
+            <div v-if="crawlError" class="alert alert-danger mt-3">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              {{ crawlError }}
             </div>
           </div>
         </div>
@@ -1619,6 +1753,14 @@ import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import ArticlePreviewModal from '../components/ArticlePreviewModal.vue'
 import OutreachDashboardTab from '../components/OutreachDashboardTab.vue'
 
+// Helper function to get CSRF token from cookies
+function getCookie(name) {
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith(name + '='))
+    ?.split('=')[1]
+}
+
 export default {
   name: 'ContestView',
   components: {
@@ -1744,6 +1886,53 @@ export default {
       }
     }
 
+    // Category crawler state
+    const selectedCategory = ref('')
+    const crawlLimit = ref(100)
+    const crawling = ref(false)
+    const crawlResult = ref(null)
+    const crawlError = ref(null)
+
+    // Crawl category and import articles
+    const crawlCategory = async () => {
+      if (!selectedCategory.value) return
+
+      crawling.value = true
+      crawlResult.value = null
+      crawlError.value = null
+
+      try {
+        const csrfToken = getCookie('csrf_access_token')
+        const response = await fetch(`/api/contest/${contest.value.id}/crawl-category`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken || ''
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            category_url: selectedCategory.value,
+            limit: crawlLimit.value || 100
+          })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to crawl category')
+        }
+
+        crawlResult.value = data
+
+        // Refresh submissions list to show new imports
+        await fetchSubmissions()
+      } catch (err) {
+        crawlError.value = err.message || 'An error occurred while crawling the category'
+      } finally {
+        crawling.value = false
+      }
+    }
+
     // Track current submission for preview modal
     const currentSubmissionId = ref(null)
 
@@ -1788,6 +1977,29 @@ export default {
       // Jury members can view submissions
       if (contestData.jury_members && Array.isArray(contestData.jury_members)) {
         const juryUsernames = contestData.jury_members.map(j => (j || '').trim().toLowerCase())
+        return juryUsernames.includes(username)
+      }
+
+      return false
+    })
+
+    // Determine if user can import articles (jury member or superadmin only)
+    const canImportArticles = computed(() => {
+      if (!isAuthenticated.value || !contest.value || !currentUser.value) {
+        return false
+      }
+
+      const username = (currentUser.value.username || '').trim().toLowerCase()
+      const role = (currentUser.value.role || '').trim().toLowerCase()
+
+      // Superadmin can always import
+      if (role === 'superadmin') {
+        return true
+      }
+
+      // Jury members can import
+      if (contest.value.jury_members && Array.isArray(contest.value.jury_members)) {
+        const juryUsernames = contest.value.jury_members.map(j => (j || '').trim().toLowerCase())
         return juryUsernames.includes(username)
       }
 
@@ -2771,7 +2983,14 @@ export default {
       reviewedSubmissionsCount,
       contestScoringMode,
       automatedSettings,
-      loadDefaultAutomatedSettings
+      loadDefaultAutomatedSettings,
+      // Category crawler
+      selectedCategory,
+      crawlLimit,
+      crawling,
+      crawlResult,
+      crawlError,
+      canImportArticles,
     }
   }
 }
@@ -3402,6 +3621,98 @@ export default {
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--wiki-primary);
+}
+
+/* Category Crawler Styles */
+.crawler-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+[data-theme="dark"] .crawler-section {
+  background: #1a1a2e;
+  border-color: #334155;
+}
+
+.crawler-section .section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.75rem;
+}
+
+.crawler-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.crawler-select {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-select {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-input {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-input {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-limit {
+  width: 100px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-limit {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.crawler-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crawl-result {
+  margin-top: 1rem;
+}
+
+.crawl-result .alert {
+  margin-bottom: 0;
+  font-size: 0.875rem;
 }
 
 /* --------------------------------------------------------------------------

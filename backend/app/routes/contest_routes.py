@@ -35,6 +35,7 @@ from app.utils import (
     get_article_infobox_count,
     get_article_incoming_links,
     get_article_outgoing_links,
+    crawl_category_articles,
     MEDIAWIKI_API_TIMEOUT,
 )
 from app.services.outreach_dashboard import (
@@ -2933,3 +2934,117 @@ def reject_contest_request(request_id):
         'message': 'Contest request rejected successfully',
         'requestId': contest_request.id
     }), 200
+
+
+# ------------------------------------------------------------------------
+# CATEGORY CRAWLER ROUTE
+# ------------------------------------------------------------------------
+
+
+@contest_bp.route("/<int:contest_id>/crawl-category", methods=["POST"])
+@require_auth
+@handle_errors
+@validate_json_data(["category_url"])
+def crawl_category_for_contest(contest_id):
+    """
+    Crawl articles from a Wikipedia category and create pending submissions.
+    """
+    try:
+        user = request.current_user
+        data = request.get_json()
+
+        # Fetch contest
+        contest = Contest.query.get(contest_id)
+        if not contest:
+            return jsonify({"error": "Contest not found"}), 404
+
+        # Check if contest uses automated scoring
+        try:
+            scoring_mode = contest.get_scoring_mode()
+        except Exception as e:
+            current_app.logger.error(f"Error getting scoring mode: {str(e)}")
+            scoring_mode = "simple"
+
+        if scoring_mode != "automated":
+            return jsonify({
+                "error": f"Category crawling is only available for automated scoring contests. Current mode: {scoring_mode}"
+            }), 400
+
+        # Permission check: jury member or superadmin only
+        jury_members = contest.get_jury_members() if hasattr(contest, "get_jury_members") else []
+        is_jury_member = user.username in jury_members if jury_members else False
+        is_superadmin = getattr(user, "role", None) == "superadmin"
+
+        if not (is_jury_member or is_superadmin):
+            return jsonify({"error": "You do not have permission to crawl categories for this contest"}), 403
+
+        # Get parameters
+        category_url = data.get("category_url")
+        limit = data.get("limit", 5000)
+
+        # Validate limit
+        try:
+            limit = min(int(limit), 5000)
+        except (ValueError, TypeError):
+            limit = 5000
+
+        # Crawl the category
+        result = crawl_category_articles(category_url, limit=limit)
+
+        if not result:
+            return jsonify({
+                "error": "Failed to crawl category. Please check the category URL."
+            }), 400
+
+        articles = result.get("articles", [])
+        imported = []
+        skipped = 0
+
+        # Get existing article links for this contest to avoid duplicates
+        existing_links = set(
+            s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
+        )
+
+        # Create submissions for each article
+        for article in articles:
+            article_url = article.get("url")
+            article_title = article.get("title")
+
+            # Skip if already submitted
+            if article_url in existing_links:
+                skipped += 1
+                continue
+
+            # Create pending submission
+            submission = Submission(
+                user_id=user.id,
+                contest_id=contest_id,
+                article_title=article_title,
+                article_link=article_url,
+                status="pending",
+            )
+
+            try:
+                submission.save()
+                imported.append(article_title)
+                existing_links.add(article_url)
+            except IntegrityError:
+                db.session.rollback()
+                skipped += 1
+            except Exception as e:
+                current_app.logger.error(f"Error creating submission for {article_title}: {str(e)}")
+                db.session.rollback()
+                skipped += 1
+
+        return jsonify({
+            "message": f"Successfully imported {len(imported)} articles from category",
+            "total_imported": len(imported),
+            "skipped": skipped,
+            "category": result.get("category"),
+            "wiki_base": result.get("wiki_base"),
+            "articles": imported[:100],
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"crawl_category_for_contest error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
