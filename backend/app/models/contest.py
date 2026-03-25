@@ -583,6 +583,134 @@ class Contest(BaseModel, ContestMixin):
         return "simple"
 
     # ------------------------------------------------------------------------
+    # AUTOMATED EVALUATION ENGINE
+    # ------------------------------------------------------------------------
+
+    def evaluate_automated_submission(self, submission_data):
+        """
+        Evaluate a submission against automated scoring criteria.
+
+        Checks eligibility first, then calculates score if eligible.
+
+        Args:
+            submission_data: Dict containing submission metadata:
+                - article_word_count: Article size in bytes
+                - incoming_links: Number of incoming links
+                - outgoing_links: Number of outgoing links
+                - ref_new_count: Number of new references
+                - ref_reused_count: Number of reused references
+                - image_count: Number of images
+                - infobox_count: Number of infoboxes
+
+        Returns:
+            tuple: (is_eligible: bool, final_score: float, reason: str, breakdown: dict or None)
+        """
+        automated = self.get_automated_settings()
+        if not automated or not automated.get("enabled"):
+            return False, 0, "Automated scoring not enabled for this contest", None
+
+        eligibility = automated.get("eligibility", {})
+        evaluation = automated.get("evaluation", {})
+
+        # --- ELIGIBILITY CHECKS ---
+        reasons = []
+
+        # Check minimum byte count (article_word_count stores bytes)
+        min_bytes = eligibility.get("min_bytes", 0)
+        actual_bytes = submission_data.get("article_word_count") or 0
+        if min_bytes > 0 and actual_bytes < min_bytes:
+            reasons.append(f"Article size ({actual_bytes} bytes) below minimum ({min_bytes} bytes)")
+
+        # Check minimum incoming links
+        min_incoming = eligibility.get("min_incoming_links", 0)
+        actual_incoming = submission_data.get("incoming_links") or 0
+        if min_incoming > 0 and actual_incoming < min_incoming:
+            reasons.append(f"Incoming links ({actual_incoming}) below minimum ({min_incoming})")
+
+        # Check minimum outgoing links
+        min_outgoing = eligibility.get("min_outgoing_links", 0)
+        actual_outgoing = submission_data.get("outgoing_links") or 0
+        if min_outgoing > 0 and actual_outgoing < min_outgoing:
+            reasons.append(f"Outgoing links ({actual_outgoing}) below minimum ({min_outgoing})")
+
+        # Check minimum references
+        min_refs = eligibility.get("min_references", 0)
+        actual_refs = (submission_data.get("ref_new_count") or 0) + (submission_data.get("ref_reused_count") or 0)
+        if min_refs > 0 and actual_refs < min_refs:
+            reasons.append(f"Total references ({actual_refs}) below minimum ({min_refs})")
+
+        # If any eligibility check failed, return rejected
+        if reasons:
+            return False, 0, "; ".join(reasons), None
+
+        # --- SCORE CALCULATION ---
+        score = 0.0
+        breakdown = {}
+
+        # Points per accepted article (base points)
+        base_points = float(evaluation.get("points_per_accepted", 0))
+        score += base_points
+        breakdown["base_points"] = base_points
+
+        # Points per byte
+        points_per_byte = float(evaluation.get("points_per_byte", 0))
+        bytes_points = round(actual_bytes * points_per_byte, 2)
+        score += bytes_points
+        breakdown["bytes_points"] = bytes_points
+        breakdown["bytes_count"] = actual_bytes
+
+        # Points per incoming link
+        points_per_incoming = float(evaluation.get("points_per_incoming_link", 0))
+        incoming_points = round(actual_incoming * points_per_incoming, 2)
+        score += incoming_points
+        breakdown["incoming_links_points"] = incoming_points
+        breakdown["incoming_links_count"] = actual_incoming
+
+        # Points per outgoing link
+        points_per_outgoing = float(evaluation.get("points_per_outgoing_link", 0))
+        outgoing_points = round(actual_outgoing * points_per_outgoing, 2)
+        score += outgoing_points
+        breakdown["outgoing_links_points"] = outgoing_points
+        breakdown["outgoing_links_count"] = actual_outgoing
+
+        # Points per new reference
+        points_per_new_ref = float(evaluation.get("points_per_new_reference", 0))
+        new_refs = submission_data.get("ref_new_count") or 0
+        new_ref_points = round(new_refs * points_per_new_ref, 2)
+        score += new_ref_points
+        breakdown["new_references_points"] = new_ref_points
+        breakdown["new_references_count"] = new_refs
+
+        # Points per reused reference
+        points_per_reused_ref = float(evaluation.get("points_per_reused_reference", 0))
+        reused_refs = submission_data.get("ref_reused_count") or 0
+        reused_ref_points = round(reused_refs * points_per_reused_ref, 2)
+        score += reused_ref_points
+        breakdown["reused_references_points"] = reused_ref_points
+        breakdown["reused_references_count"] = reused_refs
+
+        # Points per infobox
+        points_per_infobox = float(evaluation.get("points_per_infobox", 0))
+        infobox_count = submission_data.get("infobox_count") or 0
+        infobox_points = round(infobox_count * points_per_infobox, 2)
+        score += infobox_points
+        breakdown["infobox_points"] = infobox_points
+        breakdown["infobox_count"] = infobox_count
+
+        # Points per image
+        points_per_image = float(evaluation.get("points_per_image", 0))
+        image_count = submission_data.get("image_count") or 0
+        image_points = round(image_count * points_per_image, 2)
+        score += image_points
+        breakdown["image_points"] = image_points
+        breakdown["image_count"] = image_count
+
+        # Round score to 2 decimal places
+        final_score = round(score, 2)
+
+        return True, final_score, f"Eligible. Score: {final_score}", breakdown
+
+    # ------------------------------------------------------------------------
     # SERIALIZATION
     # ------------------------------------------------------------------------
 

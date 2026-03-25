@@ -3,6 +3,7 @@ Submission Routes for WikiContest Application
 Handles submission management and review functionality
 """
 
+import json
 from urllib.parse import urlparse
 from datetime import datetime
 
@@ -255,6 +256,9 @@ def refresh_metadata(contest_id):
     This endpoint fetches the latest metadata from MediaWiki API for all submissions
     in the specified contest and updates the database with the current values.
 
+    For automated scoring contests, this also evaluates each submission and updates
+    status (accepted/rejected) and score based on the automated criteria.
+
     Args:
         contest_id: The ID of the contest to refresh submissions for
 
@@ -264,15 +268,30 @@ def refresh_metadata(contest_id):
     user = request.current_user
 
     # Validate contest access and permissions
-    # Note: contest variable is validated but not used in this route
-    _contest, error_response = validate_contest_submission_access(
+    contest, error_response = validate_contest_submission_access(
         contest_id, user, Contest
     )
     if error_response:
         return error_response
 
+    # Check if this is an automated scoring contest
+    is_automated = False
+    try:
+        is_automated = contest.get_scoring_mode() == "automated"
+        current_app.logger.info(f"Contest {contest_id} scoring mode: {contest.get_scoring_mode()}, is_automated: {is_automated}")
+    except Exception as e:
+        current_app.logger.warning(f"Failed to check scoring mode: {str(e)}")
+
     # Get all submissions for this contest
-    submissions = Submission.query.filter_by(contest_id=contest_id).all()
+    # For automated contests, limit batch size to prevent timeout
+    # Each submission requires multiple API calls which can be slow
+    query = Submission.query.filter_by(contest_id=contest_id)
+    
+    # Limit to 50 submissions per refresh for automated contests to prevent timeout
+    if is_automated:
+        query = query.limit(50)
+    
+    submissions = query.all()
 
     if not submissions:
         return (
@@ -448,8 +467,12 @@ def refresh_metadata(contest_id):
                     submission.article_created_at = timestamp_str
                 else:
                     submission.article_created_at = None
-            # Do NOT update article_word_count - it should remain fixed at submission time
-            # article_word_count represents the size at the time of submission
+            
+            # For crawler-imported submissions (no article_word_count), fetch it from API
+            # This is needed for automated evaluation
+            if not submission.article_word_count and info.get("current_size"):
+                submission.article_word_count = info["current_size"]
+            
             if info.get("article_page_id"):
                 submission.article_page_id = info["article_page_id"]
 
@@ -475,6 +498,77 @@ def refresh_metadata(contest_id):
                     )
                 except Exception:  # pylint: disable=broad-exception-caught
                     pass
+
+            # --- Automated Scoring Evaluation ---
+            # For automated contests, fetch additional metrics and evaluate
+            if is_automated:
+                current_app.logger.info(f"Evaluating submission {submission.id} in automated mode")
+                try:
+                    # Fetch incoming/outgoing links
+                    from app.utils import (
+                        get_article_incoming_links,
+                        get_article_outgoing_links,
+                        get_article_image_count,
+                        get_article_infobox_count,
+                    )
+                    
+                    incoming = get_article_incoming_links(submission.article_link) or 0
+                    outgoing = get_article_outgoing_links(submission.article_link) or 0
+                    images = get_article_image_count(submission.article_link) or 0
+                    infoboxes = get_article_infobox_count(submission.article_link) or 0
+                    
+                    current_app.logger.info(f"Submission {submission.id}: incoming={incoming}, outgoing={outgoing}, images={images}, infoboxes={infoboxes}")
+                    
+                    # Update submission with link counts
+                    submission.incoming_links = incoming
+                    submission.outgoing_links = outgoing
+                    submission.image_count = images
+                    submission.infobox_count = infoboxes
+                    
+                    # Evaluate submission against automated criteria
+                    submission_data = {
+                        "article_word_count": submission.article_word_count,
+                        "incoming_links": incoming,
+                        "outgoing_links": outgoing,
+                        "ref_new_count": submission.ref_new_count,
+                        "ref_reused_count": submission.ref_reused_count,
+                        "image_count": images,
+                        "infobox_count": infoboxes,
+                    }
+                    
+                    current_app.logger.info(f"Submission {submission.id} data for evaluation: {submission_data}")
+                    
+                    is_eligible, final_score, reason, breakdown = contest.evaluate_automated_submission(submission_data)
+                    
+                    current_app.logger.info(f"Submission {submission.id} result: eligible={is_eligible}, score={final_score}, reason={reason}")
+                    
+                    # Update submission status, score, and evaluation details
+                    if is_eligible:
+                        submission.status = "accepted"
+                        submission.score = int(round(final_score))
+                        submission.evaluation_reason = reason
+                        submission.score_breakdown = json.dumps(breakdown) if breakdown else None
+                    else:
+                        submission.status = "rejected"
+                        submission.score = 0
+                        submission.evaluation_reason = reason
+                        submission.score_breakdown = None
+                    
+                    current_app.logger.info(
+                        "Automated evaluation for submission %s: %s - %s",
+                        submission.id,
+                        submission.status,
+                        reason,
+                    )
+                    
+                except Exception as eval_error:  # pylint: disable=broad-exception-caught
+                    current_app.logger.error(
+                        "Failed to evaluate submission %s: %s",
+                        submission.id,
+                        str(eval_error),
+                    )
+                    import traceback
+                    current_app.logger.error(traceback.format_exc())
 
             updated += 1
         else:

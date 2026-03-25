@@ -267,6 +267,66 @@ class="text-decoration-none">
         </div>
       </div>
 
+      <!-- Category Crawler Section (for Automated Scoring Contests) -->
+      <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+          
+          <div class="crawler-form">
+            <select v-model="selectedCategory" class="form-select crawler-select">
+              <option value="">Select a category...</option>
+              <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <input
+              type="number"
+              v-model.number="crawlLimit"
+              placeholder="Limit"
+              min="1"
+              max="5000"
+              class="form-control crawler-limit"
+            />
+            <button
+              class="btn btn-primary crawler-btn"
+              @click="crawlCategory"
+              :disabled="crawling || !selectedCategory"
+            >
+              <span v-if="crawling">
+                <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+              </span>
+              <span v-else>
+                <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+              </span>
+            </button>
+          </div>
+          
+          <div v-if="crawlResult" class="crawl-result mt-3">
+            <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+              <i class="fas fa-check-circle me-2"></i>
+              {{ crawlResult.message }}
+              <br />
+              <small>Category: {{ crawlResult.category }}</small>
+              <br />
+              <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+            </div>
+            <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              All {{ crawlResult.skipped }} articles were duplicates
+            </div>
+            <div class="alert alert-info" v-else>
+              <i class="fas fa-info-circle me-2"></i>
+              No articles found in category
+            </div>
+          </div>
+          <div v-if="crawlError" class="alert alert-danger mt-3">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            {{ crawlError }}
+          </div>
+        </div>
+      </div>
+
       <!-- Submissions Table (Visible to Jury and Organizers) -->
       <div v-if="canViewSubmissions" class="card mb-4">
         <div class="card-header">
@@ -366,14 +426,25 @@ class="mt-2 pt-2"
                   </td>
                   <td>{{ submission.username || 'Unknown' }}</td>
                   <td>
-                    <span :class="`badge bg-${getStatusColor(submission.status)}`">
+                    <span 
+                      :class="`badge bg-${getStatusColor(submission.status)}`"
+                      :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                      @click="showEvaluationDetails(submission)"
+                      :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
                       {{ submission.status }}
                     </span>
                     <div v-if="submission.already_reviewed" class="text-muted small mt-1">
                       <i class="fas fa-check-circle me-1"></i>Reviewed
                     </div>
                   </td>
-                  <td>{{ submission.score || 0 }}</td>
+                  <td>
+                    <span 
+                      :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                      @click="showEvaluationDetails(submission)"
+                      :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                      {{ submission.score || 0 }}
+                    </span>
+                  </td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
                     <button v-if="canViewSubmissions"
@@ -389,73 +460,6 @@ title="Delete Submission"
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Category Crawler Section (for Automated Scoring Contests) -->
-      <!-- DEBUG INFO -->
-      <!--<div class="alert alert-secondary mb-2">
-        <small>
-          <strong>Debug:</strong> automated_settings.enabled = {{ contest.automated_settings?.enabled }}, 
-          categories = {{ contest.categories }}
-        </small>
-      </div>-->
-      <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
-        </div>
-        <div class="card-body">
-          <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
-          
-          <div class="crawler-form">
-            <select v-model="selectedCategory" class="form-select crawler-select">
-              <option value="">Select a category...</option>
-              <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-            <input
-              type="number"
-              v-model.number="crawlLimit"
-              placeholder="Limit"
-              min="1"
-              max="5000"
-              class="form-control crawler-limit"
-            />
-            <button
-              class="btn btn-primary crawler-btn"
-              @click="crawlCategory"
-              :disabled="crawling || !selectedCategory"
-            >
-              <span v-if="crawling">
-                <i class="fas fa-spinner fa-spin me-1"></i> Importing...
-              </span>
-              <span v-else>
-                <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
-              </span>
-            </button>
-          </div>
-          
-          <div v-if="crawlResult" class="crawl-result mt-3">
-            <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
-              <i class="fas fa-check-circle me-2"></i>
-              {{ crawlResult.message }}
-              <br />
-              <small>Category: {{ crawlResult.category }}</small>
-              <br />
-              <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
-            </div>
-            <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
-              <i class="fas fa-exclamation-triangle me-2"></i>
-              All {{ crawlResult.skipped }} articles were duplicates
-            </div>
-            <div class="alert alert-info" v-else>
-              <i class="fas fa-info-circle me-2"></i>
-              No articles found in category
-            </div>
-          </div>
-          <div v-if="crawlError" class="alert alert-danger mt-3">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            {{ crawlError }}
           </div>
         </div>
       </div>
@@ -742,6 +746,66 @@ class="text-decoration-none">
           </div>
         </div>
 
+        <!-- Category Crawler Section (for Automated Scoring Contests) -->
+        <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+            
+            <div class="crawler-form">
+              <select v-model="selectedCategory" class="form-select crawler-select">
+                <option value="">Select a category...</option>
+                <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+              <input
+                type="number"
+                v-model.number="crawlLimit"
+                placeholder="Limit"
+                min="1"
+                max="5000"
+                class="form-control crawler-limit"
+              />
+              <button
+                class="btn btn-primary crawler-btn"
+                @click="crawlCategory"
+                :disabled="crawling || !selectedCategory"
+              >
+                <span v-if="crawling">
+                  <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                </span>
+                <span v-else>
+                  <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                </span>
+              </button>
+            </div>
+            
+            <div v-if="crawlResult" class="crawl-result mt-3">
+              <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ crawlResult.message }}
+                <br />
+                <small>Category: {{ crawlResult.category }}</small>
+                <br />
+                <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+              </div>
+              <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                All {{ crawlResult.skipped }} articles were duplicates
+              </div>
+              <div class="alert alert-info" v-else>
+                <i class="fas fa-info-circle me-2"></i>
+                No articles found in category
+              </div>
+            </div>
+            <div v-if="crawlError" class="alert alert-danger mt-3">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              {{ crawlError }}
+            </div>
+          </div>
+        </div>
+
         <!-- Submissions Table (Visible to Jury and Organizers) -->
         <div v-if="canViewSubmissions" class="card mb-4">
           <div class="card-header">
@@ -841,14 +905,25 @@ class="mt-2 pt-2"
                     </td>
                     <td>{{ submission.username || 'Unknown' }}</td>
                     <td>
-                      <span :class="`badge bg-${getStatusColor(submission.status)}`">
+                      <span 
+                        :class="`badge bg-${getStatusColor(submission.status)}`"
+                        :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                        @click="showEvaluationDetails(submission)"
+                        :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
                         {{ submission.status }}
                       </span>
                       <div v-if="submission.already_reviewed" class="text-muted small mt-1">
                         <i class="fas fa-check-circle me-1"></i>Reviewed
                       </div>
                     </td>
-                    <td>{{ submission.score || 0 }}</td>
+                    <td>
+                      <span 
+                        :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                        @click="showEvaluationDetails(submission)"
+                        :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                        {{ submission.score || 0 }}
+                      </span>
+                    </td>
                     <td>{{ formatDate(submission.submitted_at) }}</td>
                     <td>
                       <button v-if="canViewSubmissions"
@@ -864,73 +939,6 @@ title="Delete Submission"
                   </tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Category Crawler Section (for Automated Scoring Contests) -->
-        <!-- DEBUG INFO -->
-        <!-- <div class="alert alert-secondary mb-2">
-          <small>
-            <strong>Debug:</strong> automated_settings.enabled = {{ contest.automated_settings?.enabled }}, 
-            categories = {{ contest.categories }}
-          </small>
-        </div> -->
-        <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
-          </div>
-          <div class="card-body">
-            <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
-            
-            <div class="crawler-form">
-              <select v-model="selectedCategory" class="form-select crawler-select">
-                <option value="">Select a category...</option>
-                <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
-              </select>
-              <input
-                type="number"
-                v-model.number="crawlLimit"
-                placeholder="Limit"
-                min="1"
-                max="5000"
-                class="form-control crawler-limit"
-              />
-              <button
-                class="btn btn-primary crawler-btn"
-                @click="crawlCategory"
-                :disabled="crawling || !selectedCategory"
-              >
-                <span v-if="crawling">
-                  <i class="fas fa-spinner fa-spin me-1"></i> Importing...
-                </span>
-                <span v-else>
-                  <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
-                </span>
-              </button>
-            </div>
-            
-            <div v-if="crawlResult" class="crawl-result mt-3">
-              <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ crawlResult.message }}
-                <br />
-                <small>Category: {{ crawlResult.category }}</small>
-                <br />
-                <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
-              </div>
-              <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                All {{ crawlResult.skipped }} articles were duplicates
-              </div>
-              <div class="alert alert-info" v-else>
-                <i class="fas fa-info-circle me-2"></i>
-                No articles found in category
-              </div>
-            </div>
-            <div v-if="crawlError" class="alert alert-danger mt-3">
-              <i class="fas fa-exclamation-circle me-2"></i>
-              {{ crawlError }}
             </div>
           </div>
         </div>
@@ -971,6 +979,89 @@ title="Delete Submission"
     :contest-scoring-config="contest?.scoring_parameters"
 @reviewed="handleSubmissionReviewed"
     @deleted="handleSubmissionDeleted" />
+
+  <!-- ========================================================================== -->
+  <!-- EVALUATION DETAILS MODAL - Shows score breakdown or rejection reason -->
+  <!-- ========================================================================== -->
+  <div class="modal fade" id="evaluationDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-info-circle me-2"></i>
+            Evaluation Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" v-if="selectedEvaluationSubmission">
+          <h6 class="mb-3">{{ selectedEvaluationSubmission.article_title }}</h6>
+          
+          <!-- Status Badge -->
+          <div class="mb-3">
+            <span :class="`badge bg-${getStatusColor(selectedEvaluationSubmission.status)} fs-6`">
+              {{ selectedEvaluationSubmission.status }}
+            </span>
+            <span class="ms-2 fw-bold">Score: {{ selectedEvaluationSubmission.score || 0 }}</span>
+          </div>
+          
+          <!-- Rejection Reason -->
+          <div v-if="selectedEvaluationSubmission.status === 'rejected'" class="alert alert-danger">
+            <i class="fas fa-times-circle me-2"></i>
+            <strong>Rejection Reason:</strong>
+            <p class="mb-0 mt-2">{{ selectedEvaluationSubmission.evaluation_reason }}</p>
+          </div>
+          
+          <!-- Score Breakdown (for accepted) -->
+          <div v-if="selectedEvaluationSubmission.status === 'accepted' && selectedEvaluationSubmission.score_breakdown">
+            <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Score Breakdown</h6>
+            <table class="table table-sm">
+              <tbody>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.base_points">
+                  <td>Base Points</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.base_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.bytes_points">
+                  <td>Bytes ({{ selectedEvaluationSubmission.score_breakdown.bytes_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.bytes_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.incoming_links_points">
+                  <td>Incoming Links ({{ selectedEvaluationSubmission.score_breakdown.incoming_links_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.outgoing_links_points">
+                  <td>Outgoing Links ({{ selectedEvaluationSubmission.score_breakdown.outgoing_links_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.new_references_points">
+                  <td>New References ({{ selectedEvaluationSubmission.score_breakdown.new_references_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.new_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.reused_references_points">
+                  <td>Reused References ({{ selectedEvaluationSubmission.score_breakdown.reused_references_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.reused_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.infobox_points">
+                  <td>Infoboxes ({{ selectedEvaluationSubmission.score_breakdown.infobox_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.infobox_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.image_points">
+                  <td>Images ({{ selectedEvaluationSubmission.score_breakdown.image_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.image_points }}</td>
+                </tr>
+                <tr class="table-primary fw-bold">
+                  <td>Total Score</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================================================== -->
   <!-- REFACTORED EDIT CONTEST MODAL - CLEAR UX FOR SCORING MODE LOCK -->
@@ -1741,6 +1832,119 @@ class="btn btn-primary"
       </div>
     </div>
   </div>
+
+  <!-- Evaluation Details Modal (for automated scoring contests) -->
+  <div class="modal fade" id="evaluationDetailsModal" tabindex="-1" aria-labelledby="evaluationDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="evaluationDetailsModalLabel">
+            <i class="fas fa-chart-bar me-2"></i>Evaluation Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" v-if="selectedEvaluationSubmission">
+          <h6 class="mb-3">
+            <a :href="selectedEvaluationSubmission.article_link" target="_blank" class="text-decoration-none">
+              {{ selectedEvaluationSubmission.article_title }}
+              <i class="fas fa-external-link-alt ms-1 small"></i>
+            </a>
+          </h6>
+
+          <!-- Accepted: Show Score Breakdown -->
+          <div v-if="selectedEvaluationSubmission.status === 'accepted' && selectedEvaluationSubmission.score_breakdown">
+            <div class="alert alert-success py-2">
+              <i class="fas fa-check-circle me-2"></i>
+              <strong>Accepted</strong> — Total Score: {{ selectedEvaluationSubmission.score }}
+            </div>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-center">Count</th>
+                  <th class="text-end">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.base_points">
+                  <td><i class="fas fa-star me-1 text-warning"></i>Base Points</td>
+                  <td class="text-center">—</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.base_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.bytes_points !== undefined">
+                  <td><i class="fas fa-file-alt me-1 text-info"></i>Bytes</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.bytes_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.bytes_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.incoming_links_points !== undefined">
+                  <td><i class="fas fa-arrow-left me-1 text-primary"></i>Incoming Links</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.outgoing_links_points !== undefined">
+                  <td><i class="fas fa-arrow-right me-1 text-primary"></i>Outgoing Links</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.new_references_points !== undefined">
+                  <td><i class="fas fa-book me-1 text-success"></i>New References</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.new_references_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.new_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.reused_references_points !== undefined">
+                  <td><i class="fas fa-book-open me-1 text-secondary"></i>Reused References</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.reused_references_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.reused_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.infobox_points !== undefined">
+                  <td><i class="fas fa-info-circle me-1 text-dark"></i>Infoboxes</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.infobox_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.infobox_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.image_points !== undefined">
+                  <td><i class="fas fa-image me-1 text-danger"></i>Images</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.image_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.image_points }}</td>
+                </tr>
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th colspan="2">Total Score</th>
+                  <th class="text-end">{{ selectedEvaluationSubmission.score }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Rejected: Show Reason -->
+          <div v-else-if="selectedEvaluationSubmission.status === 'rejected'">
+            <div class="alert alert-danger">
+              <i class="fas fa-times-circle me-2"></i>
+              <strong>Rejected</strong>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <p class="mb-0"><strong>Reason:</strong></p>
+                <p class="mb-0 mt-1 text-danger">{{ selectedEvaluationSubmission.evaluation_reason }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending or No Data -->
+          <div v-else>
+            <div class="alert alert-info">
+              <i class="fas fa-clock me-2"></i>
+              <span v-if="selectedEvaluationSubmission.evaluation_reason">{{ selectedEvaluationSubmission.evaluation_reason }}</span>
+              <span v-else>This submission has not been evaluated yet. Click "Refresh Metadata" to run the evaluation.</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -1925,7 +2129,7 @@ export default {
         crawlResult.value = data
 
         // Refresh submissions list to show new imports
-        await fetchSubmissions()
+        await loadSubmissions()
       } catch (err) {
         crawlError.value = err.message || 'An error occurred while crawling the category'
       } finally {
@@ -1941,6 +2145,27 @@ export default {
       if (!currentSubmissionId.value) return null
       return submissions.value.find(s => s.id === currentSubmissionId.value)
     })
+
+    // Selected submission for evaluation details modal
+    const selectedEvaluationSubmission = ref(null)
+    let evaluationDetailsModal = null
+
+    // Show evaluation details modal (for automated scoring)
+    const showEvaluationDetails = (submission) => {
+      if (!submission.evaluation_reason || contestScoringMode.value !== 'automated') {
+        return
+      }
+      selectedEvaluationSubmission.value = submission
+      if (!evaluationDetailsModal) {
+        const modalEl = document.getElementById('evaluationDetailsModal')
+        if (modalEl) {
+          evaluationDetailsModal = new bootstrap.Modal(modalEl)
+        }
+      }
+      if (evaluationDetailsModal) {
+        evaluationDetailsModal.show()
+      }
+    }
 
     // Get current user from multiple possible store locations
     const currentUser = computed(() => {
@@ -2209,6 +2434,15 @@ export default {
           scoring_parameters: data.scoring_parameters
             ? { ...data.scoring_parameters }
             : { enabled: false }
+        }
+
+        // Set contest scoring mode for the view (used by clickable status/score)
+        if (data.automated_settings?.enabled === true) {
+          contestScoringMode.value = 'automated'
+        } else if (data.scoring_parameters?.enabled === true) {
+          contestScoringMode.value = 'multi_parameter'
+        } else {
+          contestScoringMode.value = 'simple'
         }
 
         // Check permissions after loading contest
@@ -2990,7 +3224,11 @@ export default {
       crawling,
       crawlResult,
       crawlError,
+      crawlCategory,
       canImportArticles,
+      // Evaluation details modal
+      showEvaluationDetails,
+      selectedEvaluationSubmission,
     }
   }
 }

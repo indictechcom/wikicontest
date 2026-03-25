@@ -108,6 +108,14 @@ class Submission(BaseModel):
     # Example: {"Quality": 8, "Sources": 7, "Neutrality": 9, "Formatting": 6}
     parameter_scores = db.Column(db.Text, nullable=True)
 
+    # Automated evaluation details (for automated scoring contests)
+    # Reason for rejection (if status is rejected) or success message
+    evaluation_reason = db.Column(db.Text, nullable=True)
+    
+    # Score breakdown as JSON (for accepted submissions in automated contests)
+    # Example: {"base_points": 10, "bytes_points": 5.2, "links_points": 3, ...}
+    score_breakdown = db.Column(db.Text, nullable=True)
+
 
     # ------------------------------------------------------------------------
     # Database Columns - Review Metadata
@@ -351,6 +359,20 @@ class Submission(BaseModel):
         except json.JSONDecodeError:
             return None
 
+    def get_score_breakdown(self):
+        """
+        Get score breakdown for automated scoring
+
+        Returns:
+            dict or None: Score breakdown with points per category
+        """
+        if not self.score_breakdown:
+            return None
+        try:
+            return json.loads(self.score_breakdown)
+        except json.JSONDecodeError:
+            return None
+
 
     # ------------------------------------------------------------------------
     # SUBMISSION STATUS UPDATE
@@ -583,6 +605,10 @@ class Submission(BaseModel):
 
             # Multi-parameter scoring data
             "parameter_scores": self.get_parameter_scores(),
+
+            # Automated evaluation details
+            "evaluation_reason": self.evaluation_reason,
+            "score_breakdown": self.get_score_breakdown(),
         }
 
         # Optionally include related user and contest information
