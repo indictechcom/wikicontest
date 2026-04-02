@@ -494,13 +494,16 @@ def index():
     In development, serves from frontend directory (Vite dev server handles it).
     In production, serves from frontend/dist directory (built Vue.js app).
     """
-    # Check if dist directory exists (production build)
-    dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
+    # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    dist_path = os.path.join(workspace_root, 'frontend', 'dist')
+
     if os.path.exists(dist_path):
         # Production - serve built Vue.js files
         return send_from_directory(dist_path, 'index.html')
     # Development - serve Vue.js mount point (Vite dev server will handle it)
-    return send_from_directory('../../frontend', 'index.html')
+    frontend_path = os.path.join(workspace_root, 'frontend')
+    return send_from_directory(frontend_path, 'index.html')
 
 
 @app.route('/<path:filename>')
@@ -515,8 +518,10 @@ def serve_static(filename):
     if filename.startswith('api/'):
         return jsonify({'error': 'Endpoint not found'}), 404
 
-    # Check if dist directory exists (production build)
-    dist_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist')
+    # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    dist_path = os.path.join(workspace_root, 'frontend', 'dist')
+
     if os.path.exists(dist_path):
         # Production - serve from dist
         try:
@@ -529,7 +534,8 @@ def serve_static(filename):
             raise
     # Development - serve from frontend directory
     # Vite dev server will handle Vue.js files, Flask serves other static files
-    return send_from_directory('../../frontend', filename)
+    frontend_path = os.path.join(workspace_root, 'frontend')
+    return send_from_directory(frontend_path, filename)
 
 
 # ---------------------------------------------------------------------------
