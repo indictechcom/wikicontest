@@ -15,3 +15,8 @@ uri = "heroku/procfile"
 [build.env]
 name = "USE_NPM_INSTALL"
 value = "true"
+
+# Explicitly run build and postinstall scripts during build
+[build.env]
+name = "NPM_RUN_SCRIPTS"
+value = "build,postinstall"
