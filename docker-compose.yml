@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: wikicontest_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wikicontest
+      MYSQL_USER: wikicontest_user
+      MYSQL_PASSWORD: wikicontest_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+    networks:
+      - wikicontest_network
+
+  # Backend Flask Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: wikicontest_backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "true"
+      DATABASE_URL: mysql+pymysql://wikicontest_user:wikicontest_password@mysql:3306/wikicontest
+      SECRET_KEY: wikicontest-dev-secret-key-change-in-production
+      JWT_SECRET_KEY: wikicontest-jwt-secret-key-change-in-production
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5000,http://frontend:5173,http://backend:5000,http://host.docker.internal:5173
+      OAUTH_MWURI: https://meta.wikimedia.org/w/index.php
+      CONSUMER_KEY: ${CONSUMER_KEY:-your-consumer-key}
+      CONSUMER_SECRET: ${CONSUMER_SECRET:-your-consumer-secret}
+      OAUTH_USE_OOB: "false"
+    volumes:
+      - ./backend:/app
+      - /app/.venv  # Prevent overwriting local venv
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - wikicontest_network
+    command: flask run --host=0.0.0.0 --port=5000 --reload
+
+  # Frontend Vite Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: wikicontest_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Prevent overwriting node_modules
+    environment:
+      - VITE_API_URL=http://localhost:5000/api
+    networks:
+      - wikicontest_network
+    command: npm run dev -- --host
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  wikicontest_network:
+    driver: bridge
