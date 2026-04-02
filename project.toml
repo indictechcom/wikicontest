@@ -1,0 +1,18 @@
+# Toolforge Build Service configuration
+[build-system]
+requires = ["heroku/nodejs", "heroku/python", "heroku/procfile"]
+
+[[build.buildpacks]]
+uri = "heroku/nodejs"
+
+[[build.buildpacks]]
+uri = "heroku/python"
+
+[[build.buildpacks]]
+uri = "heroku/procfile"
+
+# Explicitly enable Node.js build to run
+[build.env]
+[build.env]
+name = "NPM_CONFIG_PRODUCTION"
+value = "false"
