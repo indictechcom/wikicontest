@@ -315,3 +315,5 @@ $RECYCLE.BIN/
 .nfs*
 
 .claude/settings.local.json
+
+.env*
