@@ -11,12 +11,7 @@ uri = "heroku/python"
 [[build.buildpacks]]
 uri = "heroku/procfile"
 
-# Explicitly enable npm install to include devDependencies (vite is required for build)
+# Enable npm install (including devDependencies) and run build scripts during build
 [build.env]
-name = "USE_NPM_INSTALL"
-value = "true"
-
-# Explicitly run build and postinstall scripts during build
-[build.env]
-name = "NPM_RUN_SCRIPTS"
-value = "build,postinstall"
+USE_NPM_INSTALL = "true"
+NPM_RUN_SCRIPTS = "build,postinstall"
