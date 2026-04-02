@@ -52,6 +52,20 @@ class Config:
     # For production: DATABASE_URL must be set in environment
     # CRITICAL: No default password - use SQLite for development or require DATABASE_URL
     database_url = os.getenv('DATABASE_URL')
+
+    # Detect Toolforge ToolsDB environment
+    toolforge_db_user = os.getenv('TOOL_TOOLSDB_USER')
+    toolforge_db_password = os.getenv('TOOL_TOOLSDB_PASSWORD')
+    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', os.getenv('TOOL_NAME', 'wikicontest'))
+
+    # Auto-configure for Toolforge if environment variables are present
+    if toolforge_db_user and toolforge_db_password and not database_url:
+        # Construct ToolsDB connection string
+        # Format: mysql+pymysql://sXXXXX:password@tools.db.svc.wikimedia.cloud:3306/sXXXXX__dbname
+        tool_db_name = f"{toolforge_db_user}__{toolforge_db_name}"
+        database_url = f"mysql+pymysql://{toolforge_db_user}:{toolforge_db_password}@tools.db.svc.wikimedia.cloud:3306/{tool_db_name}"
+        print(f"Detected Toolforge environment. Using ToolsDB: {tool_db_name}")
+
     if not database_url:
         # Development fallback: use SQLite (no password, easier setup)
         database_url = 'sqlite:///wikicontest_dev.db'
