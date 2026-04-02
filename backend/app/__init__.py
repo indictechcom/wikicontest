@@ -173,7 +173,7 @@ def create_app():
     allowed_origins = os.getenv('CORS_ORIGINS', '').split(',')
     if not allowed_origins or allowed_origins == ['']:
         # Development defaults
-        allowed_origins = ['http://localhost:5173', 'http://localhost:5000']
+        allowed_origins = ['http://localhost:5173']
     else:
         # Add Toolforge domain if not present
         if 'https://wikicontest.toolforge.org' not in allowed_origins:
