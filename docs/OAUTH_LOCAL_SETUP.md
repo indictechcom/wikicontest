@@ -36,7 +36,7 @@ Register an OAuth consumer for local development on Wikimedia Meta.
 3. **Submit and save credentials:**
    
    After submission, you'll receive:
-   - **Consumer Key** (e.g., `3f383c834a07a181723f1a1de566f7cf`)
+   - **Consumer Key** (e.g., ``)
    - **Consumer Secret** (a long hexadecimal string)
    
    Copy both values – you'll need them in the next step.

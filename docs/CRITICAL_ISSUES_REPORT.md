@@ -113,8 +113,8 @@ OAuth consumer key and secret are hardcoded in a configuration file that may be 
 
 ### Code Location
 ```toml
-CONSUMER_KEY = "3f383c834a07a181723f1a1de566f7cf"
-CONSUMER_SECRET = "62c40e0fde2377613d1f82b9b7aabc9fe2a73b30"
+CONSUMER_KEY = ""
+CONSUMER_SECRET = ""
 ```
 
 ### Impact

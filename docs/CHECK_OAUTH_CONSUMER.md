@@ -19,7 +19,7 @@ Your OAuth consumer may have been registered with **"oob"** (out-of-band) authen
    - Visit: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
 
 2. **Find your consumer:**
-   - Look for the consumer with key: `ff02bad2706bef15385eec1471ee03ea`
+   - Look for the consumer with key: ``
    - Click **"Update"** or **"Manage"** to view details
 
 3. **Check the callback URL field:**

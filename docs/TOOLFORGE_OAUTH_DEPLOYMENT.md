@@ -18,15 +18,15 @@ When deploying to Toolforge, you need to update **three configuration settings**
 
 ### Local Development (Current Setup)
 
-- **Consumer Key:** `ff02bad2706bef15385eec1471ee03ea`
-- **Consumer Secret:** `a4489c9b18609fe8574d62b01794e4b6f1a3e0d9`
+- **Consumer Key:** ``
+- **Consumer Secret:** ``
 - **Callback URL:** `http://localhost:5000/api/user/oauth/callback`
 - **OAUTH_CALLBACK_PATH:** Not set (uses default)
 
 ### Toolforge Production (Required Setup)
 
-- **Consumer Key:** `3f383c834a07a181723f1a1de566f7cf`
-- **Consumer Secret:** `62c40e0fde2377613d1f82b9b7aabc9fe2a73b30`
+- **Consumer Key:** ``
+- **Consumer Secret:** ``
 - **Callback URL:** `https://wikicontest.toolforge.org/oauth/callback`
 - **OAUTH_CALLBACK_PATH:** `/oauth/callback` (must be set)
 
@@ -38,13 +38,13 @@ When deploying to Toolforge, you need to update **three configuration settings**
 
 Your Toolforge OAuth consumer should already be registered with the following details:
 
-- **Consumer Key:** `3f383c834a07a181723f1a1de566f7cf`
+- **Consumer Key:** ``
 - **Callback URL:** `https://wikicontest.toolforge.org/oauth/callback`
 - **Status:** Approved  
 - **Owner-only:** No  
 
 **Verify your consumer at:**  
-https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/update/3f383c834a07a181723f1a1de566f7cf
+https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration/update/
 
 ### Step 2: Update Configuration File
 
@@ -52,8 +52,8 @@ On Toolforge, use `config.toml` (not `.env`) for configuration. Add the followin
 ```toml
 # OAuth Configuration for Toolforge
 OAUTH_MWURI = "https://meta.wikimedia.org/w/index.php"
-CONSUMER_KEY = "3f383c834a07a181723f1a1de566f7cf"
-CONSUMER_SECRET = "62c40e0fde2377613d1f82b9b7aabc9fe2a73b30"
+CONSUMER_KEY = ""
+CONSUMER_SECRET = ""
 
 # OAuth Callback Path - CRITICAL for Toolforge!
 # This tells the application to use /oauth/callback instead of /api/user/oauth/callback
@@ -120,8 +120,8 @@ DEBUG = false
 
 # OAuth Configuration - TOOLFORGE SETTINGS
 OAUTH_MWURI = "https://meta.wikimedia.org/w/index.php"
-CONSUMER_KEY = "3f383c834a07a181723f1a1de566f7cf"
-CONSUMER_SECRET = "62c40e0fde2377613d1f82b9b7aabc9fe2a73b30"
+CONSUMER_KEY = ""
+CONSUMER_SECRET = ""
 
 # OAuth Callback Path - MUST BE SET FOR TOOLFORGE
 OAUTH_CALLBACK_PATH = "/oauth/callback"
@@ -138,8 +138,8 @@ OAUTH_USE_OOB = false
 
 **File:** `backend/.env`
 ```env
-CONSUMER_KEY=ff02bad2706bef15385eec1471ee03ea
-CONSUMER_SECRET=a4489c9b18609fe8574d62b01794e4b6f1a3e0d9
+CONSUMER_KEY=
+CONSUMER_SECRET=
 # OAUTH_CALLBACK_PATH is not set (uses default)
 ```
 
@@ -147,8 +147,8 @@ CONSUMER_SECRET=a4489c9b18609fe8574d62b01794e4b6f1a3e0d9
 
 **File:** `$HOME/www/python/src/config.toml`
 ```toml
-CONSUMER_KEY = "3f383c834a07a181723f1a1de566f7cf"
-CONSUMER_SECRET = "62c40e0fde2377613d1f82b9b7aabc9fe2a73b30"
+CONSUMER_KEY = ""
+CONSUMER_SECRET = ""
 OAUTH_CALLBACK_PATH = "/oauth/callback"  # MUST SET THIS!
 ```
 
@@ -222,13 +222,13 @@ When a user clicks "Login with Wikimedia" on Toolforge:
 
 ### Local Development
 
-- **Consumer:** `ff02bad2706bef15385eec1471ee03ea`
+- **Consumer:** ``
 - **OAUTH_CALLBACK_PATH:** Not set (uses default)
 - **Callback URL:** `http://localhost:5000/api/user/oauth/callback`
 
 ### Toolforge Production
 
-- **Consumer:** `3f383c834a07a181723f1a1de566f7cf`
+- **Consumer:** ``
 - **OAUTH_CALLBACK_PATH:** `/oauth/callback` (must be set)
 - **Callback URL:** `https://wikicontest.toolforge.org/oauth/callback`
 

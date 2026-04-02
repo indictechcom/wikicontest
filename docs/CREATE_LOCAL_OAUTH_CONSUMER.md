@@ -89,8 +89,8 @@ Select the permissions your application needs. For WikiContest, basic rights are
 
 After clicking **"Propose consumer"**, you'll receive:
 
-- **Consumer Key:** (e.g., `3f383c834a07a181723f1a1de566f7cf`)
-- **Consumer Secret:** (e.g., `62c40e0fde2377613d1f82b9b7aabc9fe2a73b30`)
+- **Consumer Key:** (e.g., ``)
+- **Consumer Secret:** (e.g., ``)
 
 ⚠️ **CRITICAL:** Copy BOTH credentials immediately! The consumer secret is only displayed once. If you lose it, you'll need to create a new consumer.
 
