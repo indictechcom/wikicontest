@@ -11,7 +11,7 @@ uri = "heroku/python"
 [[build.buildpacks]]
 uri = "heroku/procfile"
 
-# Explicitly enable Node.js build to run
+# Explicitly enable npm install to include devDependencies (vite is required for build)
 [build.env]
-name = "NPM_CONFIG_PRODUCTION"
-value = "false"
+name = "USE_NPM_INSTALL"
+value = "true"
