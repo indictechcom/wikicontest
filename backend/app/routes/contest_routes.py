@@ -1810,74 +1810,82 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             pass
         article_reference_count = None
 
-    # --- Fetch Detailed Reference Counts ---
-    # Counts <ref>...</ref> as new refs, and <ref .../> as reused refs
-    try:
-        ref_counts = get_detailed_reference_counts(article_link)
-        ref_new_count = int(ref_counts.get("new", 0) or 0)
-        ref_reused_count = int(ref_counts.get("reused", 0) or 0)
-    except Exception as ref_detail_error:  # pylint: disable=broad-exception-caught
-        try:
-            current_app.logger.warning(
-                "Failed to fetch detailed reference counts: %s", str(ref_detail_error)
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        ref_new_count = 0
-        ref_reused_count = 0
-
-    # --- Fetch Image and Infobox Counts ---
-    # These richness metrics are stored for future use but are not used in
-    # validation or scoring yet.
-    try:
-        image_count = get_article_image_count(article_link)
-    except Exception as img_error:  # pylint: disable=broad-exception-caught
-        try:
-            current_app.logger.warning(
-                "Failed to fetch image count: %s", str(img_error)
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        image_count = None
-
-    try:
-        infobox_count = get_article_infobox_count(article_link)
-    except Exception as ibx_error:  # pylint: disable=broad-exception-caught
-        try:
-            current_app.logger.warning(
-                "Failed to fetch infobox count: %s", str(ibx_error)
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        infobox_count = None
-
-    # --- Fetch Link Counts ---
-    # Count incoming and outgoing links for future scoring evaluation
-    # These metrics are stored but not used in validation or scoring yet
+    # --- Fetch Detailed Metrics (Automated Scoring Only) ---
+    # These extra API calls are only needed for automated scoring evaluation.
+    # Skipping them for regular contests avoids MediaWiki API rate-limiting
+    # which was causing CSRF token failures during template/category enforcement.
     incoming_links = None
     outgoing_links = None
-    
-    try:
-        incoming_links = get_article_incoming_links(article_link)
-    except Exception as incoming_error:  # pylint: disable=broad-exception-caught
-        try:
-            current_app.logger.warning(
-                "Failed to fetch incoming links count: %s", str(incoming_error)
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        incoming_links = None
 
+    is_automated_contest = False
     try:
-        outgoing_links = get_article_outgoing_links(article_link)
-    except Exception as outgoing_error:  # pylint: disable=broad-exception-caught
+        is_automated_contest = contest.get_scoring_mode() == "automated"
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    if is_automated_contest:
+        # Fetch detailed reference counts
         try:
-            current_app.logger.warning(
-                "Failed to fetch outgoing links count: %s", str(outgoing_error)
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        outgoing_links = None
+            ref_counts = get_detailed_reference_counts(article_link)
+            ref_new_count = int(ref_counts.get("new", 0) or 0)
+            ref_reused_count = int(ref_counts.get("reused", 0) or 0)
+        except Exception as ref_detail_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch detailed reference counts: %s", str(ref_detail_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            ref_new_count = 0
+            ref_reused_count = 0
+
+        # Fetch image count
+        try:
+            image_count = get_article_image_count(article_link)
+        except Exception as img_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch image count: %s", str(img_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            image_count = None
+
+        # Fetch infobox count
+        try:
+            infobox_count = get_article_infobox_count(article_link)
+        except Exception as ibx_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch infobox count: %s", str(ibx_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            infobox_count = None
+
+        # Fetch incoming links count
+        try:
+            incoming_links = get_article_incoming_links(article_link)
+        except Exception as incoming_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch incoming links count: %s", str(incoming_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            incoming_links = None
+
+        # Fetch outgoing links count
+        try:
+            outgoing_links = get_article_outgoing_links(article_link)
+        except Exception as outgoing_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch outgoing links count: %s", str(outgoing_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            outgoing_links = None
 
     # --- Validate Article Requirements ---
     # Validate article byte count against contest requirements
