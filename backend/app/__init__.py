@@ -497,10 +497,6 @@ def index():
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     dist_path = os.path.join(workspace_root, 'frontend', 'dist')
 
-    current_app.logger.info(f'Workspace root: {workspace_root}')
-    current_app.logger.info(f'Dist path: {dist_path}')
-    current_app.logger.info(f'Dist exists: {os.path.exists(dist_path)}')
-
     if os.path.exists(dist_path):
         # Production - serve built Vue.js files
         return send_from_directory(dist_path, 'index.html')
@@ -525,8 +521,6 @@ def serve_static(filename):
     # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     dist_path = os.path.join(workspace_root, 'frontend', 'dist')
-
-    current_app.logger.info(f'Serving static: {filename}, dist exists: {os.path.exists(dist_path)}')
 
     if os.path.exists(dist_path):
         # Production - serve from dist
