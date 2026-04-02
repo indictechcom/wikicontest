@@ -13,6 +13,5 @@ uri = "heroku/procfile"
 
 # Explicitly enable Node.js build to run
 [build.env]
-[build.env]
 name = "NPM_CONFIG_PRODUCTION"
 value = "false"
