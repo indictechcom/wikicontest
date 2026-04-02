@@ -17,7 +17,7 @@ export default defineConfig({
     // Generate source maps for debugging
     sourcemap: false,
     // Optimize for production
-    minify: 'terser',
+    minify: 'esbuild',
     // Rollup options
     rollupOptions: {
       output: {
