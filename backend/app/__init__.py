@@ -491,17 +491,21 @@ def index():
     Serve the main frontend page.
 
     Serves the Vue.js application.
-    In development, serves from frontend directory (Vite dev server handles it).
     In production, serves from frontend/dist directory (built Vue.js app).
     """
     # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     dist_path = os.path.join(workspace_root, 'frontend', 'dist')
 
+    current_app.logger.info(f'Workspace root: {workspace_root}')
+    current_app.logger.info(f'Dist path: {dist_path}')
+    current_app.logger.info(f'Dist exists: {os.path.exists(dist_path)}')
+
     if os.path.exists(dist_path):
         # Production - serve built Vue.js files
         return send_from_directory(dist_path, 'index.html')
-    # Development - serve Vue.js mount point (Vite dev server will handle it)
+
+    # Fallback - development mode
     frontend_path = os.path.join(workspace_root, 'frontend')
     return send_from_directory(frontend_path, 'index.html')
 
@@ -522,6 +526,8 @@ def serve_static(filename):
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     dist_path = os.path.join(workspace_root, 'frontend', 'dist')
 
+    current_app.logger.info(f'Serving static: {filename}, dist exists: {os.path.exists(dist_path)}')
+
     if os.path.exists(dist_path):
         # Production - serve from dist
         try:
@@ -533,7 +539,6 @@ def serve_static(filename):
                 return send_from_directory(dist_path, 'index.html')
             raise
     # Development - serve from frontend directory
-    # Vite dev server will handle Vue.js files, Flask serves other static files
     frontend_path = os.path.join(workspace_root, 'frontend')
     return send_from_directory(frontend_path, filename)
 
