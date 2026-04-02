@@ -317,3 +317,5 @@ $RECYCLE.BIN/
 .claude/settings.local.json
 
 .env*
+
+!project.toml
