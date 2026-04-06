@@ -147,26 +147,26 @@ def get_all_contests():
 def get_contest_outreach_data(contest_id):
     """
     Get Outreach Dashboard course data for a contest
-    
+
     Requires authentication - users must be logged in to view contest details.
-    
+
     Args:
         contest_id: Contest ID
-        
+
     Returns:
         JSON response with Outreach Dashboard course data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course data from Outreach Dashboard API
     result = fetch_course_data(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -185,24 +185,24 @@ def get_contest_outreach_data(contest_id):
 def get_outreach_dashboard_users(contest_id):
     """
     Fetch Outreach Dashboard course users data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course users data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course users data from Outreach Dashboard API
     result = fetch_course_users(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -221,24 +221,24 @@ def get_outreach_dashboard_users(contest_id):
 def get_outreach_dashboard_articles(contest_id):
     """
     Fetch Outreach Dashboard course articles data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course articles data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course articles data from Outreach Dashboard API
     result = fetch_course_articles(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -257,24 +257,24 @@ def get_outreach_dashboard_articles(contest_id):
 def get_outreach_dashboard_uploads(contest_id):
     """
     Fetch Outreach Dashboard course uploads data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course uploads data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course uploads data from Outreach Dashboard API
     result = fetch_course_uploads(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -1261,7 +1261,7 @@ def update_contest(contest_id):
         # --- Automated Settings (Automated Scoring Mode) ---
         if "automated_settings" in data:
             as_settings = data.get("automated_settings")
-            
+
             # Accept explicit null to disable automated settings
             if as_settings is None:
                 contest.set_automated_settings(None)
@@ -1274,12 +1274,12 @@ def update_contest(contest_id):
                     eligibility = as_settings.get("eligibility", {})
                     if not isinstance(eligibility, dict):
                         eligibility = {}
-                    
+
                     # Validate evaluation section
                     evaluation = as_settings.get("evaluation", {})
                     if not isinstance(evaluation, dict):
                         evaluation = {}
-                    
+
                     # Validate numeric values in eligibility
                     for field in ["min_edits", "min_outgoing_links"]:
                         value = eligibility.get(field)
@@ -1290,7 +1290,7 @@ def update_contest(contest_id):
                                     return jsonify({"error": f"{field} must be non-negative"}), 400
                             except (ValueError, TypeError):
                                 return jsonify({"error": f"{field} must be a valid integer"}), 400
-                    
+
                     # Validate numeric values in evaluation
                     for field in ["points_per_accepted", "points_per_byte", "points_per_incoming_link",
                                   "points_per_outgoing_link", "points_per_category", "points_per_new_reference",
@@ -1303,14 +1303,14 @@ def update_contest(contest_id):
                                     return jsonify({"error": f"{field} must be non-negative"}), 400
                             except (ValueError, TypeError):
                                 return jsonify({"error": f"{field} must be a valid number"}), 400
-                    
+
                     # Update with validated values
                     as_settings["eligibility"] = eligibility
                     as_settings["evaluation"] = evaluation
-                    
+
                     # When automated mode is enabled, disable multi-parameter scoring
                     contest.set_scoring_parameters(None)
-                
+
                 # Persist validated automated settings
                 contest.set_automated_settings(as_settings)
 
@@ -2567,19 +2567,19 @@ def remove_contest_organizer(contest_id, username):
 def create_contest_request():
     """
     Create a contest creation request (for non-privileged users)
-    
+
     Regular users who are not superadmin or trusted members can submit
     requests to create contests. Superadmins can review and approve/reject
     these requests.
-    
+
     Expected JSON data: Same as create_contest endpoint
-    
+
     Returns:
         JSON response with success message and request ID
     """
     user = request.current_user
     data = request.validated_data
-    
+
     # -----------------------------------------------------------------------
     # Check if user already has permission to create contests
     # -----------------------------------------------------------------------
@@ -2588,26 +2588,26 @@ def create_contest_request():
         return jsonify({
             'error': 'You already have permission to create contests. Use the regular create contest endpoint.'
         }), 400
-    
+
     # -----------------------------------------------------------------------
     # Validate Required Fields (same as create_contest)
     # -----------------------------------------------------------------------
     name = data["name"].strip()
     project_name = data["project_name"].strip()
     jury_members = data["jury_members"]
-    
+
     if not name:
         return jsonify({"error": "Contest name is required"}), 400
-    
+
     if not project_name:
         return jsonify({"error": "Project name is required"}), 400
-    
+
     if not isinstance(jury_members, list) or len(jury_members) == 0:
         return (
             jsonify({"error": "Jury members must be a non-empty array of usernames"}),
             400,
         )
-    
+
     # -----------------------------------------------------------------------
     # Validate Jury Members Exist in Database
     # -----------------------------------------------------------------------
@@ -2616,7 +2616,7 @@ def create_contest_request():
     missing_users = [
         username for username in jury_members if username not in existing_usernames
     ]
-    
+
     if missing_users:
         return (
             jsonify(
@@ -2626,7 +2626,7 @@ def create_contest_request():
             ),
             400,
         )
-    
+
     # -----------------------------------------------------------------------
     # Parse Optional Fields (same as create_contest)
     # -----------------------------------------------------------------------
@@ -2635,43 +2635,43 @@ def create_contest_request():
         description = None
     else:
         description = str(description_value).strip() or None
-    
+
     # Parse and validate dates
     start_date = validate_date_string(data.get("start_date"))
     end_date = validate_date_string(data.get("end_date"))
-    
+
     # Validate date logic (end must be after start)
     if start_date and end_date and start_date >= end_date:
         return jsonify({"error": "End date must be after start date"}), 400
-    
+
     # Parse rules
     rules = data.get("rules", {})
     if not isinstance(rules, dict):
         rules = {}
-    
+
     # Parse scoring settings
     marks_accepted = data.get("marks_setting_accepted", 0)
     marks_rejected = data.get("marks_setting_rejected", 0)
     allowed_submission_type = data.get("allowed_submission_type", "both")
-    
+
     try:
         marks_accepted = int(marks_accepted)
         marks_rejected = int(marks_rejected)
     except (ValueError, TypeError):
         return jsonify({"error": "Marks settings must be valid integers"}), 400
-    
+
     # Parse article requirements
     min_byte_count = data.get("min_byte_count")
     if min_byte_count is None:
         return jsonify({"error": "Minimum byte count is required"}), 400
-    
+
     try:
         min_byte_count = int(min_byte_count)
         if min_byte_count < 0:
             return jsonify({"error": "Minimum byte count must be non-negative"}), 400
     except (ValueError, TypeError):
         return jsonify({"error": "Minimum byte count must be a valid integer"}), 400
-    
+
     min_reference_count = data.get("min_reference_count", 0)
     try:
         min_reference_count = int(min_reference_count)
@@ -2679,12 +2679,12 @@ def create_contest_request():
             return jsonify({"error": "Minimum reference count must be non-negative"}), 400
     except (ValueError, TypeError):
         return jsonify({"error": "Minimum reference count must be a valid integer"}), 400
-    
+
     # Validate categories
     categories = data.get("categories")
     if not categories or not isinstance(categories, list) or len(categories) == 0:
         return jsonify({"error": "At least one category URL is required"}), 400
-    
+
     for category_url in categories:
         if not isinstance(category_url, str) or not category_url.strip():
             return (
@@ -2698,13 +2698,13 @@ def create_contest_request():
                 jsonify({"error": "All category URLs must be valid HTTP/HTTPS URLs"}),
                 400,
             )
-    
+
     # Validate scoring parameters (same validation as create_contest)
     scoring_parameters = data.get("scoring_parameters")
     if scoring_parameters:
         if not isinstance(scoring_parameters, dict):
             return jsonify({"error": "Scoring parameters must be an object"}), 400
-        
+
         if scoring_parameters.get("enabled"):
             if "parameters" not in scoring_parameters:
                 return (
@@ -2713,14 +2713,14 @@ def create_contest_request():
                     ),
                     400,
                 )
-            
+
             parameters = scoring_parameters["parameters"]
             if not isinstance(parameters, list) or len(parameters) == 0:
                 return (
                     jsonify({"error": "At least one scoring parameter is required"}),
                     400,
                 )
-            
+
             total_weight = 0
             for param in parameters:
                 if not isinstance(param, dict):
@@ -2739,13 +2739,13 @@ def create_contest_request():
                     total_weight += weight
                 except (ValueError, TypeError):
                     return jsonify({"error": "Weight must be a valid integer"}), 400
-            
+
             if total_weight != 100:
                 return (
                     jsonify({"error": f"Weights must sum to 100, got {total_weight}"}),
                     400,
                 )
-    
+
     # Parse template_link
     template_link = data.get('template_link')
     if template_link:
@@ -2758,7 +2758,7 @@ def create_contest_request():
                 }), 400
         else:
             template_link = None
-    
+
     # -----------------------------------------------------------------------
     # Create Contest Request
     # -----------------------------------------------------------------------
@@ -2767,7 +2767,7 @@ def create_contest_request():
         additional_organizers = data.get('organizers', [])
         if not isinstance(additional_organizers, list):
             additional_organizers = []
-        
+
         # Create contest request instance
         contest_request = ContestRequest(
             user_id=user.id,
@@ -2788,10 +2788,10 @@ def create_contest_request():
             organizers=additional_organizers,
             min_reference_count=min_reference_count,
         )
-        
+
         # Save to database
         contest_request.save()
-        
+
         return (
             jsonify(
                 {
@@ -2801,7 +2801,7 @@ def create_contest_request():
             ),
             201,
         )
-    
+
     except Exception:  # pylint: disable=broad-exception-caught
         # Log error internally but don't expose details to client
         return jsonify({"error": "Failed to create contest request"}), 500
@@ -2813,7 +2813,7 @@ def create_contest_request():
 def get_contest_requests():
     """
     Get all contest creation requests (superadmin only)
-    
+
     Returns:
         JSON response with list of contest requests
     """
@@ -2821,7 +2821,7 @@ def get_contest_requests():
     requests = ContestRequest.query.filter_by(status='pending').order_by(
         ContestRequest.created_at.desc()
     ).all()
-    
+
     return jsonify({
         'requests': [req.to_dict() for req in requests]
     }), 200
@@ -2833,29 +2833,29 @@ def get_contest_requests():
 def approve_contest_request(request_id):
     """
     Approve a contest creation request and create the contest (superadmin only)
-    
+
     Args:
         request_id: Contest request ID to approve
-    
+
     Returns:
         JSON response with success message and created contest ID
     """
     user = request.current_user
     contest_request = ContestRequest.query.get(request_id)
-    
+
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
-    
+
     if contest_request.status != 'pending':
         return jsonify({
             'error': f'Request has already been {contest_request.status}'
         }), 400
-    
+
     # Get the requester user to use as contest creator
     requester = User.query.get(contest_request.user_id)
     if not requester:
         return jsonify({'error': 'Requester user not found'}), 404
-    
+
     # Create the contest from the request data
     try:
         contest = Contest(
@@ -2877,22 +2877,22 @@ def approve_contest_request(request_id):
             organizers=contest_request.get_organizers(),
             min_reference_count=contest_request.min_reference_count,
         )
-        
+
         # Save contest to database
         contest.save()
-        
+
         # Update request status
         contest_request.status = 'approved'
         contest_request.reviewed_by = user.id
         contest_request.reviewed_at = datetime.utcnow()
         contest_request.save()
-        
+
         return jsonify({
             'message': 'Contest request approved and contest created successfully',
             'contestId': contest.id,
             'requestId': contest_request.id
         }), 200
-    
+
     except Exception as e:  # pylint: disable=broad-exception-caught
         # Log error for debugging
         current_app.logger.error(f'Error approving contest request: {str(e)}')
@@ -2907,37 +2907,37 @@ def approve_contest_request(request_id):
 def reject_contest_request(request_id):
     """
     Reject a contest creation request (superadmin only)
-    
+
     Args:
         request_id: Contest request ID to reject
-    
+
     Expected JSON data (optional):
         rejection_reason: Reason for rejection
-    
+
     Returns:
         JSON response with success message
     """
     user = request.current_user
     # Get JSON data if provided (rejection_reason is optional)
     data = request.get_json() or {}
-    
+
     contest_request = ContestRequest.query.get(request_id)
-    
+
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
-    
+
     if contest_request.status != 'pending':
         return jsonify({
             'error': f'Request has already been {contest_request.status}'
         }), 400
-    
+
     # Update request status
     contest_request.status = 'rejected'
     contest_request.reviewed_by = user.id
     contest_request.reviewed_at = datetime.utcnow()
     contest_request.rejection_reason = data.get('rejection_reason', '')
     contest_request.save()
-    
+
     return jsonify({
         'message': 'Contest request rejected successfully',
         'requestId': contest_request.id

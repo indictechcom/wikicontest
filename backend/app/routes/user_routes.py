@@ -816,11 +816,11 @@ def request_trusted_member():
     Request trusted member status (creator account request)
 
     This endpoint handles creator account requests for users who logged in via MediaWiki OAuth.
-    
+
     Workflow:
     1. If user has >= 300 edits: automatically grant trusted member status
     2. If user has < 300 edits: require a reason and submit for superadmin review
-    
+
     Only users who logged in via MediaWiki OAuth can request creator accounts.
     Superadmins don't need permission - they can create contests directly.
 

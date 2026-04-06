@@ -278,19 +278,25 @@ def refresh_metadata(contest_id):
     is_automated = False
     try:
         is_automated = contest.get_scoring_mode() == "automated"
-        current_app.logger.info(f"Contest {contest_id} scoring mode: {contest.get_scoring_mode()}, is_automated: {is_automated}")
-    except Exception as e:
-        current_app.logger.warning(f"Failed to check scoring mode: {str(e)}")
+        scoring_mode = contest.get_scoring_mode()
+        current_app.logger.info(
+            "Contest %s scoring mode: %s, is_automated: %s",
+            contest_id, scoring_mode, is_automated
+        )
+    except Exception as scoring_err:  # pylint: disable=broad-exception-caught
+        current_app.logger.warning(
+            "Failed to check scoring mode: %s", str(scoring_err)
+        )
 
     # Get all submissions for this contest
     # For automated contests, limit batch size to prevent timeout
     # Each submission requires multiple API calls which can be slow
     query = Submission.query.filter_by(contest_id=contest_id)
-    
+
     # Limit to 50 submissions per refresh for automated contests to prevent timeout
     if is_automated:
         query = query.limit(50)
-    
+
     submissions = query.all()
 
     if not submissions:
@@ -429,10 +435,9 @@ def refresh_metadata(contest_id):
         except Exception as exp_error:  # pylint: disable=broad-exception-caught
             # If expansion calculation fails, log but don't fail the update
             try:
-                from flask import current_app
-
                 current_app.logger.warning(
-                    f"Failed to calculate expansion for submission {submission_item.id}: {str(exp_error)}"
+                    "Failed to calculate expansion for submission %s: %s",
+                    submission_item.id, str(exp_error)
                 )
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
@@ -467,12 +472,12 @@ def refresh_metadata(contest_id):
                     submission.article_created_at = timestamp_str
                 else:
                     submission.article_created_at = None
-            
+
             # For crawler-imported submissions (no article_word_count), fetch it from API
             # This is needed for automated evaluation
             if not submission.article_word_count and info.get("current_size"):
                 submission.article_word_count = info["current_size"]
-            
+
             if info.get("article_page_id"):
                 submission.article_page_id = info["article_page_id"]
 
@@ -502,7 +507,10 @@ def refresh_metadata(contest_id):
             # --- Automated Scoring Evaluation ---
             # For automated contests, fetch additional metrics and evaluate
             if is_automated:
-                current_app.logger.info(f"Evaluating submission {submission.id} in automated mode")
+                current_app.logger.info(
+                    "Evaluating submission %s in automated mode",
+                    submission.id
+                )
                 try:
                     # Fetch incoming/outgoing links
                     from app.utils import (
@@ -511,20 +519,23 @@ def refresh_metadata(contest_id):
                         get_article_image_count,
                         get_article_infobox_count,
                     )
-                    
+
                     incoming = get_article_incoming_links(submission.article_link) or 0
                     outgoing = get_article_outgoing_links(submission.article_link) or 0
                     images = get_article_image_count(submission.article_link) or 0
                     infoboxes = get_article_infobox_count(submission.article_link) or 0
-                    
-                    current_app.logger.info(f"Submission {submission.id}: incoming={incoming}, outgoing={outgoing}, images={images}, infoboxes={infoboxes}")
-                    
+
+                    current_app.logger.info(
+                        "Submission %s: incoming=%s, outgoing=%s, images=%s, infoboxes=%s",
+                        submission.id, incoming, outgoing, images, infoboxes
+                    )
+
                     # Update submission with link counts
                     submission.incoming_links = incoming
                     submission.outgoing_links = outgoing
                     submission.image_count = images
                     submission.infobox_count = infoboxes
-                    
+
                     # Evaluate submission against automated criteria
                     submission_data = {
                         "article_word_count": submission.article_word_count,
@@ -535,13 +546,21 @@ def refresh_metadata(contest_id):
                         "image_count": images,
                         "infobox_count": infoboxes,
                     }
-                    
-                    current_app.logger.info(f"Submission {submission.id} data for evaluation: {submission_data}")
-                    
-                    is_eligible, final_score, reason, breakdown = contest.evaluate_automated_submission(submission_data)
-                    
-                    current_app.logger.info(f"Submission {submission.id} result: eligible={is_eligible}, score={final_score}, reason={reason}")
-                    
+
+                    current_app.logger.info(
+                        "Submission %s data for evaluation: %s",
+                        submission.id, submission_data
+                    )
+
+                    is_eligible, final_score, reason, breakdown = (
+                        contest.evaluate_automated_submission(submission_data)
+                    )
+
+                    current_app.logger.info(
+                        "Submission %s result: eligible=%s, score=%s, reason=%s",
+                        submission.id, is_eligible, final_score, reason
+                    )
+
                     # Update submission status, score, and evaluation details
                     if is_eligible:
                         submission.status = "accepted"
@@ -553,14 +572,14 @@ def refresh_metadata(contest_id):
                         submission.score = 0
                         submission.evaluation_reason = reason
                         submission.score_breakdown = None
-                    
+
                     current_app.logger.info(
                         "Automated evaluation for submission %s: %s - %s",
                         submission.id,
                         submission.status,
                         reason,
                     )
-                    
+
                 except Exception as eval_error:  # pylint: disable=broad-exception-caught
                     current_app.logger.error(
                         "Failed to evaluate submission %s: %s",
@@ -602,7 +621,7 @@ def refresh_metadata(contest_id):
 @require_auth
 @handle_errors
 @validate_json_data(["status"])
-def review_submission(submission_id):
+def review_submission(submission_id):  # pylint: disable=too-many-return-statements
     user = request.current_user
     data = request.validated_data
 
@@ -684,9 +703,9 @@ def review_submission(submission_id):
                     contest=contest,
                     parameter_scores=parameter_scores,
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (multi-parameter): {str(e)}")
+                print(f"Review error (multi-parameter): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
@@ -701,9 +720,9 @@ def review_submission(submission_id):
                     comment=comment,
                     contest=contest,
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (rejected, multi): {str(e)}")
+                print(f"Review error (rejected, multi): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
     # --- Simple Scoring Mode ---
@@ -738,9 +757,9 @@ def review_submission(submission_id):
                 comment=comment,
                 contest=contest,
             )
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as review_err:  # pylint: disable=broad-exception-caught
             db.session.rollback()
-            print(f"Review error (simple): {str(e)}")
+            print(f"Review error (simple): {str(review_err)}")
             return jsonify({"error": "Internal server error"}), 500
 
     return (
