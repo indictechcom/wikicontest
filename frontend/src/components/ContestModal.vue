@@ -802,7 +802,7 @@ export default {
 
                 // If we got a result, break
                 if (canDeleteContest.value) {
-                  console.log('✅ Delete permission granted!')
+                  console.log('Delete permission granted!')
                   break
                 }
               }
@@ -825,7 +825,7 @@ export default {
               console.error('Match:', (finalUser.username || '').toLowerCase() === (newContest.created_by || '').toLowerCase())
             }
           } else {
-            console.log('✅ Delete permission check successful!')
+            console.log('Delete permission check successful!')
           }
         } catch (error) {
           console.error('❌ Failed to check auth:', error)

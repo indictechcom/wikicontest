@@ -1,9 +1,6 @@
 <template>
   <!-- Modal for displaying jury feedback on submissions -->
-  <div class="modal fade"
-id="juryFeedbackModal"
-tabindex="-1"
-aria-hidden="true">
+  <div class="modal fade" id="juryFeedbackModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <!-- Modal header with Wikipedia blue background -->
@@ -29,28 +26,9 @@ aria-hidden="true">
                 <i class="fas fa-check-circle me-2"></i>Review Status
               </h6>
               <div class="feedback-content">
-                <span
-                  class="status-badge"
-                  :class="getStatusClass(submission.status)"
-                >
+                <span class="status-badge" :class="getStatusClass(submission.status)">
                   {{ getStatusLabel(submission.status) }}
                 </span>
-              </div>
-            </div>
-
-            <!-- Reviewer name and review date -->
-            <div class="feedback-section mb-4">
-              <h6 class="feedback-section-title">
-                <i class="fas fa-user-tie me-2"></i>Reviewed By
-              </h6>
-              <div class="feedback-content">
-                <div class="reviewer-info">
-                  <span class="reviewer-name">{{ reviewerName || 'Jury Member' }}</span>
-                  <span class="review-date text-muted ms-3">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ formatDate(submission.reviewed_at) }}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -74,19 +52,13 @@ aria-hidden="true">
               </h6>
               <div class="feedback-content">
                 <div class="parameter-scores-grid">
-                  <div
-                    v-for="(score, paramName) in submission.parameter_scores"
-                    :key="paramName"
-                    class="parameter-score-item"
-                  >
+                  <div v-for="(score, paramName) in submission.parameter_scores" :key="paramName"
+                    class="parameter-score-item">
                     <div class="parameter-name">{{ paramName }}</div>
                     <div class="parameter-score">
                       <!-- Visual progress bar for parameter score -->
                       <div class="score-bar-container">
-                        <div
-                          class="score-bar"
-                          :style="{ width: (score * 10) + '%' }"
-                        ></div>
+                        <div class="score-bar" :style="{ width: (score * 10) + '%' }"></div>
                       </div>
                       <span class="score-value">{{ score }}/10</span>
                     </div>
@@ -288,7 +260,7 @@ export default {
 }
 
 /* Spacing between consecutive sections */
-.feedback-section + .feedback-section {
+.feedback-section+.feedback-section {
   margin-top: 1.5rem;
 }
 
@@ -615,6 +587,7 @@ export default {
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
+
   /* Reduce padding on mobile */
   .modal-body {
     padding: 1rem;
