@@ -147,12 +147,7 @@ class DevelopmentConfig(Config):
     # Simplifies local testing with various tools and ports
     CORS_ORIGINS = ['*']
 
-    # Development database (can be SQLite for easier setup)
-    # SQLite eliminates need for separate database server during development
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'sqlite:///wikicontest_dev.db'
-    )
+    # Database URI is inherited from Config, handling Toolforge detection natively
 
 
 class TestingConfig(Config):
@@ -197,9 +192,7 @@ class ProductionConfig(Config):
     JWT_COOKIE_SECURE = True  # Require HTTPS
     JWT_COOKIE_CSRF_PROTECT = True
 
-    # Production database (should be set via environment variable)
-    # No default to enforce explicit production database configuration
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    # Production database URI is inherited from Config
 
     # Production CORS origins (should be set via environment variable)
     # Parse comma-separated list from environment for flexibility
