@@ -25,6 +25,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 
 # Third-party imports
 from flask import Flask, request, jsonify, send_from_directory, current_app
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, get_jwt_identity, jwt_required
 from flask_jwt_extended.exceptions import JWTDecodeError, NoAuthorizationError
@@ -75,6 +76,19 @@ def create_app():
     # Initialize Flask application
     flask_app = Flask(__name__)
 
+    # Wrap with ProxyFix so Flask reads X-Forwarded-Proto / X-Forwarded-Host
+    # from the Node.js frontend proxy. This ensures request.scheme == 'https'
+    # and request.host == 'wikicontest.toolforge.org', which is critical for:
+    #   - Building correct OAuth callback URLs
+    #   - Setting session cookies with the right domain (frontend domain, not backend)
+    flask_app.wsgi_app = ProxyFix(
+        flask_app.wsgi_app,
+        x_for=1,    # X-Forwarded-For
+        x_proto=1,  # X-Forwarded-Proto  (http → https)
+        x_host=1,   # X-Forwarded-Host   (backend host → frontend host)
+        x_prefix=1  # X-Forwarded-Prefix
+    )
+
     # ------------------------------------------------------------------------
     # SECURITY CONFIGURATION
     # ------------------------------------------------------------------------
@@ -104,11 +118,15 @@ def create_app():
     flask_app.config['SESSION_PERMANENT'] = True  # Make sessions persistent
     flask_app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # 30 min timeout
     flask_app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
-    # Allow cross-site redirects for OAuth (required for external redirects)
+    # SameSite=None is required so the session cookie is sent back when Wikimedia
+    # redirects the user to our callback URL (a cross-site top-level navigation).
+    # IMPORTANT: SameSite=None REQUIRES Secure=True — browsers reject it otherwise.
     flask_app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-    # Set to False for localhost (True for HTTPS in production)
-    flask_app.config['SESSION_COOKIE_SECURE'] = False
-    flask_app.config['SESSION_COOKIE_DOMAIN'] = None  # Don't restrict domain for localhost
+    # With ProxyFix, request.scheme is now 'https' in production, so Secure=True is safe.
+    # Detect from env to keep localhost development working.
+    is_production = os.getenv('FLASK_ENV', 'development') == 'production'
+    flask_app.config['SESSION_COOKIE_SECURE'] = is_production
+    flask_app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask derive from request host
     flask_app.config['SESSION_COOKIE_PATH'] = '/'  # Available for all paths
 
     # --- JWT Token Configuration ---
@@ -117,13 +135,11 @@ def create_app():
 
     # JWT Cookie Configuration for secure token storage
     flask_app.config['JWT_TOKEN_LOCATION'] = ['cookies']  # Store tokens in HTTP-only cookies
-    # False for localhost HTTP, True for production HTTPS
-    flask_app.config['JWT_COOKIE_SECURE'] = False
-    # Lax allows same-site cookies (works for localhost ports)
+    # Mirror the session's secure flag — True in production (HTTPS), False for localhost
+    flask_app.config['JWT_COOKIE_SECURE'] = is_production
+    # Lax allows same-site cookies and top-level cross-site navigations
     flask_app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
-    # None allows cookie to work across localhost ports
-    # Set to True in production with HTTPS
-    flask_app.config['JWT_COOKIE_DOMAIN'] = None
+    flask_app.config['JWT_COOKIE_DOMAIN'] = None  # Derived from request host via ProxyFix
     flask_app.config['JWT_COOKIE_CSRF_PROTECT'] = True  # Enable CSRF protection
     flask_app.config['JWT_CSRF_IN_COOKIES'] = True  # Include CSRF token in cookies
 
@@ -142,6 +158,8 @@ def create_app():
     # Set to True if OAuth consumer was registered with "oob" (out-of-band) callback
     # Most web apps should use False and register with a proper callback URL
     flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').lower() == 'true'
+    # Frontend URL for post-OAuth redirect (e.g. https://wikicontest.toolforge.org)
+    flask_app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', '')
 
     # ------------------------------------------------------------------------
     # DATABASE CONFIGURATION

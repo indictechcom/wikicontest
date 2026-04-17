@@ -30,7 +30,10 @@ app.use('/api', createProxyMiddleware({
     // Optional: add useful headers for backend logs
     on: {
         proxyReq: (proxyReq, req, res) => {
+            // Forward the original host so Flask's ProxyFix sees wikicontest.toolforge.org
             proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+            // Tell Flask the connection is HTTPS (the proxy terminates TLS)
+            proxyReq.setHeader('x-forwarded-proto', 'https');
         }
     }
 }));
