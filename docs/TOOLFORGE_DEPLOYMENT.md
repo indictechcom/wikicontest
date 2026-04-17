@@ -14,24 +14,27 @@ From the bastion server:
 become wikicontest-backend
 
 # Set Production Environment Variables
-toolforge envvar create FLASK_ENV "production"
+toolforge envvars create TOOL_NAME "wikicontest-backend"
+toolforge envvars create FLASK_ENV "production"
 # (Required) Add OAuth config from Special:OAuthConsumerRegistration
-toolforge envvar create CONSUMER_KEY "..."
-toolforge envvar create CONSUMER_SECRET "..."
-toolforge envvar create SECRET_KEY "$(openssl rand -hex 32)"
-toolforge envvar create JWT_SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create CONSUMER_KEY "..."
+toolforge envvars create CONSUMER_SECRET "..."
+toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
 
 # Toolforge ToolsDB config (parse replica.my.cnf for credentials)
 TOOL_DB_USER=$(grep -Po '(?<=user = ).*' ~/replica.my.cnf)
 TOOL_DB_PASS=$(grep -Po '(?<=password = ).*' ~/replica.my.cnf | tr -d "'")
 
-toolforge envvar create TOOL_TOOLSDB_USER "$TOOL_DB_USER"
-toolforge envvar create TOOL_TOOLSDB_PASSWORD "$TOOL_DB_PASS"
-toolforge envvar create TOOL_TOOLSDB_DBNAME "wikicontest"
+toolforge envvars create TOOL_TOOLSDB_USER "$TOOL_DB_USER"
+toolforge envvars create TOOL_TOOLSDB_PASSWORD "$TOOL_DB_PASS"
+toolforge envvars create TOOL_TOOLSDB_DBNAME "wikicontest"
 
 # Build and start the backend
 toolforge build start https://github.com/Agamya-Samuel/wikicontest.git
-toolforge webservice buildservice start
+toolforge webservice --mount none buildservice start
+toolforge webservice restart
+toolforge webservice logs
 ```
 
 *Note: Once started, run `python -m app.scripts.init_db` (or Alembic) via `toolforge jobs` or SSH to initialize schemas on ToolsDB.*
@@ -43,12 +46,15 @@ From the bastion server:
 # Become the tool account
 become wikicontest
 
+# Set Production Environment Variables
+toolforge envvars create TOOL_NAME "wikicontest"
+
 # Tell the frontend where the backend API lives (Defaults to this URL if unset)
-toolforge envvar create BACKEND_URL "https://wikicontest-backend.toolforge.org"
+toolforge envvars create BACKEND_URL "https://wikicontest-backend.toolforge.org"
 
 # Build and start the frontend
 toolforge build start https://github.com/Agamya-Samuel/wikicontest.git
-toolforge webservice buildservice start
+toolforge webservice --mount none buildservice start
 ```
 
 ## How It Works
