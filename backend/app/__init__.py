@@ -148,11 +148,10 @@ def create_app():
     # ------------------------------------------------------------------------
 
     # Database connection string
-    # Supports MySQL, PostgreSQL, SQLite, and other SQLAlchemy-compatible databases
-    flask_app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-        'DATABASE_URL',
-        'mysql+pymysql://root:password@localhost/wikicontest'
-    )
+    # Uses config.py to get auto-detected Toolforge URL
+    from app.config import get_config
+    config_obj = get_config()
+    flask_app.config['SQLALCHEMY_DATABASE_URI'] = config_obj.SQLALCHEMY_DATABASE_URI
 
     # Disable SQLAlchemy event system for better performance
     flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
