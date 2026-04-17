@@ -1,6 +1,6 @@
 <template>
-    <div class="container py-5">
-      <h2 class="mb-4 page-header">Dashboard</h2>
+  <div class="container py-5">
+    <h2 class="mb-4 page-header">Dashboard</h2>
 
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
@@ -24,8 +24,8 @@
         <div class="col-12 col-sm-6 col-md-4 mb-3 mb-md-4">
           <div class="card text-center h-100">
             <div class="card-body">
-              <h5 class="card-title">Created Contests</h5>
-              <h2 class="text-success">{{ dashboardData.created_contests?.length || 0 }}</h2>
+              <h5 class="card-title">Participated Contests</h5>
+              <h2 class="text-success">{{ dashboardData.participated_contests?.length || 0 }}</h2>
             </div>
           </div>
         </div>
@@ -45,44 +45,33 @@
         <div class="col-12 col-md-6 mb-3 mb-md-4">
           <h4 class="mb-3">Recent Submissions</h4>
           <div class="card h-100">
-            <div class="card-body">
-              <div v-if="dashboardData.submissions_by_contest?.length > 0">
-                <div
-                  v-for="contest in dashboardData.submissions_by_contest"
-                  :key="contest.contest_id"
-                  class="mb-3"
-                >
-                  <h6>{{ contest.contest_name }}</h6>
-                  <div
-                    v-for="submission in contest.submissions"
-                    :key="submission.id"
-                    class="submission-item d-flex justify-content-between align-items-center mb-2 flex-wrap"
-                    :class="{ 'submission-clickable': submission.reviewed_at }"
-                    @click="handleSubmissionClick(submission)"
-                  >
-                    <span class="me-2 mb-1 submission-title">
-                      {{ submission.article_title }}
-                    </span>
-                    <div class="d-flex align-items-center gap-2">
-                      <span
-                        :class="`badge bg-${getStatusColor(submission.status)}`"
-                      >
-                        {{ submission.status }}
+            <div class="card-body p-0">
+              <div v-if="dashboardData.submissions_by_contest?.length > 0" class="scroll-area">
+                <div class="scroll-inner">
+                  <div v-for="contest in dashboardData.submissions_by_contest" :key="contest.contest_id"
+                    class="contest-group">
+                    <h6 class="contest-group-title">{{ contest.contest_name }}</h6>
+                    <div v-for="submission in contest.submissions" :key="submission.id"
+                      class="submission-item d-flex justify-content-between align-items-center mb-2 flex-wrap"
+                      :class="{ 'submission-clickable': submission.reviewed_at }"
+                      @click="handleSubmissionClick(submission)">
+                      <span class="me-2 mb-1 submission-title">
+                        {{ submission.article_title }}
                       </span>
-                      <!-- View Feedback Button/Icon - Only for reviewed submissions -->
-                      <button
-                        v-if="submission.reviewed_at"
-                        class="btn btn-sm btn-info feedback-btn"
-                        @click.stop="openFeedbackModal(submission)"
-                        title="View Feedback"
-                      >
-                        <i class="fas fa-comment-dots"></i>
-                      </button>
+                      <div class="d-flex align-items-center gap-2">
+                        <span :class="`badge bg-${getStatusColor(submission.status)}`">
+                          {{ submission.status }}
+                        </span>
+                        <button v-if="submission.reviewed_at" class="btn btn-sm btn-info feedback-btn"
+                          @click.stop="openFeedbackModal(submission)" title="View Feedback">
+                          <i class="fas fa-comment-dots"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-submissions">No submissions yet.</p>
+              <p v-else class="text-muted no-submissions px-3 py-3">No submissions yet.</p>
             </div>
           </div>
         </div>
@@ -91,82 +80,109 @@
         <div class="col-12 col-md-6 mb-3 mb-md-4">
           <h4 class="mb-3">Contest Scores</h4>
           <div class="card h-100">
-            <div class="card-body">
-              <div v-if="dashboardData.contest_wise_scores?.length > 0">
-                <div
-                  v-for="score in dashboardData.contest_wise_scores"
-                  :key="score.contest_id"
-                  class="d-flex justify-content-between align-items-center mb-2 flex-wrap"
-                >
-                  <span class="me-2 mb-1">{{ score.contest_name }}</span>
-                  <span class="badge bg-primary">{{ score.contest_score }} points</span>
+            <div class="card-body p-0">
+              <div v-if="dashboardData.contest_wise_scores?.length > 0" class="scroll-area">
+                <div class="scroll-inner">
+                  <div v-for="score in dashboardData.contest_wise_scores" :key="score.contest_id"
+                    class="score-item d-flex justify-content-between align-items-center flex-wrap">
+                    <span class="score-name me-2">{{ score.contest_name }}</span>
+                    <span class="badge bg-primary">{{ score.contest_score }} points</span>
+                  </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-scores">No scores yet.</p>
+              <p v-else class="text-muted no-scores px-3 py-3">No scores yet.</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Created Contests Table -->
+      <!-- Participated Contests Table -->
       <div class="row mt-4">
         <div class="col-12">
-          <h4 class="mb-3">Your Contests</h4>
-          <div class="card">
+          <h4 class="mb-3">Participated Contests</h4>
+          <div class="card contests-table-card">
             <div class="card-body p-0">
-              <!-- Table with contests -->
-              <div v-if="dashboardData.created_contests?.length > 0" class="table-responsive">
+
+              <div v-if="dashboardData.participated_contests?.length > 0" class="table-responsive">
                 <table class="table table-hover mb-0">
                   <thead>
                     <tr>
                       <th scope="col">Contest Name</th>
                       <th scope="col">Project</th>
                       <th scope="col">Status</th>
-                      <th scope="col">Submissions</th>
-                      <th scope="col">Created Date</th>
+                      <th scope="col">Submitted On</th>
                       <th scope="col">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr
-                      v-for="contest in dashboardData.created_contests"
-                      :key="contest.id"
-                      @click="viewContest(contest.id)"
-                      class="table-row-clickable"
-                    >
+                    <tr v-for="contest in paginatedContests" :key="contest.id" @click="viewContest(contest.id)"
+                      class="table-row-clickable">
                       <td>
-                        <strong>{{ contest.name }}</strong>
+                        <div class="contest-name-cell">
+                          <i class="fas fa-trophy contest-icon"></i>
+                          <strong>{{ contest.name }}</strong>
+                        </div>
                       </td>
-                      <td>{{ contest.project_name || 'N/A' }}</td>
                       <td>
-                        <span
-                          class="badge"
-                          :class="`bg-${getStatusBadgeColor(contest.status)}`"
-                        >
+                        <span class="project-name">{{ contest.project_name || 'N/A' }}</span>
+                      </td>
+                      <td>
+                        <span class="status-badge" :class="`status-${getStatusBadgeColor(contest.status)}`">
+                          <i :class="getStatusIcon(contest.status)"></i>
                           {{ contest.status || 'Unknown' }}
                         </span>
                       </td>
-                      <td>{{ contest.submission_count || 0 }}</td>
-                      <td>{{ formatDate(contest.created_at) }}</td>
                       <td>
-                        <button
-                          class="btn btn-sm btn-outline-primary"
-                          @click.stop="viewContest(contest.id)"
-                        >
+                        <span class="date-cell">
+                          <i class="fas fa-calendar-alt date-icon"></i>
+                          {{ formatDate(contest.submitted_at) }}
+                        </span>
+                      </td>
+                      <td>
+                        <button class="btn btn-sm view-btn" @click.stop="viewContest(contest.id)">
                           <i class="fas fa-eye me-1"></i>View
                         </button>
                       </td>
                     </tr>
                   </tbody>
                 </table>
+
+                <!-- Pagination Controls -->
+                <div v-if="totalPages > 1"
+                  class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-2 border-top pagination-bar">
+                  <span class="pagination-info">
+                    Showing {{ (currentPage - 1) * itemsPerPage + 1 }}–{{ Math.min(currentPage * itemsPerPage,
+                      dashboardData.participated_contests.length) }}
+                    of {{ dashboardData.participated_contests.length }} contests
+                  </span>
+                  <div class="d-flex gap-1 flex-wrap">
+                    <button class="btn btn-sm btn-outline-secondary pg-btn" :disabled="currentPage === 1"
+                      @click="currentPage--">
+                      ‹ Prev
+                    </button>
+                    <button v-for="page in totalPages" :key="page" class="btn btn-sm pg-btn"
+                      :class="page === currentPage ? 'btn-primary pg-active' : 'btn-outline-secondary'"
+                      @click="currentPage = page">
+                      {{ page }}
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary pg-btn" :disabled="currentPage === totalPages"
+                      @click="currentPage++">
+                      Next ›
+                    </button>
+                  </div>
+                </div>
+
               </div>
-              <!-- Empty state message -->
+
               <div v-else class="text-center py-5 px-3">
-                <p class="text-muted mb-0 no-contests">
-                  <i class="fas fa-info-circle me-2"></i>
-                  No contests created yet.
-                </p>
+                <div class="empty-state">
+                  <i class="fas fa-inbox empty-icon"></i>
+                  <p class="text-muted mb-0 no-contests">
+                    You haven't participated in any contests yet.
+                  </p>
+                </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -179,23 +195,17 @@
     </div>
 
     <!-- Submit Article Modal -->
-    <SubmitArticleModal
-      v-if="submittingToContestId"
-      :contest-id="submittingToContestId"
-      @submitted="handleArticleSubmitted"
-    />
+    <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+      @submitted="handleArticleSubmitted" />
 
     <!-- Jury Feedback Modal -->
-    <JuryFeedbackModal
-      :submission="selectedSubmission"
-      :reviewer-name="reviewerName"
-      :loading-reviewer="loadingReviewer"
-    />
+    <JuryFeedbackModal :submission="selectedSubmission" :reviewer-name="reviewerName"
+      :loading-reviewer="loadingReviewer" />
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '../store'
 import api from '../services/api'
@@ -223,10 +233,28 @@ export default {
     const reviewerName = ref('')
     const loadingReviewer = ref(false)
 
+    // Pagination state
+    const currentPage = ref(1)
+    const itemsPerPage = 5
+
+    // Paginated contests computed
+    const paginatedContests = computed(() => {
+      const contests = dashboardData.value?.participated_contests || []
+      const start = (currentPage.value - 1) * itemsPerPage
+      return contests.slice(start, start + itemsPerPage)
+    })
+
+    // Total pages computed
+    const totalPages = computed(() => {
+      const total = dashboardData.value?.participated_contests?.length || 0
+      return Math.ceil(total / itemsPerPage)
+    })
+
     // Load dashboard data
     const loadDashboard = async () => {
       loading.value = true
       error.value = null
+      currentPage.value = 1
       try {
         const data = await api.get('/user/dashboard')
         dashboardData.value = data
@@ -260,6 +288,18 @@ export default {
       return statusColors[status?.toLowerCase()] || 'primary'
     }
 
+    // Get status icon for contest status
+    const getStatusIcon = (status) => {
+      const icons = {
+        current: 'fas fa-circle-dot',
+        active: 'fas fa-circle-dot',
+        upcoming: 'fas fa-clock',
+        past: 'fas fa-check-circle',
+        completed: 'fas fa-check-circle'
+      }
+      return icons[status?.toLowerCase()] || 'fas fa-circle'
+    }
+
     // Format date for display
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
@@ -291,9 +331,7 @@ export default {
 
       loadingReviewer.value = true
       try {
-        // Use the new username endpoint to fetch reviewer name
         const userData = await api.get(`/user/${reviewerId}/username`)
-
         if (userData && userData.username) {
           reviewerName.value = userData.username
         } else {
@@ -301,7 +339,6 @@ export default {
         }
       } catch (err) {
         console.warn('Could not fetch reviewer name:', err)
-        // Fallback to generic name if endpoint doesn't exist yet
         reviewerName.value = 'Jury Member'
       } finally {
         loadingReviewer.value = false
@@ -315,17 +352,14 @@ export default {
         return
       }
 
-      // Set selected submission
       selectedSubmission.value = submission
 
-      // Fetch reviewer name if available
       if (submission.reviewed_by) {
         await fetchReviewerName(submission.reviewed_by)
       } else {
         reviewerName.value = 'Jury Member'
       }
 
-      // Open modal
       const modalEl = document.getElementById('juryFeedbackModal')
       if (!modalEl) {
         console.error('JuryFeedbackModal DOM not found')
@@ -338,45 +372,31 @@ export default {
 
     // View contest details - navigate to full page view
     const viewContest = (contestId) => {
-      // Find the contest object from dashboard data
       let contestData = null
 
-      // Check in created contests
       if (dashboardData.value?.created_contests) {
         contestData = dashboardData.value.created_contests.find(c => c.id === contestId)
       }
 
-      // If not found, try to get from store (all contests)
-      if (!contestData) {
-        const allContests = store.getContestsByCategory('current')
-          .concat(store.getContestsByCategory('upcoming'))
-          .concat(store.getContestsByCategory('past'))
-        contestData = allContests.find(c => c.id === contestId)
+      if (!contestData && dashboardData.value?.participated_contests) {
+        contestData = dashboardData.value.participated_contests.find(c => c.id === contestId)
       }
 
-      // If still not found, try to fetch it
       if (!contestData) {
-        // Fallback: fetch contest by ID to get the name
         api.get(`/contest/${contestId}`)
           .then(contest => {
-            if (contest && contest.name) {
-              const contestSlug = slugify(contest.name)
-              router.push({ name: 'ContestView', params: { name: contestSlug } })
+            if (contest?.name) {
+              router.push({ name: 'ContestView', params: { name: slugify(contest.name) } })
             } else {
               showAlert('Contest not found', 'danger')
             }
           })
-          .catch(error => {
-            console.error('Error loading contest:', error)
-            showAlert('Failed to load contest details: ' + error.message, 'danger')
-          })
+          .catch(err => showAlert('Failed to load contest: ' + err.message, 'danger'))
         return
       }
 
-      // If we have the contest data, navigate to full page
-      if (contestData && contestData.name) {
-        const contestSlug = slugify(contestData.name)
-        router.push({ name: 'ContestView', params: { name: contestSlug } })
+      if (contestData?.name) {
+        router.push({ name: 'ContestView', params: { name: slugify(contestData.name) } })
       } else {
         showAlert('Contest not found', 'danger')
       }
@@ -390,7 +410,6 @@ export default {
       }
       submittingToContestId.value = contestId
 
-      // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
         if (modalElement) {
@@ -403,10 +422,8 @@ export default {
     // Handle article submitted
     const handleArticleSubmitted = () => {
       submittingToContestId.value = null
-      // Reload dashboard to update data
       loadDashboard()
     }
-
 
     // Load data on mount
     onMounted(() => {
@@ -421,8 +438,13 @@ export default {
       selectedSubmission,
       reviewerName,
       loadingReviewer,
+      currentPage,
+      itemsPerPage,
+      totalPages,
+      paginatedContests,
       getStatusColor,
       getStatusBadgeColor,
+      getStatusIcon,
       formatDate,
       viewContest,
       handleSubmitArticle,
@@ -435,11 +457,6 @@ export default {
 </script>
 
 <style scoped>
-/* ==========================================================
-   Professional Dashboard UI - Clean Design
-   ========================================================== */
-
-/* Page header - professional styling */
 h2.page-header {
   font-size: 2rem;
   font-weight: 600;
@@ -450,12 +467,10 @@ h2.page-header {
   letter-spacing: -0.01em;
 }
 
-/* Ensure page header is visible in dark mode */
 [data-theme="dark"] h2.page-header {
-  color: #ffffff !important; /* White text for page header */
+  color: #ffffff !important;
 }
 
-/* Section Titles */
 h4 {
   color: var(--wiki-dark);
   font-size: 1.25rem;
@@ -464,14 +479,11 @@ h4 {
   letter-spacing: -0.01em;
 }
 
-/* Ensure section titles are visible in dark mode */
 [data-theme="dark"] h4 {
-  color: #ffffff !important; /* White text for section titles */
+  color: #ffffff !important;
 }
 
-/* ==========================================================
-   Professional Cards
-   ========================================================== */
+
 
 .card {
   border-radius: 4px;
@@ -485,7 +497,6 @@ h4 {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Card hover - subtle */
 .card:hover {
   border-color: var(--wiki-primary);
   box-shadow: 0 2px 8px rgba(0, 102, 153, 0.1);
@@ -495,12 +506,10 @@ h4 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Card Body */
 .card-body {
   padding: 1.5rem;
 }
 
-/* Card title */
 .card-title {
   color: var(--wiki-text-muted);
   font-weight: 500;
@@ -510,12 +519,10 @@ h4 {
   letter-spacing: 0.5px;
 }
 
-/* Ensure card titles are visible in dark mode */
 [data-theme="dark"] .card-title {
-  color: #b8b8b8 !important; /* Light gray for card titles in dark mode */
+  color: #b8b8b8 !important;
 }
 
-/* Statistics numbers - professional */
 h2.text-primary,
 h2.text-success,
 h2.text-warning {
@@ -524,22 +531,113 @@ h2.text-warning {
   margin: 0;
 }
 
-/* Ensure text colors are visible in dark mode - maintain original colors */
 [data-theme="dark"] h2.text-primary {
-  color: #006699 !important; /* Original blue color */
+  color: #006699 !important;
 }
 
 [data-theme="dark"] h2.text-success {
-  color: #339966 !important; /* Original green color */
+  color: #339966 !important;
 }
 
 [data-theme="dark"] h2.text-warning {
-  color: #ffc107 !important; /* Original yellow/amber color */
+  color: #ffc107 !important;
 }
 
-/* ==========================================================
-   Submissions Items with Feedback Feature
-   ========================================================== */
+
+
+.scroll-area {
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: var(--wiki-border);
+  border-radius: 10px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--wiki-primary);
+}
+
+[data-theme="dark"] .scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #006699;
+}
+
+.scroll-inner {
+  padding: 1rem;
+}
+
+
+
+
+.contest-group {
+  margin-bottom: 1rem;
+}
+
+.contest-group:last-child {
+  margin-bottom: 0;
+}
+
+.contest-group-title {
+  font-weight: 600;
+  color: var(--wiki-dark);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--wiki-border);
+}
+
+[data-theme="dark"] .contest-group-title {
+  color: #ffffff !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+
+.score-item {
+  background-color: var(--wiki-light-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.score-item:last-child {
+  margin-bottom: 0;
+}
+
+.score-item:hover {
+  background-color: var(--wiki-hover-bg);
+  border-color: var(--wiki-primary);
+}
+
+.score-name {
+  font-size: 0.9rem;
+  color: var(--wiki-dark);
+}
+
+[data-theme="dark"] .score-item {
+  background-color: rgba(93, 184, 230, 0.05);
+}
+
+[data-theme="dark"] .score-name {
+  color: #ffffff !important;
+}
+
+
 
 .submission-item {
   background-color: var(--wiki-light-bg);
@@ -554,7 +652,6 @@ h2.text-warning {
   background-color: rgba(93, 184, 230, 0.05);
 }
 
-/* Clickable submissions (reviewed) */
 .submission-clickable {
   cursor: pointer;
 }
@@ -569,12 +666,10 @@ h2.text-warning {
   color: var(--wiki-primary);
 }
 
-/* Ensure text in submission items is visible in dark mode */
 [data-theme="dark"] .submission-item span {
-  color: #ffffff !important; /* White text for submission items */
+  color: #ffffff !important;
 }
 
-/* Feedback button in submission items */
 .feedback-btn {
   color: white;
   padding: 0.25rem 0.5rem;
@@ -590,31 +685,6 @@ h2.text-warning {
   font-size: 0.875rem;
 }
 
-/* Score items (no changes) */
-.d-flex.justify-content-between:not(.submission-item) {
-  background-color: var(--wiki-light-bg);
-  border: 1px solid var(--wiki-border);
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-  transition: all 0.2s ease;
-}
-
-[data-theme="dark"] .d-flex.justify-content-between:not(.submission-item) {
-  background-color: rgba(93, 184, 230, 0.05);
-}
-
-/* Ensure text in score items is visible in dark mode */
-[data-theme="dark"] .d-flex.justify-content-between:not(.submission-item) span {
-  color: #ffffff !important; /* White text for score items */
-}
-
-.d-flex.justify-content-between:not(.submission-item):hover {
-  background-color: var(--wiki-hover-bg);
-  border-color: var(--wiki-primary);
-}
-
-/* Contest Name */
 h6 {
   font-weight: 600;
   color: var(--wiki-dark);
@@ -622,12 +692,10 @@ h6 {
   font-size: 1rem;
 }
 
-/* Ensure contest names are visible in dark mode */
 [data-theme="dark"] h6 {
-  color: #ffffff !important; /* White text for contest names */
+  color: #ffffff !important;
 }
 
-/* Badges - professional */
 .badge {
   padding: 0.35em 0.7em;
   border-radius: 4px;
@@ -635,30 +703,31 @@ h6 {
   font-size: 0.85rem;
 }
 
-/* Ensure badge colors are visible in dark mode - maintain original colors */
 [data-theme="dark"] .badge.bg-primary {
-  background-color: #006699 !important; /* Original blue color */
-  color: #ffffff !important; /* White text */
+  background-color: #006699 !important;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .badge.bg-success {
-  background-color: #339966 !important; /* Original green color */
-  color: #ffffff !important; /* White text */
+  background-color: #339966 !important;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .badge.bg-warning {
-  background-color: #ffc107 !important; /* Original yellow/amber color */
-  color: #000000 !important; /* Dark text on bright background */
+  background-color: #ffc107 !important;
+  color: #000000 !important;
 }
 
 [data-theme="dark"] .badge.bg-danger {
-  background-color: #990000 !important; /* Original red color */
-  color: #ffffff !important; /* White text */
+  background-color: #990000 !important;
+  color: #ffffff !important;
 }
 
-/* ==========================================================
-   Table - Professional
-   ========================================================== */
+
+
+.contests-table-card {
+  overflow: hidden;
+}
 
 .table {
   margin-bottom: 0;
@@ -673,10 +742,10 @@ h6 {
   border-bottom: 2px solid var(--wiki-border);
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+  letter-spacing: 0.6px;
   color: var(--wiki-text-muted);
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -685,29 +754,24 @@ h6 {
 [data-theme="dark"] .table thead th {
   background-color: rgba(93, 184, 230, 0.1);
   border-bottom-color: var(--wiki-border);
-  color: #ffffff !important; /* White text for table headers */
+  color: #b8b8b8 !important;
 }
 
 .table tbody td {
-  padding: 1rem;
+  padding: 0.9rem 1rem;
   vertical-align: middle;
   border-bottom: 1px solid var(--wiki-border);
   background-color: var(--wiki-card-bg);
+  font-size: 0.92rem;
 }
 
 [data-theme="dark"] .table tbody td {
   background-color: var(--wiki-card-bg);
-  color: #ffffff !important; /* White text for better visibility */
+  color: #ffffff !important;
 }
 
-/* Ensure table text is visible in dark mode */
 [data-theme="dark"] .table tbody td strong {
-  color: #ffffff !important; /* White text for contest names */
-}
-
-/* Ensure all table cell text is visible */
-[data-theme="dark"] .table tbody td span {
-  color: #ffffff !important; /* White text for all spans in table cells */
+  color: #ffffff !important;
 }
 
 .table tbody tr {
@@ -719,60 +783,245 @@ h6 {
   cursor: pointer;
 }
 
-.table-row-clickable:hover {
-  background-color: var(--wiki-hover-bg);
+.table-row-clickable:hover td {
+  background-color: var(--wiki-hover-bg) !important;
 }
 
-.table-row-clickable:hover td {
-  background-color: var(--wiki-hover-bg);
+[data-theme="dark"] .table-row-clickable:hover td {
+  background-color: rgba(0, 102, 153, 0.08) !important;
 }
 
 .table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Table responsive wrapper */
 .table-responsive {
   border-radius: 4px;
   overflow: hidden;
 }
 
-/* Table buttons */
-.table .btn-sm {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.875rem;
-  border-radius: 4px;
+/* Contest name cell */
+.contest-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.table .btn-outline-primary {
+.contest-icon {
+  color: var(--wiki-primary);
+  font-size: 0.8rem;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .contest-icon {
+  color: #006699 !important;
+}
+
+/* Project name */
+.project-name {
+  color: var(--wiki-text-muted);
+  font-size: 0.88rem;
+}
+
+[data-theme="dark"] .project-name {
+  color: #b8b8b8 !important;
+}
+
+/* Date cell */
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--wiki-text-muted);
+}
+
+.date-icon {
+  font-size: 0.78rem;
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .date-cell {
+  color: #b8b8b8 !important;
+}
+
+/* Status badge (custom — replaces plain Bootstrap badge in table) */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3em 0.65em;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.status-badge i {
+  font-size: 0.65rem;
+}
+
+.status-success {
+  background-color: rgba(51, 153, 102, 0.12);
+  color: #2a7a52;
+  border: 1px solid rgba(51, 153, 102, 0.3);
+}
+
+.status-warning {
+  background-color: rgba(255, 193, 7, 0.12);
+  color: #9a7200;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.status-secondary {
+  background-color: rgba(108, 117, 125, 0.1);
+  color: #5a6268;
+  border: 1px solid rgba(108, 117, 125, 0.25);
+}
+
+.status-info {
+  background-color: rgba(0, 102, 153, 0.1);
+  color: #006699;
+  border: 1px solid rgba(0, 102, 153, 0.25);
+}
+
+.status-primary {
+  background-color: rgba(0, 102, 153, 0.1);
+  color: #006699;
+  border: 1px solid rgba(0, 102, 153, 0.25);
+}
+
+[data-theme="dark"] .status-success {
+  background-color: rgba(51, 153, 102, 0.15);
+  color: #5dc89a;
+  border-color: rgba(51, 153, 102, 0.25);
+}
+
+[data-theme="dark"] .status-warning {
+  background-color: rgba(255, 193, 7, 0.12);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.25);
+}
+
+[data-theme="dark"] .status-secondary {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #9a9a9a;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .status-info,
+[data-theme="dark"] .status-primary {
+  background-color: rgba(0, 102, 153, 0.15);
+  color: #5db8e6;
+  border-color: rgba(0, 102, 153, 0.25);
+}
+
+/* View button */
+.view-btn {
+  background-color: transparent;
+  border: 1px solid var(--wiki-primary);
+  color: var(--wiki-primary);
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.view-btn:hover {
+  background-color: var(--wiki-primary);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 102, 153, 0.25);
+}
+
+[data-theme="dark"] .view-btn {
+  border-color: #006699;
+  color: #5db8e6;
+}
+
+[data-theme="dark"] .view-btn:hover {
+  background-color: #006699;
+  color: #ffffff;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  color: var(--wiki-text-muted);
+  opacity: 0.4;
+}
+
+
+
+.pagination-bar {
+  background-color: var(--wiki-light-bg);
+  border-top: 1px solid var(--wiki-border) !important;
+}
+
+[data-theme="dark"] .pagination-bar {
+  background-color: rgba(93, 184, 230, 0.05);
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--wiki-text-muted);
+}
+
+[data-theme="dark"] .pagination-info {
+  color: #b8b8b8 !important;
+}
+
+.pg-btn {
+  min-width: 36px;
+  border-radius: 4px !important;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.pg-btn:not(.pg-active):not(:disabled):hover {
   border-color: var(--wiki-primary);
   color: var(--wiki-primary);
-  transition: all 0.2s ease;
 }
 
-.table .btn-outline-primary:hover {
-  background-color: var(--wiki-primary);
-  border-color: var(--wiki-primary);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
+.pg-active {
+  background-color: var(--wiki-primary) !important;
+  border-color: var(--wiki-primary) !important;
+  color: #ffffff !important;
 }
 
-/* Ensure button colors are visible in dark mode - maintain original colors */
-[data-theme="dark"] .table .btn-outline-primary {
-  border-color: #006699 !important; /* Original blue color */
-  color: #006699 !important; /* Original blue color */
+[data-theme="dark"] .pg-btn {
+  border-color: var(--wiki-border);
+  color: #ffffff;
+  background-color: transparent;
 }
 
-[data-theme="dark"] .table .btn-outline-primary:hover {
-  background-color: #006699 !important; /* Original blue color */
-  border-color: #006699 !important; /* Original blue color */
-  color: white !important;
+[data-theme="dark"] .pg-btn:not(.pg-active):not(:disabled):hover {
+  border-color: #006699;
+  color: #006699;
 }
 
-/* ==========================================================
-   Spinner - Professional
-   ========================================================== */
+[data-theme="dark"] .pg-active {
+  background-color: #006699 !important;
+  border-color: #006699 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .pg-btn:disabled {
+  color: #555 !important;
+  border-color: #333 !important;
+}
+
+
 
 .spinner-border.text-primary {
   width: 3rem;
@@ -781,22 +1030,21 @@ h6 {
   color: var(--wiki-primary);
 }
 
-/* ==========================================================
-   Responsive Design
-   ========================================================== */
 
-/* Ensure text-muted elements are visible in dark mode */
+
 [data-theme="dark"] .text-muted {
-  color: #b8b8b8 !important; /* Light gray for muted text in dark mode */
+  color: #b8b8b8 !important;
 }
 
 [data-theme="dark"] .no-submissions,
 [data-theme="dark"] .no-scores,
 [data-theme="dark"] .no-contests {
-  color: #b8b8b8 !important; /* Light gray for empty state messages */
+  color: #b8b8b8 !important;
 }
 
-@media(max-width: 768px){
+
+
+@media (max-width: 768px) {
   h2.page-header {
     font-size: 1.75rem;
   }
@@ -820,11 +1068,26 @@ h6 {
     align-items: flex-start !important;
   }
 
-  .submission-item > div {
+  .submission-item>div {
     margin-top: 0.5rem;
     width: 100%;
     justify-content: space-between;
   }
-}
 
+  .pagination-bar {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.5rem;
+  }
+
+  .scroll-area {
+    max-height: 500px;
+  }
+
+  .contest-name-cell {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
 </style>
