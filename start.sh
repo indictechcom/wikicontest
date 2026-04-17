@@ -16,9 +16,13 @@ if [ "$TOOL_NAME" = "wikicontest-backend" ]; then
     cd backend || exit 1
     # Run the Gunicorn WGSI for Python
     exec gunicorn --bind=0.0.0.0:$PORT --workers=4 --forwarded-allow-ips=* --access-logfile - --error-logfile - "wsgi:application"
-else
+elif [ "$TOOL_NAME" = "wikicontest" ]; then
     echo "Starting WikiContest frontend proxy server..."
     cd frontend || exit 1
     # Run the custom Node.js Express server
     exec node server.cjs
+else
+    echo "CRITICAL ERROR: TOOL_NAME evaluates to '$TOOL_NAME'."
+    echo "Please explicitly run: toolforge envvar create TOOL_NAME \"wikicontest-backend\" (or wikicontest if frontend)"
+    exit 1
 fi
