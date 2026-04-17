@@ -19,14 +19,19 @@ const port = process.env.PORT || 8000;
 const backendUrl = process.env.BACKEND_URL || 'https://wikicontest-backend.toolforge.org';
 
 // Proxy /api traffic to the Python backend Toolforge service
+// NOTE: Express strips the '/api' mount prefix before passing to the middleware,
+// so we use pathRewrite to re-add it (e.g. /api/user/login → /user/login → /api/user/login).
 app.use('/api', createProxyMiddleware({
     target: backendUrl,
     changeOrigin: true,
+    pathRewrite: { '^/': '/api/' },
     // Propagate cookie domain securely
     cookieDomainRewrite: 'wikicontest.toolforge.org',
     // Optional: add useful headers for backend logs
-    onProxyReq: (proxyReq, req, res) => {
-        proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+    on: {
+        proxyReq: (proxyReq, req, res) => {
+            proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+        }
     }
 }));
 
