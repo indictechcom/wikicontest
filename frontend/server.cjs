@@ -35,7 +35,9 @@ const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
 
 // For Vue Router HTML5 history mode (serves index.html for unknown routes)
-app.get('*', (req, res) => {
+// Note: app.use() is used instead of app.get('*') to avoid a breaking change
+// in path-to-regexp v8+ (bundled with http-proxy-middleware v3).
+app.use((req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
 });
 
