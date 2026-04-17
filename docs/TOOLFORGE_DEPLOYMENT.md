@@ -19,6 +19,7 @@ toolforge envvars create FLASK_ENV "production"
 # (Required) Add OAuth config from Special:OAuthConsumerRegistration
 toolforge envvars create CONSUMER_KEY "..."
 toolforge envvars create CONSUMER_SECRET "..."
+toolforge envvars create OAUTH_USE_OOB "True"
 toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
 toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
 
