@@ -1,174 +1,57 @@
-# Toolforge Deployment Guide (Build Service)
+# Toolforge Deployment Guide: WikiContest
 
-This guide covers deploying WikiContest to Wikimedia Toolforge using the Build Service with Docker support.
+WikiContest is designed to be deployed as two separate tools on Toolforge using the exact same GitHub repository via Build Service.
 
-## Prerequisites
+The tools are:
+- `wikicontest-backend`: Python Flask API and Database connection
+- `wikicontest`: Node.js Vue static website and proxy-server
 
-- Toolforge account with access to Build Service
-- OAuth consumer registered on Meta-Wiki
-- ToolsDB database provisioned
+## 1. Setup Backend Tool (`wikicontest-backend`)
 
-## Deployment Steps
-
-### 1. Prepare Your Tool
-
+From the bastion server:
 ```bash
-# SSH into Toolforge
-ssh <your-username>@login.toolforge.org
+# Become the tool account
+become wikicontest-backend
 
-# Become your tool user
+# Set Production Environment Variables
+toolforge envvar create FLASK_ENV "production"
+# (Required) Add OAuth config from Special:OAuthConsumerRegistration
+toolforge envvar create CONSUMER_KEY "..."
+toolforge envvar create CONSUMER_SECRET "..."
+toolforge envvar create SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvar create JWT_SECRET_KEY "$(openssl rand -hex 32)"
+
+# Toolforge ToolsDB config (parse replica.my.cnf for credentials)
+TOOL_DB_USER=$(grep -Po '(?<=user = ).*' ~/replica.my.cnf)
+TOOL_DB_PASS=$(grep -Po '(?<=password = ).*' ~/replica.my.cnf | tr -d "'")
+
+toolforge envvar create TOOL_TOOLSDB_USER "$TOOL_DB_USER"
+toolforge envvar create TOOL_TOOLSDB_PASSWORD "$TOOL_DB_PASS"
+toolforge envvar create TOOL_TOOLSDB_DBNAME "wikicontest"
+
+# Build and start the backend
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git
+toolforge webservice buildservice start
+```
+
+*Note: Once started, run `python -m app.scripts.init_db` (or Alembic) via `toolforge jobs` or SSH to initialize schemas on ToolsDB.*
+
+## 2. Setup Frontend Tool (`wikicontest`)
+
+From the bastion server:
+```bash
+# Become the tool account
 become wikicontest
 
-# Create required directories
-mkdir -p $HOME/www/python/src
+# Tell the frontend where the backend API lives (Defaults to this URL if unset)
+toolforge envvar create BACKEND_URL "https://wikicontest-backend.toolforge.org"
+
+# Build and start the frontend
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git
+toolforge webservice buildservice start
 ```
 
-### 2. Configure Build Service
-
-```bash
-# Enable Build Service
-webservice build start
-```
-
-### 3. Set Environment Variables
-
-```bash
-# Set OAuth credentials
-toolforge env set CONSUMER_KEY "your-consumer-key"
-toolforge env set CONSUMER_SECRET "your-consumer-secret"
-toolforge env set SECRET_KEY "$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-toolforge env set JWT_SECRET_KEY "$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-toolforge env set FLASK_ENV "production"
-toolforge env set DEBUG "False"
-toolforge env set CORS_ORIGINS "https://wikicontest.toolforge.org"
-toolforge env set OAUTH_CALLBACK_PATH "/oauth/callback"
-toolforge env set OAUTH_USE_OOB "True"
-```
-
-### 4. Deploy Your Code
-
-```bash
-# From your local machine - push to Toolforge
-git push toolforge main:main
-
-# Or use the Build Service web interface at:
-# https://toolforge.org/
-```
-
-### 5. Run Database Migrations
-
-```bash
-# SSH into Toolforge
-ssh <your-username>@login.toolforge.org
-become wikicontest
-
-# Start a shell in your webservice
-webservice build shell
-
-# Run migrations
-cd /app
-flask db upgrade
-
-# Exit shell
-exit
-```
-
-### 6. Verify Deployment
-
-```bash
-# Check webservice status
-webservice status
-
-# View logs
-webservice build logs
-
-# Test the application
-curl https://wikicontest.toolforge.org/api/health
-```
-
-## ToolsDB Configuration
-
-ToolsDB credentials are automatically injected by Toolforge:
-
-- `TOOL_TOOLSDB_USER`: Your tool database username
-- `TOOL_TOOLSDB_PASSWORD`: Your tool database password
-- `TOOL_TOOLSDB_DBNAME`: Database name (defaults to tool name)
-
-The application automatically detects these and constructs the connection string.
-
-## OAuth Consumer Registration
-
-To register your OAuth consumer on Meta-Wiki:
-
-1. Go to: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
-2. Fill in the form:
-   - **Application name**: WikiContest (or your tool name)
-   - **OAuth version**: 1.0a
-   - **Callback URL**: `https://wikicontest.toolforge.org/oauth/callback`
-   - **Allow consumer to specify a callback**: No
-   - **Grants**: Basic rights
-   - **Rights**: Read user identity
-3. Copy the consumer key and secret to your Toolforge environment variables
-
-## Troubleshooting
-
-### Build Failures
-
-```bash
-# View build logs
-toolforge build logs
-
-# Check build configuration
-cat .gitlab-ci.yml
-```
-
-### Database Connection Issues
-
-```bash
-# Check ToolsDB credentials
-toolforge env list
-
-# Test database connection
-webservice build shell
-flask db check
-```
-
-### OAuth Callback Issues
-
-Ensure your OAuth consumer is configured with:
-- Callback URL: `https://wikicontest.toolforge.org/oauth/callback`
-- OAuth version: 1.0a
-- Rights: Basic rights
-
-## Updates and Maintenance
-
-### Update Application
-
-```bash
-# Push new code
-git push toolforge main:main
-
-# Build Service automatically rebuilds and deploys
-```
-
-### Run New Migrations
-
-```bash
-webservice build shell
-flask db upgrade
-exit
-```
-
-### Rollback
-
-```bash
-# Revert to previous commit
-git revert HEAD
-git push toolforge main:main
-```
-
-## Additional Resources
-
-- [Toolforge Build Service Documentation](https://wikitech.wikimedia.org/wiki/Toolforge:Build_Service)
-- [ToolsDB Documentation](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Database)
-- [Wikimedia OAuth Documentation](https://www.mediawiki.org/wiki/OAuth/For_Developers)
+## How It Works
+Both environments run `Procfile` -> `start.sh`.
+- When `$TOOL_NAME` is `wikicontest-backend`, `start.sh` starts `gunicorn`.
+- When `$TOOL_NAME` is `wikicontest`, it starts the lightweight Node.js Express server (`frontend/server.cjs`), which safely proxies `/api` calls to the backend, completely sidestepping cross-domain 3rd-party cookie policies in modern browsers.
