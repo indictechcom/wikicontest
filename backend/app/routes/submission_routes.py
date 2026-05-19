@@ -251,19 +251,23 @@ def get_submission_stats():
 @handle_errors
 def refresh_metadata(contest_id):
     """
-    Refresh article metadata (word count, author, etc.) for all submissions in a contest.
+    Refresh article metadata for submissions in a contest.
 
-    This endpoint fetches the latest metadata from MediaWiki API for all submissions
-    in the specified contest and updates the database with the current values.
+    Supports offset-based pagination so large contests can be processed in
+    multiple smaller batches without hitting server or MediaWiki API timeouts.
 
-    For automated scoring contests, this also evaluates each submission and updates
-    status (accepted/rejected) and score based on the automated criteria.
+    Query parameters:
+        offset     (int, default 0)  — how many submissions to skip before
+                                       starting this batch.
+        batch_size (int, default 50) — how many submissions to process in this
+                                       call. Capped at 100 to prevent timeouts.
 
-    Args:
-        contest_id: The ID of the contest to refresh submissions for
+    Response includes pagination fields:
+        has_more    — True if there are more submissions after this batch.
+        next_offset — Pass this as `offset` in the next request.
+        total_count — Total number of submissions in the contest.
 
-    Returns:
-        JSON response with refresh results
+    PR #198 Comment #11.
     """
     user = request.current_user
 
@@ -288,16 +292,53 @@ def refresh_metadata(contest_id):
             "Failed to check scoring mode: %s", str(scoring_err)
         )
 
-    # Get all submissions for this contest
-    # For automated contests, limit batch size to prevent timeout
-    # Each submission requires multiple API calls which can be slow
-    query = Submission.query.filter_by(contest_id=contest_id)
-
-    # Limit to 50 submissions per refresh for automated contests to prevent timeout
+    # ------------------------------------------------------------------ #
+    # Pagination — automated scoring only                                  #
+    # For simple / multi-parameter contests we preserve the original       #
+    # behaviour: process every submission in a single request.             #
+    # ------------------------------------------------------------------ #
     if is_automated:
-        query = query.limit(50)
+        # IMPORTANT: Each article requires ~6 Wikipedia API calls in
+        # automated mode (revisions, refs, incoming/outgoing links,
+        # images, infoboxes).  A batch of 50 = ~300 network calls which
+        # can easily take 10+ minutes and appear "stuck".
+        # Default is 10 (≈60 calls, completes in under 60 s).
+        _DEFAULT_BATCH_SIZE = 10
+        _MAX_BATCH_SIZE = 50
 
-    submissions = query.all()
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+        except (ValueError, TypeError):
+            offset = 0
+
+        try:
+            batch_size = min(
+                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+                _MAX_BATCH_SIZE,
+            )
+        except (ValueError, TypeError):
+            batch_size = _DEFAULT_BATCH_SIZE
+
+        total_count = Submission.query.filter_by(contest_id=contest_id).count()
+
+        submissions = (
+            Submission.query
+            .filter_by(contest_id=contest_id)
+            .order_by(Submission.id)
+            .offset(offset)
+            .limit(batch_size)
+            .all()
+        )
+    else:
+        # Non-automated: fetch ALL submissions at once (original behaviour)
+        offset = 0
+        submissions = (
+            Submission.query
+            .filter_by(contest_id=contest_id)
+            .order_by(Submission.id)
+            .all()
+        )
+        total_count = len(submissions)
 
     if not submissions:
         return (
@@ -306,7 +347,10 @@ def refresh_metadata(contest_id):
                     "message": "No submissions found for this contest",
                     "updated": 0,
                     "failed": 0,
-                    "total": 0,
+                    "total": total_count,
+                    "has_more": False,
+                    "next_offset": offset,
+                    "total_count": total_count,
                 }
             ),
             200,
@@ -513,7 +557,7 @@ def refresh_metadata(contest_id):
                 )
                 try:
                     # Fetch incoming/outgoing links
-                    from app.utils import (
+                    from app.utils import (  # pylint: disable=import-outside-toplevel
                         get_article_incoming_links,
                         get_article_outgoing_links,
                         get_article_image_count,
@@ -586,7 +630,7 @@ def refresh_metadata(contest_id):
                         submission.id,
                         str(eval_error),
                     )
-                    import traceback
+                    import traceback  # pylint: disable=import-outside-toplevel
                     current_app.logger.error(traceback.format_exc())
 
             updated += 1
@@ -600,13 +644,41 @@ def refresh_metadata(contest_id):
         db.session.rollback()
         return jsonify({"error": "Failed to save updates to database"}), 500
 
+    # ------------------------------------------------------------------ #
+    # Build response                                                        #
+    # ------------------------------------------------------------------ #
+    if is_automated:
+        # Automated: paginated response so frontend can loop
+        processed_up_to = offset + len(submissions)
+        has_more = processed_up_to < total_count
+        next_offset = processed_up_to if has_more else offset
+
+        return (
+            jsonify(
+                {
+                    "message": f"Refreshed metadata for {updated} submissions",
+                    "updated": updated,
+                    "failed": failed,
+                    "total": total_count,
+                    # Pagination fields (PR #198 Comment #11)
+                    "has_more": has_more,
+                    "next_offset": next_offset,
+                    "total_count": total_count,
+                    "batch_size": batch_size,
+                    "offset": offset,
+                }
+            ),
+            200,
+        )
+
+    # Non-automated: simple response (original behaviour, no pagination)
     return (
         jsonify(
             {
                 "message": f"Refreshed metadata for {updated} submissions",
                 "updated": updated,
                 "failed": failed,
-                "total": len(submissions),
+                "total": total_count,
             }
         ),
         200,
@@ -614,8 +686,68 @@ def refresh_metadata(contest_id):
 
 
 # ------------------------------------------------------------------------
+# SUBMISSION DELETION ENDPOINT
+# ------------------------------------------------------------------------
+
+@submission_bp.route("/<int:submission_id>", methods=["DELETE"])
+@require_auth
+@handle_errors
+def delete_submission(submission_id):
+    """
+    Delete a specific submission by ID.
+
+    Only admins, jury members of the contest, and contest creators/organizers
+    are allowed to delete submissions.  When a submission is deleted its score
+    is subtracted from the submitter's total so the leaderboard stays accurate.
+
+    Args:
+        submission_id: Submission ID
+
+    Returns:
+        JSON response confirming deletion
+    """
+    user = request.current_user
+
+    # Load submission with related data for permission check and score update
+    submission = Submission.query.options(
+        joinedload(Submission.submitter),
+        joinedload(Submission.contest),
+    ).get(submission_id)
+
+    if not submission:
+        return jsonify({"error": "Submission not found"}), 404
+
+    # Permission check using existing model method
+    if not submission.can_be_deleted_by(user):
+        return jsonify({"error": "You are not allowed to delete this submission"}), 403
+
+    try:
+        # Subtract the submission's score from the user's total before deleting
+        if submission.score and submission.submitter:
+            submission.submitter.update_score(-submission.score)
+
+        # Remove the submission from the database
+        submission.delete()
+
+        return jsonify({"message": "Submission deleted successfully"}), 200
+
+    except Exception as delete_err:  # pylint: disable=broad-exception-caught
+        db.session.rollback()
+        current_app.logger.error(
+            "Failed to delete submission %s: %s", submission_id, str(delete_err)
+        )
+        return jsonify({"error": "Failed to delete submission"}), 500
+
+
+# ------------------------------------------------------------------------
 # SUBMISSION REVIEW ENDPOINT
 # ------------------------------------------------------------------------
+
+
+
+
+
+
 
 @submission_bp.route("/<int:submission_id>/review", methods=["PUT"])
 @require_auth

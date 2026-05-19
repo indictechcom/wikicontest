@@ -452,20 +452,75 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
 
 
 def get_detailed_reference_counts(article_url: str) -> Dict[str, int]:
-    """Parses wikitext to distinguish between New (defined) and Reused (self-closing) references."""
+    """
+    Count new (defined) and reused (self-closing) <ref> tags in a wiki article.
+
+    New refs:    <ref ...>content</ref>  — define a source inline for the first time.
+    Reused refs: <ref name="foo" />      — self-closing back-reference to a named source.
+
+    Implementation uses mwparserfromhell, a purpose-built MediaWiki wikitext parser.
+    This correctly handles:
+      - <nowiki>...</nowiki> blocks (refs inside are not counted)
+      - Adjacent refs: <ref>A</ref><ref>B</ref>  (counted as 2, not 1)
+      - Named refs appearing with full content more than once
+      - Malformed / nested markup that confuses regex-based approaches
+
+    Falls back to a simple regex count if mwparserfromhell is unavailable at runtime,
+    so the server never crashes due to a missing dependency — it just counts less
+    accurately and logs a warning.
+
+    PR #198 Comment #7.
+    """
     wikitext = get_article_wikitext(article_url)
     if not wikitext:
         return {"new": 0, "reused": 0}
 
-    text = re.sub(r"<!--.*?-->", "", wikitext, flags=re.DOTALL)
+    # ------------------------------------------------------------------ #
+    # Primary path: proper wikitext parser                                #
+    # ------------------------------------------------------------------ #
+    try:
+        import mwparserfromhell  # pylint: disable=import-outside-toplevel
 
-    new_refs_pattern = r"<ref\b[^>]*?>.*?</ref>"
-    new_refs = len(re.findall(new_refs_pattern, text, flags=re.IGNORECASE | re.DOTALL))
+        parsed = mwparserfromhell.parse(wikitext)
 
-    reused_refs_pattern = r"<ref\b[^>]*?/>"
-    reused_refs = len(re.findall(reused_refs_pattern, text, flags=re.IGNORECASE))
+        new_refs = 0
+        reused_refs = 0
 
-    return {"new": new_refs, "reused": reused_refs}
+        for tag in parsed.filter_tags():
+            # mwparserfromhell normalises tag names; compare lower-case
+            if str(tag.tag).strip().lower() != "ref":
+                continue
+            if tag.self_closing:
+                # <ref name="foo" /> — back-reference to a named source
+                reused_refs += 1
+            else:
+                # <ref ...>content</ref> — inline source definition
+                new_refs += 1
+
+        return {"new": new_refs, "reused": reused_refs}
+
+    except ImportError:
+        # ------------------------------------------------------------------ #
+        # Fallback path: regex (less accurate, but never crashes the server) #
+        # ------------------------------------------------------------------ #
+        import logging  # pylint: disable=import-outside-toplevel
+        logging.warning(
+            "mwparserfromhell is not installed — falling back to regex for "
+            "reference counting. Install it with: pip install mwparserfromhell"
+        )
+
+        # Strip HTML comments so commented-out refs aren't counted
+        text = re.sub(r"<!--.*?-->", "", wikitext, flags=re.DOTALL)
+
+        reused_refs = len(re.findall(r"<ref\b[^>]*?/>", text, flags=re.IGNORECASE))
+        new_refs = len(re.findall(
+            r"<ref\b[^/>][^>]*>(?:[^<]|<(?!/ref>))*</ref>",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        ))
+        return {"new": new_refs, "reused": reused_refs}
+
+
 
 
 def check_article_has_template(article_url: str, template_name: str) -> Dict[str, Any]:
@@ -1698,7 +1753,8 @@ def get_article_outgoing_links(article_url: str) -> Optional[int]:
 def crawl_category_articles(
     category_url: str,
     limit: int = 5000,
-    mw_uri: Optional[str] = None
+    mw_uri: Optional[str] = None,
+    continue_from: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Crawl articles from a Wikipedia category using the MediaWiki API.
@@ -1707,19 +1763,25 @@ def crawl_category_articles(
     handling pagination via `cmcontinue` tokens.
 
     Args:
-        category_url: Full URL to a Wikipedia category page.
-            Examples:
-            - https://en.wikipedia.org/wiki/Category:Living_people
-            - https://es.wikipedia.org/wiki/Categoría:Wikipedia
-        limit: Maximum number of articles to fetch (default: 5000, max: 5000).
-        mw_uri: Optional MediaWiki API base URI. If not provided, extracted from category_url.
+        category_url:  Full URL to a Wikipedia category page.
+        limit:         Maximum number of articles to fetch in this call.
+        mw_uri:        Optional MediaWiki API base URI. Extracted from
+                       category_url when omitted.
+        continue_from: A ``cmcontinue`` token returned by a previous call.
+                       When provided the crawl resumes from that position
+                       instead of starting from the beginning of the category.
+                       Pass the value of ``next_continue`` from the previous
+                       response to implement "Import Next Batch" behaviour.
 
     Returns:
         Dictionary with:
-            - "articles": List of dicts with "title" and "url" keys
-            - "total": Total number of articles fetched
-            - "category": Category name extracted from URL
-            - "wiki_base": Wiki base URL (e.g., "https://en.wikipedia.org")
+            - "articles":      List of dicts with "title", "url", "page_id".
+            - "total":         Number of articles fetched in this call.
+            - "category":      Category name extracted from URL.
+            - "wiki_base":     Wiki base URL (e.g., "https://en.wikipedia.org").
+            - "has_more":      True if there are more articles beyond this batch.
+            - "next_continue": cmcontinue token to pass as ``continue_from``
+                               in the next call (None when has_more is False).
         Or None if an error occurs.
     """
     try:
@@ -1748,19 +1810,25 @@ def crawl_category_articles(
             "action": "query",
             "list": "categorymembers",
             "cmtitle": f"Category:{category_name}",
-            "cmtype": "page",  # Only get actual pages, not subcategories or files
-            "cmlimit": "max",  # Max per request (usually 500)
-            "cmnamespace": "0",  # Only mainspace articles
+            "cmtype": "page",      # Only get actual pages, not subcategories or files
+            "cmlimit": "max",      # Max per request (usually 500)
+            "cmnamespace": "0",    # Only mainspace articles
             "format": "json",
         }
 
         articles = []
-        continue_token = None
+        # Seed the continue token from caller so we resume mid-category
+        continue_token: Optional[str] = continue_from
+        # Track the token that will be returned for the *next* batch
+        next_continue: Optional[str] = None
 
         while len(articles) < limit:
-            # Add continue token if we have one
+            # Add continue token if we have one (either seeded or from prev page)
             if continue_token:
                 params["cmcontinue"] = continue_token
+            elif "cmcontinue" in params:
+                # Remove stale key from a previous iteration that has now been cleared
+                del params["cmcontinue"]
 
             response = requests.get(
                 mw_uri,
@@ -1788,8 +1856,7 @@ def crawl_category_articles(
                 page_id = member.get("pageid")
 
                 if title:
-                    # Build article URL
-                    # Use /wiki/ format for cleaner URLs
+                    # Build article URL — use /wiki/ format for cleaner URLs
                     encoded_title = title.replace(" ", "_")
                     article_url = f"{wiki_base}/wiki/{encoded_title}"
 
@@ -1799,23 +1866,38 @@ def crawl_category_articles(
                         "page_id": page_id,
                     })
 
-            # Check for continuation
+            # Check for continuation token from MediaWiki
             continue_data = data.get("continue")
             if continue_data and "cmcontinue" in continue_data:
-                continue_token = continue_data["cmcontinue"]
+                next_continue = continue_data["cmcontinue"]
+                continue_token = next_continue
             else:
+                # No more pages in the category
+                next_continue = None
                 break
+
+            # If we hit the limit mid-category the outer while loop exits here.
+            # next_continue already holds the right token for resuming.
+
+        # has_more is True when we stopped because we hit `limit` AND there are
+        # still more articles beyond this batch (next_continue is not None).
+        has_more = next_continue is not None and len(articles) >= limit
 
         return {
             "articles": articles,
             "total": len(articles),
             "category": category_name,
             "wiki_base": wiki_base,
+            # Pagination fields for "Import Next Batch" support
+            "has_more": has_more,
+            "next_continue": next_continue if has_more else None,
         }
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         # If crawling fails, return None to indicate failure
         # Log the error for debugging
-        import logging
+        import logging  # pylint: disable=import-outside-toplevel
         logging.error(f"crawl_category_articles failed: {str(e)}")
         return None
+
+

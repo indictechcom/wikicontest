@@ -563,19 +563,43 @@ export default {
       }
     }
 
-    // Refresh article metadata for all submissions in the contest
-    // Fetches latest data from MediaWiki (byte count, author, etc.)
+    // Refresh article metadata for all submissions in the contest.
+    // Uses offset-based pagination (PR #198 Comment #11) so large contests
+    // are processed in batches of 50 without timing out.
     const refreshMetadata = async () => {
       if (!props.contest || !canViewSubmissions.value || submissions.value.length === 0) {
         return
       }
 
       refreshingMetadata.value = true
+      let totalUpdated = 0
+      let totalFailed = 0
+      let offset = 0
+      let hasMore = true
+
       try {
-        const response = await api.post(`/submission/contest/${props.contest.id}/refresh-metadata`)
+        while (hasMore) {
+          const response = await api.post(
+            `/submission/contest/${props.contest.id}/refresh-metadata?offset=${offset}`
+          )
+
+          totalUpdated += response.updated || 0
+          totalFailed += response.failed || 0
+          hasMore = response.has_more || false
+          offset = response.next_offset || 0
+
+          // Show live progress for multi-batch refreshes
+          if (hasMore && response.total_count > 0) {
+            showAlert(
+              `Refreshing… ${offset} / ${response.total_count} done`,
+              'info'
+            )
+          }
+        }
+
         showAlert(
-          `Metadata refreshed: ${response.updated} updated, ${response.failed} failed`,
-          response.failed === 0 ? 'success' : 'warning'
+          `Metadata refreshed: ${totalUpdated} updated, ${totalFailed} failed`,
+          totalFailed === 0 ? 'success' : 'warning'
         )
 
         // Reload submissions to show updated data
@@ -587,6 +611,7 @@ export default {
         refreshingMetadata.value = false
       }
     }
+
 
     // Handle delete contest with confirmation
     const handleDeleteContest = async () => {

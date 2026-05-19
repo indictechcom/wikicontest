@@ -4,7 +4,19 @@ Handles contest creation, retrieval, and management functionality
 """
 
 from datetime import datetime, timezone
+import os
 import traceback
+
+# ---------------------------------------------------------------------------
+# Category crawler rate-limiting constants (PR #198 Comment #6)
+# ---------------------------------------------------------------------------
+# Maximum articles that can ever be imported in a single crawl request.
+# Keeps the value configurable on the server without touching code:
+#   export MAX_CRAWL_LIMIT=3000
+_MAX_CRAWL_LIMIT: int = int(os.environ.get("MAX_CRAWL_LIMIT", "2000"))
+
+# Default when the caller omits the `limit` field in the request body.
+_DEFAULT_CRAWL_LIMIT: int = 500
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import IntegrityError
@@ -768,6 +780,12 @@ def create_contest():
                 evaluation = {}
 
             # Validate numeric values in eligibility
+            # NOTE: min_bytes and min_references are intentionally NOT included here.
+            # The automated evaluation engine reads those from the common contest fields
+            # (min_byte_count, min_reference_count) set via the UI, which are shared
+            # across all three scoring modes. This avoids the redundancy of having
+            # two separate sets of fields for the same thresholds.
+            # See PR #198 Comment #13 for full context.
             for field in ["min_edits", "min_outgoing_links"]:
                 value = eligibility.get(field)
                 if value is not None:
@@ -1390,6 +1408,39 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     # Basic URL validation
     if not (article_link.startswith("http://") or article_link.startswith("https://")):
         return jsonify({"error": "Article link must be a valid URL"}), 400
+
+    # --- Domain Validation Against Contest's Wiki (Automated Scoring Only) ---
+    # For automated scoring contests, ensure the submitted article belongs to
+    # the same wiki as the contest's configured categories. This prevents
+    # cross-wiki submissions (e.g., submitting a French Wikipedia article to
+    # an English Wikipedia contest).
+    # This check is scoped to automated contests only — simple and
+    # multi-parameter scoring modes are left untouched.
+    try:
+        _is_automated_contest = contest.get_scoring_mode() == "automated"
+    except Exception:  # pylint: disable=broad-exception-caught
+        _is_automated_contest = False
+
+    if _is_automated_contest:
+        contest_categories = contest.get_categories()
+        if contest_categories:
+            from urllib.parse import urlparse as _urlparse
+            allowed_domains = set()
+            for cat_url in contest_categories:
+                parsed = _urlparse(cat_url)
+                if parsed.netloc:
+                    allowed_domains.add(parsed.netloc.lower())
+
+            if allowed_domains:
+                article_domain = _urlparse(article_link).netloc.lower()
+                if article_domain not in allowed_domains:
+                    return jsonify({
+                        "error": (
+                            f"The article URL belongs to '{article_domain}', but this "
+                            f"contest only accepts articles from: "
+                            f"{', '.join(sorted(allowed_domains))}"
+                        )
+                    }), 400
 
     # --- Contest Status Checks ---
     if not contest.is_active():
@@ -2988,16 +3039,27 @@ def crawl_category_for_contest(contest_id):
 
         # Get parameters
         category_url = data.get("category_url")
-        limit = data.get("limit", 5000)
 
-        # Validate limit
+        # Enforce rate limiting: cap imports per request to prevent server
+        # overload and MediaWiki API timeouts (PR #198 Comment #6).
+        # Default: 500  |  Hard cap: MAX_CRAWL_LIMIT (default 2000, env-configurable)
         try:
-            limit = min(int(limit), 5000)
+            requested_limit = int(data.get("limit", _DEFAULT_CRAWL_LIMIT))
+            limit = min(max(requested_limit, 1), _MAX_CRAWL_LIMIT)
         except (ValueError, TypeError):
-            limit = 5000
+            limit = _DEFAULT_CRAWL_LIMIT
+
+        # Optional cmcontinue token from a previous crawl batch.
+        # When present the crawler resumes from this position in the category
+        # instead of starting from the beginning (supports "Import Next Batch").
+        continue_from = data.get("continue_from") or None
 
         # Crawl the category
-        result = crawl_category_articles(category_url, limit=limit)
+        result = crawl_category_articles(
+            category_url,
+            limit=limit,
+            continue_from=continue_from,
+        )
 
         if not result:
             return jsonify({
@@ -3051,7 +3113,12 @@ def crawl_category_for_contest(contest_id):
             "category": result.get("category"),
             "wiki_base": result.get("wiki_base"),
             "articles": imported[:100],
+            # Pagination: pass next_continue back to the client so it can
+            # request the next batch with "Import Next Batch" (Option B).
+            "has_more": result.get("has_more", False),
+            "next_continue": result.get("next_continue"),
         }), 200
+
 
     except Exception as e:
         current_app.logger.error(f"crawl_category_for_contest error: {str(e)}\n{traceback.format_exc()}")

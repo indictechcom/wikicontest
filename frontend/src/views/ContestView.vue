@@ -755,8 +755,9 @@
                   <option value="">Select a category...</option>
                   <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
-                <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="5000"
+                <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="2000"
                   class="form-control crawler-limit" />
+
                 <button class="btn btn-primary crawler-btn" @click="crawlCategory"
                   :disabled="crawling || !selectedCategory">
                   <span v-if="crawling">
@@ -785,6 +786,26 @@
                   <i class="fas fa-info-circle me-2"></i>
                   No articles found in category
                 </div>
+
+                <!-- Import Next Batch button — shown when the category has more
+                     articles beyond the current batch (cmcontinue pagination) -->
+                <div v-if="crawlNextToken" class="mt-2">
+                  <div class="alert alert-info py-2 d-flex align-items-center justify-content-between">
+                    <span>
+                      <i class="fas fa-info-circle me-2"></i>
+                      More articles available in this category.
+                    </span>
+                    <button class="btn btn-sm btn-primary ms-3" @click="crawlNextBatch"
+                      :disabled="crawling">
+                      <span v-if="crawling">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                      </span>
+                      <span v-else>
+                        <i class="fas fa-cloud-download-alt me-1"></i> Import Next Batch
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
               <div v-if="crawlError" class="alert alert-danger mt-3">
                 <i class="fas fa-exclamation-circle me-2"></i>
@@ -798,17 +819,23 @@
             <div class="card-header">
               <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-                <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
-                  disabled>
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
-                </button>
-                <!-- Refresh metadata fetches latest article data from MediaWiki -->
-                <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
-                  :disabled="submissions.length === 0" title="Refresh article metadata"
-                  style="color: white; border-color: white;">
-                  <i class="fas fa-database me-1"></i>Refresh Metadata
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Persistent batch-progress text (stays visible for the whole refresh) -->
+                  <span v-if="refreshProgress" class="text-muted small fst-italic">
+                    <i class="fas fa-spinner fa-spin me-1"></i>{{ refreshProgress }}
+                  </span>
+                  <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                    disabled>
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
+                  </button>
+                  <!-- Refresh metadata fetches latest article data from MediaWiki -->
+                  <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
+                    :disabled="submissions.length === 0" title="Refresh article metadata"
+                    style="color: white; border-color: white;">
+                    <i class="fas fa-database me-1"></i>Refresh Metadata
+                  </button>
+                </div>
               </div>
             </div>
             <div class="card-body">
@@ -1923,6 +1950,7 @@ export default {
     const submissions = ref([])
     const loadingSubmissions = ref(false)
     const refreshingMetadata = ref(false)
+    const refreshProgress = ref('')   // persists across batches — unlike 5-sec showAlert toasts
     const deletingContest = ref(false)
     const canDeleteContest = ref(false)
     const checkingAuth = ref(false)
@@ -2044,17 +2072,26 @@ export default {
     const crawling = ref(false)
     const crawlResult = ref(null)
     const crawlError = ref(null)
+    // Stores the cmcontinue token returned by the backend so the next batch
+    // can resume from exactly where the last import left off.
+    const crawlNextToken = ref(null)
 
-    // Crawl category and import articles
-    const crawlCategory = async () => {
-      if (!selectedCategory.value) return
-
+    // Core crawl helper — sends one request to the backend and stores result.
+    // Pass continueFrom to resume a previous batch; omit to start fresh.
+    const _doCrawl = async (continueFrom = null) => {
       crawling.value = true
-      crawlResult.value = null
       crawlError.value = null
 
       try {
         const csrfToken = getCookie('csrf_access_token')
+        const body = {
+          category_url: selectedCategory.value,
+          limit: crawlLimit.value || 100,
+        }
+        if (continueFrom) {
+          body.continue_from = continueFrom
+        }
+
         const response = await fetch(`/api/contest/${contest.value.id}/crawl-category`, {
           method: 'POST',
           headers: {
@@ -2062,10 +2099,7 @@ export default {
             'X-CSRF-TOKEN': csrfToken || ''
           },
           credentials: 'include',
-          body: JSON.stringify({
-            category_url: selectedCategory.value,
-            limit: crawlLimit.value || 100
-          })
+          body: JSON.stringify(body)
         })
 
         const data = await response.json()
@@ -2075,6 +2109,8 @@ export default {
         }
 
         crawlResult.value = data
+        // Store token so the "Import Next Batch" button can resume later
+        crawlNextToken.value = data.has_more ? data.next_continue : null
 
         // Refresh submissions list to show new imports
         await loadSubmissions()
@@ -2083,6 +2119,20 @@ export default {
       } finally {
         crawling.value = false
       }
+    }
+
+    // Import first batch — clears previous result and starts from beginning
+    const crawlCategory = async () => {
+      if (!selectedCategory.value) return
+      crawlResult.value = null
+      crawlNextToken.value = null
+      await _doCrawl(null)
+    }
+
+    // Import next batch — resumes from the stored cmcontinue token
+    const crawlNextBatch = async () => {
+      if (!crawlNextToken.value) return
+      await _doCrawl(crawlNextToken.value)
     }
 
     // Track current submission for preview modal
@@ -2453,27 +2503,58 @@ export default {
       }
     }
 
-    // Refresh article metadata from MediaWiki for all submissions
+    // Refresh article metadata from MediaWiki for all submissions.
+    // Uses offset-based pagination (PR #198 Comment #11) so large contests
+    // are processed in batches of 50 without timing out.
     const refreshMetadata = async () => {
       if (!contest.value || !canViewSubmissions.value || submissions.value.length === 0) {
         return
       }
 
       refreshingMetadata.value = true
+      refreshProgress.value = 'Starting refresh…'
+      let totalUpdated = 0
+      let totalFailed = 0
+      let offset = 0
+      let hasMore = true
+
       try {
-        const response = await api.post(`/submission/contest/${contest.value.id}/refresh-metadata`)
+        while (hasMore) {
+          const response = await api.post(
+            `/submission/contest/${contest.value.id}/refresh-metadata?offset=${offset}`
+          )
+
+          totalUpdated += response.updated || 0
+          totalFailed += response.failed || 0
+          hasMore = response.has_more || false
+          offset = response.next_offset || 0
+
+          // Update the persistent inline counter so the user always sees progress,
+          // even between batches that take 30-90 s each.
+          if (response.total_count > 0) {
+            const done = hasMore ? offset : response.total_count
+            refreshProgress.value = hasMore
+              ? `Refreshing… ${done} / ${response.total_count} articles done`
+              : `Finishing last batch…`
+          }
+        }
+
+        refreshProgress.value = ''
         showAlert(
-          `Metadata refreshed: ${response.updated} updated, ${response.failed} failed`,
-          response.failed === 0 ? 'success' : 'warning'
+          `Metadata refreshed: ${totalUpdated} updated, ${totalFailed} failed`,
+          totalFailed === 0 ? 'success' : 'warning'
         )
         await loadSubmissions()
       } catch (error) {
         console.error('Failed to refresh metadata:', error)
+        refreshProgress.value = ''
         showAlert('Failed to refresh metadata: ' + error.message, 'danger')
       } finally {
         refreshingMetadata.value = false
+        refreshProgress.value = ''
       }
     }
+
 
     // Delete contest with confirmation
     const handleDeleteContest = async () => {
@@ -3122,6 +3203,7 @@ export default {
       loadSubmissions,
       refreshMetadata,
       refreshingMetadata,
+      refreshProgress,
       handleDeleteContest,
       handleSubmitArticle,
       handleArticleSubmitted,
@@ -3172,7 +3254,9 @@ export default {
       crawling,
       crawlResult,
       crawlError,
+      crawlNextToken,
       crawlCategory,
+      crawlNextBatch,
       canImportArticles,
       // Evaluation details modal
       showEvaluationDetails,
