@@ -616,7 +616,12 @@ class Contest(BaseModel, ContestMixin):
         reasons = []
 
         # Check minimum byte count (article_word_count stores bytes)
-        min_bytes = eligibility.get("min_bytes", 0)
+        # NOTE: min_bytes is read from the common contest field (self.min_byte_count)
+        # instead of from automated_settings.eligibility.min_bytes (which has no UI
+        # and always defaults to 0). This ensures crawled articles are validated
+        # against the same threshold that manual submissions use.
+        # See PR #198 Comment #13 for full context on this unification.
+        min_bytes = self.min_byte_count or 0
         actual_bytes = submission_data.get("article_word_count") or 0
         if min_bytes > 0 and actual_bytes < min_bytes:
             reasons.append(f"Article size ({actual_bytes} bytes) below minimum ({min_bytes} bytes)")
@@ -634,7 +639,9 @@ class Contest(BaseModel, ContestMixin):
             reasons.append(f"Outgoing links ({actual_outgoing}) below minimum ({min_outgoing})")
 
         # Check minimum references
-        min_refs = eligibility.get("min_references", 0)
+        # NOTE: min_references is read from the common contest field
+        # (self.min_reference_count) for the same reason as min_bytes above.
+        min_refs = self.min_reference_count or 0
         actual_refs = (submission_data.get("ref_new_count") or 0) + (submission_data.get("ref_reused_count") or 0)
         if min_refs > 0 and actual_refs < min_refs:
             reasons.append(f"Total references ({actual_refs}) below minimum ({min_refs})")
