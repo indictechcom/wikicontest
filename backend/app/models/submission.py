@@ -375,6 +375,31 @@ class Submission(BaseModel):
 
 
     # ------------------------------------------------------------------------
+    # BYTE COUNT ALIAS  (PR #198 Comment #9)
+    # ------------------------------------------------------------------------
+
+    @property
+    def article_byte_count(self):
+        """
+        Clearer alias for the article_word_count column.
+
+        HISTORICAL NOTE: The column is named 'article_word_count' but it stores
+        the article's size in BYTES as returned by the MediaWiki API 'size' field —
+        not a word count.  The column name is intentionally left unchanged in the
+        database to avoid a risky Alembic migration.  All NEW code should use this
+        alias instead of referencing article_word_count directly.
+
+        See PR #198 Comment #9 for full context.
+        """
+        return self.article_word_count
+
+    @article_byte_count.setter
+    def article_byte_count(self, value):
+        """Set the article byte count (stored in the article_word_count column)."""
+        self.article_word_count = value
+
+
+    # ------------------------------------------------------------------------
     # SUBMISSION STATUS UPDATE
     # ------------------------------------------------------------------------
 
