@@ -8,10 +8,7 @@
  * - Crimson Red: #990000 (danger/warning)
  * - Outer Space: #484848 (text/dark)
  */
-   
-/* -----------------------------------
-   CSS CUSTOM PROPERTIES (VARIABLES)
-   ----------------------------------- */
+
 
 /* Wikipedia Color Variables - Light Mode (Default) */
 :root {
@@ -21,7 +18,8 @@
   --wiki-success-hover: #2d8555;
   --wiki-danger: #990000;
   --wiki-danger-hover: #7a0000;
-  --wiki-warning: #ffc107; /* Amber/yellow for warning badges in light mode */
+  --wiki-warning: #ffc107;
+  /* Amber/yellow for warning badges in light mode */
   --wiki-warning-hover: #e0a800;
   --wiki-dark: #484848;
   --wiki-light-bg: #f8f9fa;
@@ -46,7 +44,8 @@
   --wiki-success-hover: #66cc99;
   --wiki-danger: #990000;
   --wiki-danger-hover: #7a0000;
-  --wiki-warning: #ffa500; /* Bright orange for better visibility in dark mode */
+  --wiki-warning: #ffa500;
+  /* Bright orange for better visibility in dark mode */
   --wiki-warning-hover: #ff8c00;
   --wiki-dark: #f0f0f0;
   --wiki-light-bg: #121212;
@@ -61,10 +60,6 @@
   --wiki-input-border: #555555;
   --wiki-hover-bg: rgba(0, 102, 153, 0.2);
 }
-
-/* -----------------------------------
-   BASE STYLES & RESET
-   ----------------------------------- */
 
 /* Reset and base styles */
 * {
@@ -86,10 +81,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* -----------------------------------
-   UTILITY CLASSES
-   ----------------------------------- */
-
 .hidden {
   display: none !important;
 }
@@ -99,10 +90,6 @@ body {
   opacity: 0.6;
   pointer-events: none;
 }
-
-/* -----------------------------------
-   LINK STYLES
-   ----------------------------------- */
 
 /* Link styles - Wikipedia blue */
 a {
@@ -115,10 +102,6 @@ a:hover {
   color: var(--wiki-primary-hover);
   text-decoration: underline;
 }
-
-/* -----------------------------------
-   FORM STYLES
-   ----------------------------------- */
 
 .form-control {
   border-color: var(--wiki-input-border);
@@ -175,10 +158,6 @@ input[type="time"].form-control {
   box-shadow: 0 0 0 0.2rem rgba(93, 184, 230, 0.3);
   border-color: var(--wiki-primary);
 }
-
-/* -----------------------------------
-   BUTTON STYLES
-   ----------------------------------- */
 
 .btn {
   transition: all 0.2s ease;
@@ -266,9 +245,6 @@ input[type="time"].form-control {
   color: white !important;
 }
 
-/* -----------------------------------
-   CARD STYLES
-   ----------------------------------- */
 
 /* Card styles - professional clean design */
 .card {
@@ -309,9 +285,6 @@ input[type="time"].form-control {
   height: 100% !important;
 }
 
-/* -----------------------------------
-   BADGE & STATUS STYLES
-   ----------------------------------- */
 
 /* Status badge styles */
 .status-badge {
@@ -340,7 +313,8 @@ input[type="time"].form-control {
 /* Warning badge - use brighter color for better visibility */
 .badge.bg-warning {
   background-color: var(--wiki-warning) !important;
-  color: #000000 !important; /* Dark text on bright warning background */
+  color: #000000 !important;
+  /* Dark text on bright warning background */
 }
 
 /* Danger badge - red background with white text */
@@ -352,12 +326,9 @@ input[type="time"].form-control {
 /* Dark mode badge adjustments - ensure all badges are visible */
 [data-theme="dark"] .badge.bg-warning {
   background-color: var(--wiki-warning) !important;
-  color: #000000 !important; /* Dark text on bright orange background for maximum contrast */
+  color: #000000 !important;
+  /* Dark text on bright orange background for maximum contrast */
 }
-
-/* -----------------------------------
-   NAVIGATION TAB STYLES
-   ----------------------------------- */
 
 /* Nav tabs styling - Wikipedia colors - subtle border */
 .nav-tabs {
@@ -393,9 +364,6 @@ input[type="time"].form-control {
   font-weight: 600;
 }
 
-/* -----------------------------------
-   ALERT STYLES
-   ----------------------------------- */
 
 /* Alert styles - Enhanced visibility */
 .alert {
@@ -422,7 +390,8 @@ input[type="time"].form-control {
 [data-theme="dark"] .alert-info {
   background-color: rgba(93, 184, 230, 0.25);
   border-color: var(--wiki-primary);
-  color: #ffffff; /* White text for better visibility in dark mode */
+  color: #ffffff;
+  /* White text for better visibility in dark mode */
   border-left-width: 4px;
 }
 
@@ -488,9 +457,6 @@ input[type="time"].form-control {
   filter: invert(1) brightness(2);
 }
 
-/* -----------------------------------
-   TABLE STYLES
-   ----------------------------------- */
 
 .table {
   color: var(--wiki-text);
@@ -524,9 +490,6 @@ input[type="time"].form-control {
   transition: border-color 0.3s ease;
 }
 
-/* -----------------------------------
-   MODAL STYLES
-   ----------------------------------- */
 
 .modal-content {
   background-color: var(--wiki-modal-bg);
@@ -556,9 +519,6 @@ input[type="time"].form-control {
   background-color: var(--wiki-modal-bg);
 }
 
-/* -----------------------------------
-   ANIMATIONS
-   ----------------------------------- */
 
 /* Animation for page transitions */
 .fade-enter-active,
@@ -571,61 +531,79 @@ input[type="time"].form-control {
   opacity: 0;
 }
 
-/* -----------------------------------
-   RESPONSIVE STYLES
-   ----------------------------------- */
 
 /* Mobile-first responsive improvements */
 @media (max-width: 768px) {
+
   /* Ensure containers have proper padding on mobile */
   .container,
   .container-fluid {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   /* Better card spacing on mobile */
   .card {
     margin-bottom: 1rem;
   }
-  
+
   /* Improve button touch targets */
   .btn {
-    min-height: 44px; /* iOS recommended touch target */
+    min-height: 44px;
+    /* iOS recommended touch target */
     padding: 0.5rem 1rem;
   }
-  
+
   /* Better form input sizing */
   .form-control {
-    font-size: 16px; /* Prevents zoom on iOS */
+    font-size: 16px;
+    /* Prevents zoom on iOS */
     padding: 0.75rem;
   }
 }
 
 @media (max-width: 576px) {
+
   /* Extra small devices */
   .container,
   .container-fluid {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
-  
+
   /* Smaller buttons on very small screens */
   .btn {
     padding: 0.5rem 0.75rem;
     font-size: 0.9rem;
   }
-  
+
   /* Better text sizing */
   body {
     font-size: 0.95rem;
   }
-  
+
   /* Responsive heading sizes */
-  h1 { font-size: 1.75rem; }
-  h2 { font-size: 1.5rem; }
-  h3 { font-size: 1.25rem; }
-  h4 { font-size: 1.1rem; }
-  h5 { font-size: 1rem; }
-  h6 { font-size: 0.9rem; }
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  h4 {
+    font-size: 1.1rem;
+  }
+
+  h5 {
+    font-size: 1rem;
+  }
+
+  h6 {
+    font-size: 0.9rem;
+  }
 }

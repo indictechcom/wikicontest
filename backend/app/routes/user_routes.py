@@ -254,15 +254,14 @@ def get_dashboard():
         JSON response with user's dashboard information
     """
     user = request.current_user
-
     # Get user's total score
     total_score = user.score
+     # --- Get Contest-wise Scores ---
 
-    # --- Get Contest-wise Scores ---
     from app.models.submission import Submission
     from app.models.contest import Contest
 
-    # Query submissions grouped by contest to calculate scores
+    # Contest-wise scores
     contest_scores = db.session.query(
         Contest.id.label('contest_id'),
         Contest.name.label('contest_name'),
@@ -272,7 +271,7 @@ def get_dashboard():
         Submission.user_id == user.id
     ).group_by(Contest.id, Contest.name).order_by(Contest.name).all()
 
-    # --- Get All User's Submissions Grouped by Contest ---
+    # Submissions grouped by contest
     submissions_query = db.session.query(
         Submission,
         Contest.name.label('contest_name')
@@ -280,7 +279,6 @@ def get_dashboard():
         Submission.user_id == user.id
     ).order_by(Submission.submitted_at.desc()).all()
 
-    # Group submissions by contest for organized display
     submissions_by_contest = {}
     for submission, contest_name in submissions_query:
         contest_id = submission.contest_id
@@ -292,7 +290,7 @@ def get_dashboard():
             }
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
-    # --- Get Contests Created by User ---
+    # Created contests
     created_contests = Contest.query.filter_by(created_by=user.username).all()
     created_contests_data = []
     for contest in created_contests:
@@ -300,7 +298,7 @@ def get_dashboard():
         contest_data['submission_count'] = contest.get_submission_count()
         created_contests_data.append(contest_data)
 
-    # --- Get Contests Where User is a Jury Member ---
+    # Jury contests
     jury_contests = Contest.query.filter(
         Contest.jury_members.like(f'%{user.username}%')
     ).all()
@@ -309,6 +307,24 @@ def get_dashboard():
         contest_data = contest.to_dict()
         contest_data['submission_count'] = contest.get_submission_count()
         jury_contests_data.append(contest_data)
+
+    # Participated contests (contests jisme user ne submit kiya)
+    participated_contests_query = db.session.query(
+        Contest,
+        db.func.min(Submission.submitted_at).label('submitted_at')
+    ).join(
+        Submission, Contest.id == Submission.contest_id
+    ).filter(
+        Submission.user_id == user.id
+    ).group_by(Contest.id).order_by(
+        db.func.min(Submission.submitted_at).desc()
+    ).all()
+
+    participated_contests_data = []
+    for contest, submitted_at in participated_contests_query:
+        contest_data = contest.to_dict()
+        contest_data['submitted_at'] = submitted_at.isoformat() if submitted_at else None
+        participated_contests_data.append(contest_data)
 
     return jsonify({
         'username': user.username,
@@ -324,9 +340,9 @@ def get_dashboard():
         ],
         'submissions_by_contest': list(submissions_by_contest.values()),
         'created_contests': created_contests_data,
-        'jury_contests': jury_contests_data
+        'jury_contests': jury_contests_data,
+        'participated_contests': participated_contests_data  # NEW
     }), 200
-
 
 @user_bp.route('/all', methods=['GET'])
 @require_role('admin')
@@ -816,11 +832,11 @@ def request_trusted_member():
     Request trusted member status (creator account request)
 
     This endpoint handles creator account requests for users who logged in via MediaWiki OAuth.
-    
+
     Workflow:
     1. If user has >= 300 edits: automatically grant trusted member status
     2. If user has < 300 edits: require a reason and submit for superadmin review
-    
+
     Only users who logged in via MediaWiki OAuth can request creator accounts.
     Superadmins don't need permission - they can create contests directly.
 

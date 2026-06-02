@@ -43,7 +43,13 @@ __all__ = [
     "check_article_has_category",
     "append_categories_to_article",
     "get_article_reference_count",
+    "get_detailed_reference_counts",
     "get_mediawiki_user_edit_count",
+    "get_article_image_count",
+    "get_article_infobox_count",
+    "get_article_incoming_links",
+    "get_article_outgoing_links",
+    "crawl_category_articles",
 ]
 
 
@@ -157,6 +163,8 @@ def extract_page_title_from_url(article_url: str) -> Optional[str]:
         return unquote(parts[-1])
 
     return None
+
+
 
 
 def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:  # pylint: disable=invalid-name
@@ -384,6 +392,9 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
     Returns:
         Wikitext content as string, or None if fetch fails.
     """
+    if not article_url:
+        return None
+
     page_title = extract_page_title_from_url(article_url)
     if not page_title:
         return None
@@ -438,6 +449,78 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
     content = main_slot.get('content')
 
     return content
+
+
+def get_detailed_reference_counts(article_url: str) -> Dict[str, int]:
+    """
+    Count new (defined) and reused (self-closing) <ref> tags in a wiki article.
+
+    New refs:    <ref ...>content</ref>  — define a source inline for the first time.
+    Reused refs: <ref name="foo" />      — self-closing back-reference to a named source.
+
+    Implementation uses mwparserfromhell, a purpose-built MediaWiki wikitext parser.
+    This correctly handles:
+      - <nowiki>...</nowiki> blocks (refs inside are not counted)
+      - Adjacent refs: <ref>A</ref><ref>B</ref>  (counted as 2, not 1)
+      - Named refs appearing with full content more than once
+      - Malformed / nested markup that confuses regex-based approaches
+
+    Falls back to a simple regex count if mwparserfromhell is unavailable at runtime,
+    so the server never crashes due to a missing dependency — it just counts less
+    accurately and logs a warning.
+
+    PR #198 Comment #7.
+    """
+    wikitext = get_article_wikitext(article_url)
+    if not wikitext:
+        return {"new": 0, "reused": 0}
+
+    # ------------------------------------------------------------------ #
+    # Primary path: proper wikitext parser                                #
+    # ------------------------------------------------------------------ #
+    try:
+        import mwparserfromhell  # pylint: disable=import-outside-toplevel
+
+        parsed = mwparserfromhell.parse(wikitext)
+
+        new_refs = 0
+        reused_refs = 0
+
+        for tag in parsed.filter_tags():
+            # mwparserfromhell normalises tag names; compare lower-case
+            if str(tag.tag).strip().lower() != "ref":
+                continue
+            if tag.self_closing:
+                # <ref name="foo" /> — back-reference to a named source
+                reused_refs += 1
+            else:
+                # <ref ...>content</ref> — inline source definition
+                new_refs += 1
+
+        return {"new": new_refs, "reused": reused_refs}
+
+    except ImportError:
+        # ------------------------------------------------------------------ #
+        # Fallback path: regex (less accurate, but never crashes the server) #
+        # ------------------------------------------------------------------ #
+        import logging  # pylint: disable=import-outside-toplevel
+        logging.warning(
+            "mwparserfromhell is not installed — falling back to regex for "
+            "reference counting. Install it with: pip install mwparserfromhell"
+        )
+
+        # Strip HTML comments so commented-out refs aren't counted
+        text = re.sub(r"<!--.*?-->", "", wikitext, flags=re.DOTALL)
+
+        reused_refs = len(re.findall(r"<ref\b[^>]*?/>", text, flags=re.IGNORECASE))
+        new_refs = len(re.findall(
+            r"<ref\b[^/>][^>]*>(?:[^<]|<(?!/ref>))*</ref>",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        ))
+        return {"new": new_refs, "reused": reused_refs}
+
+
 
 
 def check_article_has_template(article_url: str, template_name: str) -> Dict[str, Any]:
@@ -948,6 +1031,63 @@ def _fetch_footnotes_count(api_url: str, page_title: str, headers: dict) -> int:
         return 0
 
 
+def _log_warning(message: str, error: Exception) -> None:
+    """Best-effort logging helper that uses Flask current_app when available.
+
+    This keeps network helpers free from hard Flask dependencies while still
+    providing useful diagnostics in a running application.
+    """
+    try:
+        from flask import current_app
+
+        current_app.logger.warning("%s: %s", message, str(error))
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Logging must never break core logic, so ignore any logging failures
+        pass
+
+
+def get_article_image_count(article_url: str) -> Optional[int]:
+    """
+    The count is approximate and based purely on wikitext patterns; it does
+    not guarantee that every match results in a rendered image, but it
+    generally tracks user-added content images.
+    """
+    try:
+        wikitext = get_article_wikitext(article_url)
+        if wikitext is None:
+            return None
+
+        # Match explicit file/image links like [[File:Example.jpg|...]] or
+        # [[Image:Example.png|...]] in a case-insensitive way.
+        matches = re.findall(r'\[\[(?:File|Image):', wikitext, flags=re.IGNORECASE)
+        return len(matches)
+
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        _log_warning("Failed to fetch image count", error)
+        return None
+
+
+def get_article_infobox_count(article_url: str) -> Optional[int]:
+    """Count approximate number of infobox templates in article wikitext.
+
+    Detection is done via a simple regex scan for ``{{infobox ...}}`` in the
+    raw wikitext. This is an approximation and may over-count or under-count
+    in edge cases (e.g. nested templates, unusual formatting), but is
+    sufficient for high-level richness metrics.
+    """
+    try:
+        wikitext = get_article_wikitext(article_url)
+        if wikitext is None:
+            return None
+
+        matches = re.findall(r"\{\{\s*infobox\b", wikitext, flags=re.IGNORECASE)
+        return len(matches)
+
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        _log_warning("Failed to fetch infobox count", error)
+        return None
+
+
 def get_article_reference_count(article_url: str) -> Optional[int]:
     """
     Get the total number of references in a MediaWiki article.
@@ -1430,3 +1570,334 @@ def append_categories_to_article(  # pylint: disable=too-many-return-statements
         return result
     result['error'] = 'Unknown API response format'
     return result
+
+
+def get_article_incoming_links(article_url: str) -> Optional[int]:
+    """
+    Count the number of mainspace articles that link to the given article.
+    
+    This uses the MediaWiki API's "backlinks" query to count incoming links
+    from other articles in the main namespace (namespace 0).
+    
+    Args:
+        article_url: Full URL to the wiki article
+        
+    Returns:
+        Integer count of incoming links from mainspace articles, or None if fetch fails
+    """
+    try:
+        # Extract page title from URL
+        page_title = extract_page_title_from_url(article_url)
+        if not page_title:
+            return None
+            
+        # Parse the article URL to extract base URL
+        url_obj = urlparse(article_url)
+        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        api_url = f"{base_url}/w/api.php"
+        
+        # Build API parameters for backlinks query
+        params = {
+            "action": "query",
+            "format": "json",
+            "formatversion": "2",
+            "list": "backlinks",
+            "bltitle": page_title,
+            "blnamespace": "0",  # Only count links from mainspace (namespace 0)
+            "bllimit": "500",  # Maximum allowed by API
+            "blfilterredir": "nonredirects",  # Exclude redirects
+            "redirects": "true",  # Follow redirects to get actual page
+            "converttitles": "true",
+        }
+        
+        headers = get_mediawiki_headers()
+        
+        # Make initial request
+        response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
+        if response.status_code != 200:
+            return None
+            
+        data = response.json()
+        if "error" in data:
+            return None
+            
+        # Count backlinks from response
+        backlinks = data.get("query", {}).get("backlinks", [])
+        total_count = len(backlinks)
+        
+        # Check if there are more results (continuation)
+        continue_params = data.get("continue")
+        while continue_params and total_count < 10000:  # Safety limit to prevent infinite loops
+            # Update params with continuation token
+            params.update(continue_params)
+            
+            response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
+            if response.status_code != 200:
+                break
+                
+            data = response.json()
+            if "error" in data:
+                break
+                
+            # Add more backlinks to count
+            more_backlinks = data.get("query", {}).get("backlinks", [])
+            total_count += len(more_backlinks)
+            
+            # Get next continuation token
+            continue_params = data.get("continue")
+            
+        return total_count
+        
+    except Exception:  # pylint: disable=broad-exception-caught
+        # If link counting fails, return None to indicate failure
+        # This ensures submission process continues even if link counting fails
+        return None
+
+
+def get_article_outgoing_links(article_url: str) -> Optional[int]:
+    """
+    Count the number of mainspace articles that the given article links to.
+    
+    This uses the MediaWiki API's "links" query to count outgoing links
+    to other articles in the main namespace (namespace 0).
+    
+    Args:
+        article_url: Full URL to the wiki article
+        
+    Returns:
+        Integer count of outgoing links to mainspace articles, or None if fetch fails
+    """
+    try:
+        # Extract page title from URL
+        page_title = extract_page_title_from_url(article_url)
+        if not page_title:
+            return None
+            
+        # Parse the article URL to extract base URL
+        url_obj = urlparse(article_url)
+        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        api_url = f"{base_url}/w/api.php"
+        
+        # Build API parameters for links query
+        params = {
+            "action": "query",
+            "format": "json",
+            "formatversion": "2",
+            "prop": "links",
+            "titles": page_title,
+            "plnamespace": "0",  # Only count links to mainspace (namespace 0)
+            "pllimit": "500",  # Maximum allowed by API
+            "plfilterredir": "nonredirects",  # Exclude redirects
+            "redirects": "true",  # Follow redirects to get actual page
+            "converttitles": "true",
+        }
+        
+        headers = get_mediawiki_headers()
+        
+        # Make initial request
+        response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
+        if response.status_code != 200:
+            return None
+            
+        data = response.json()
+        if "error" in data:
+            return None
+            
+        # Extract links from response
+        pages = data.get("query", {}).get("pages", [])
+        if not pages:
+            return None
+            
+        page_data = pages[0]
+        if page_data.get("missing", False):
+            return None
+            
+        links = page_data.get("links", [])
+        total_count = len(links)
+        
+        # Check if there are more results (continuation)
+        continue_params = data.get("continue")
+        while continue_params and total_count < 10000:  # Safety limit to prevent infinite loops
+            # Update params with continuation token
+            params.update(continue_params)
+            
+            response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
+            if response.status_code != 200:
+                break
+                
+            data = response.json()
+            if "error" in data:
+                break
+                
+            # Add more links to count
+            pages = data.get("query", {}).get("pages", [])
+            if pages:
+                more_links = pages[0].get("links", [])
+                total_count += len(more_links)
+            
+            # Get next continuation token
+            continue_params = data.get("continue")
+            
+        return total_count
+        
+    except Exception:  # pylint: disable=broad-exception-caught
+        # If link counting fails, return None to indicate failure
+        # This ensures submission process continues even if link counting fails
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Category Crawler Utilities
+# ---------------------------------------------------------------------------
+
+def crawl_category_articles(
+    category_url: str,
+    limit: int = 5000,
+    mw_uri: Optional[str] = None,
+    continue_from: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Crawl articles from a Wikipedia category using the MediaWiki API.
+
+    Uses the `list=categorymembers` API to fetch all pages in a category,
+    handling pagination via `cmcontinue` tokens.
+
+    Args:
+        category_url:  Full URL to a Wikipedia category page.
+        limit:         Maximum number of articles to fetch in this call.
+        mw_uri:        Optional MediaWiki API base URI. Extracted from
+                       category_url when omitted.
+        continue_from: A ``cmcontinue`` token returned by a previous call.
+                       When provided the crawl resumes from that position
+                       instead of starting from the beginning of the category.
+                       Pass the value of ``next_continue`` from the previous
+                       response to implement "Import Next Batch" behaviour.
+
+    Returns:
+        Dictionary with:
+            - "articles":      List of dicts with "title", "url", "page_id".
+            - "total":         Number of articles fetched in this call.
+            - "category":      Category name extracted from URL.
+            - "wiki_base":     Wiki base URL (e.g., "https://en.wikipedia.org").
+            - "has_more":      True if there are more articles beyond this batch.
+            - "next_continue": cmcontinue token to pass as ``continue_from``
+                               in the next call (None when has_more is False).
+        Or None if an error occurs.
+    """
+    try:
+        # Enforce maximum limit
+        limit = min(limit, 5000)
+
+        # Extract category name from URL
+        category_name = extract_category_name_from_url(category_url)
+        if not category_name:
+            return None
+
+        # Parse wiki base URL from category URL
+        parsed = urlparse(category_url)
+        wiki_base = f"{parsed.scheme}://{parsed.netloc}"
+        api_url = f"{wiki_base}/w/api.php"
+
+        # Determine MediaWiki URI
+        if mw_uri is None:
+            mw_uri = api_url
+
+        headers = get_mediawiki_headers()
+
+        # Build API params for category members
+        # cmtitle requires the full title with namespace prefix (e.g., "Category:Living_people")
+        params = {
+            "action": "query",
+            "list": "categorymembers",
+            "cmtitle": f"Category:{category_name}",
+            "cmtype": "page",      # Only get actual pages, not subcategories or files
+            "cmlimit": "max",      # Max per request (usually 500)
+            "cmnamespace": "0",    # Only mainspace articles
+            "format": "json",
+        }
+
+        articles = []
+        # Seed the continue token from caller so we resume mid-category
+        continue_token: Optional[str] = continue_from
+        # Track the token that will be returned for the *next* batch
+        next_continue: Optional[str] = None
+
+        while len(articles) < limit:
+            # Add continue token if we have one (either seeded or from prev page)
+            if continue_token:
+                params["cmcontinue"] = continue_token
+            elif "cmcontinue" in params:
+                # Remove stale key from a previous iteration that has now been cleared
+                del params["cmcontinue"]
+
+            response = requests.get(
+                mw_uri,
+                params=params,
+                headers=headers,
+                timeout=MEDIAWIKI_API_TIMEOUT
+            )
+
+            if response.status_code != 200:
+                break
+
+            data = response.json()
+
+            if "error" in data:
+                break
+
+            # Extract category members
+            members = data.get("query", {}).get("categorymembers", [])
+
+            for member in members:
+                if len(articles) >= limit:
+                    break
+
+                title = member.get("title")
+                page_id = member.get("pageid")
+
+                if title:
+                    # Build article URL — use /wiki/ format for cleaner URLs
+                    encoded_title = title.replace(" ", "_")
+                    article_url = f"{wiki_base}/wiki/{encoded_title}"
+
+                    articles.append({
+                        "title": title,
+                        "url": article_url,
+                        "page_id": page_id,
+                    })
+
+            # Check for continuation token from MediaWiki
+            continue_data = data.get("continue")
+            if continue_data and "cmcontinue" in continue_data:
+                next_continue = continue_data["cmcontinue"]
+                continue_token = next_continue
+            else:
+                # No more pages in the category
+                next_continue = None
+                break
+
+            # If we hit the limit mid-category the outer while loop exits here.
+            # next_continue already holds the right token for resuming.
+
+        # has_more is True when we stopped because we hit `limit` AND there are
+        # still more articles beyond this batch (next_continue is not None).
+        has_more = next_continue is not None and len(articles) >= limit
+
+        return {
+            "articles": articles,
+            "total": len(articles),
+            "category": category_name,
+            "wiki_base": wiki_base,
+            # Pagination fields for "Import Next Batch" support
+            "has_more": has_more,
+            "next_continue": next_continue if has_more else None,
+        }
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # If crawling fails, return None to indicate failure
+        # Log the error for debugging
+        import logging  # pylint: disable=import-outside-toplevel
+        logging.error(f"crawl_category_articles failed: {str(e)}")
+        return None
+
+
