@@ -1,10 +1,10 @@
 #!/bin/bash
-# WikiContest Toolforge Deployment Script
-# This script helps deploy the WikiContest application to Toolforge
+# WikiEval Toolforge Deployment Script
+# This script helps deploy the WikiEval application to Toolforge
 
 set -e
 
-echo "🚀 WikiContest Toolforge Deployment Script"
+echo "🚀 WikiEval Toolforge Deployment Script"
 echo "=========================================="
 
 # Check if we're in the right directory

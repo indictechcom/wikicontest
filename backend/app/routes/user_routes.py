@@ -1,5 +1,5 @@
 """
-User Routes for WikiContest Application
+User Routes for WikiEval Application
 Handles user registration, login, logout, and dashboard functionality
 """
 

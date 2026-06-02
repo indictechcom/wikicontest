@@ -1,5 +1,5 @@
 """
-Contest Request Model for WikiContest Application
+Contest Request Model for WikiEval Application
 Defines the ContestRequest table for tracking contest creation requests from non-privileged users
 """
 

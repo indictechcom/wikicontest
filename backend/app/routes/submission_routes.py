@@ -1,5 +1,5 @@
 """
-Submission Routes for WikiContest Application
+Submission Routes for WikiEval Application
 Handles submission management and review functionality
 """
 

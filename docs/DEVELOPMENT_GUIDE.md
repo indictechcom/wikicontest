@@ -1,6 +1,6 @@
-# WikiContest Development Guide
+# WikiEval Development Guide
 
-Comprehensive technical guide for developers working on the WikiContest platform, covering architecture, coding standards, best practices, and development workflows.
+Comprehensive technical guide for developers working on the WikiEval platform, covering architecture, coding standards, best practices, and development workflows.
 
 
 

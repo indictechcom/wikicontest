@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Database initialization script for WikiContest Flask Application
+Database initialization script for WikiEval Flask Application
 """
 
 import os
@@ -58,7 +58,7 @@ def main():
     """
     Main function to initialize database
     """
-    print("WikiContest Database Initialization")
+    print("WikiEval Database Initialization")
     print("=" * 40)
     
     # Check command line arguments

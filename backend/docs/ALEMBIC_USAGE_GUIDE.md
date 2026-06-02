@@ -1,6 +1,6 @@
 # Alembic Database Migrations Guide
 
-This guide explains how to use Alembic for database migrations in the WikiContest application. Alembic is a database migration tool for SQLAlchemy that provides version control for database schemas, similar to Git for code.
+This guide explains how to use Alembic for database migrations in the WikiEval application. Alembic is a database migration tool for SQLAlchemy that provides version control for database schemas, similar to Git for code.
 
 ## Overview
 

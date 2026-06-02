@@ -1,5 +1,5 @@
 """
-Contest Mixin for WikiContest Application
+Contest Mixin for WikiEval Application
 Contains shared methods for Contest and ContestRequest models
 This eliminates code duplication between the two models
 """

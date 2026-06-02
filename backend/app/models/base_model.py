@@ -1,5 +1,5 @@
 """
-Base Model for WikiContest Application
+Base Model for WikiEval Application
 Contains common database operations shared by all models
 """
 

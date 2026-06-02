@@ -1,12 +1,12 @@
-# WikiContest Backend Architecture
+# WikiEval Backend Architecture
 
-Comprehensive documentation of the WikiContest Flask backend architecture, design patterns, and implementation details.
+Comprehensive documentation of the WikiEval Flask backend architecture, design patterns, and implementation details.
 
 
 
 ## Overview
 
-The WikiContest backend is a Flask application built using modern Python best practices with a modular, package-based structure. It leverages SQLAlchemy for ORM operations, Flask-JWT-Extended for authentication, and follows the application factory pattern for flexibility and testability.
+The WikiEval backend is a Flask application built using modern Python best practices with a modular, package-based structure. It leverages SQLAlchemy for ORM operations, Flask-JWT-Extended for authentication, and follows the application factory pattern for flexibility and testability.
 
 **Core Technologies:**
 - **Framework:** Flask (Python web framework)

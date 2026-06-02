@@ -35,7 +35,7 @@ Fill out each field carefully:
 
 #### Application Name
 ```
-WikiContest Local Development
+WikiEval Local Development
 ```
 **Note:** Use a different name from your Toolforge consumer to distinguish between environments.
 
@@ -52,7 +52,7 @@ OAuth 1.0a
 
 #### Application Description
 ```
-Local development instance of WikiContest for testing and development purposes
+Local development instance of WikiEval for testing and development purposes
 ```
 
 #### OAuth "callback" URL
@@ -81,7 +81,7 @@ http://localhost:5000/api/user/oauth/callback
 ```
 ☑ Basic rights (user rights)
 ```
-Select the permissions your application needs. For WikiContest, basic rights are typically sufficient.
+Select the permissions your application needs. For WikiEval, basic rights are typically sufficient.
 
 
 
@@ -148,8 +148,8 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 
 | Environment                                           | Consumer | Callback URL       |
 |-|-|--|
-| **Local Development**                                 | WikiContest Local Development | `http://localhost:5000/api/user/oauth/callback` |
-| **Production (Toolforge)**                            | WikiContest                   | `https://wikicontest.toolforge.org/oauth/callback` |
+| **Local Development**                                 | WikiEval Local Development | `http://localhost:5000/api/user/oauth/callback` |
+| **Production (Toolforge)**                            | WikiEval                   | `https://wikicontest.toolforge.org/oauth/callback` |
 
 **Benefits of separation:**
 - Test OAuth flows safely without affecting production
@@ -265,7 +265,7 @@ After completing all steps, verify:
 
 | Setting                     | Local Development             | Production (Toolforge) |
 |--|-||
-| **Consumer Name**           | WikiContest Local Development | WikiContest            |
+| **Consumer Name**           | WikiEval Local Development | WikiEval            |
 | **Callback URL**            |`http://localhost:5000/api/user/oauth/callback`|`https://wikicontest.toolforge.org/oauth/callback`                                                          |
 | **Protocol**                | HTTP                          | HTTPS                  |
 | **Config File**             | `.env`                        | `config.toml`          |

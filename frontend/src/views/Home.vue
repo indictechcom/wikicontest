@@ -6,7 +6,7 @@
     <section class="hero">
       <div class="container">
         <div class="hero-content">
-          <h1 class="hero-title">WikiContest</h1>
+          <h1 class="hero-title">WikiEval</h1>
           <p class="hero-subtitle">Collaborate. Compete. Create Knowledge.</p>
           <p class="hero-description">
             A professional platform for managing Wikipedia article contests and

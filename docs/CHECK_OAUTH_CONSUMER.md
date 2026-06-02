@@ -146,7 +146,7 @@ For the best user experience, create a new OAuth consumer with the correct callb
 1. Visit: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
 2. Click **"Propose an OAuth 1.0a consumer"**
 3. Fill out the form:
-   - **Application name:** WikiContest Local Development
+   - **Application name:** WikiEval Local Development
    - **OAuth callback URL:** `http://localhost:5000/api/user/oauth/callback`
    - **Owner-only:** No
 4. Submit and copy the credentials

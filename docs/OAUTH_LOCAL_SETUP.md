@@ -21,8 +21,8 @@ Register an OAuth consumer for local development on Wikimedia Meta.
    
    | Field                       | Value                                                  |
    |-----------------------------|--------------------------------------------------------|
-   | **Application name**        | WikiContest Local Development (or your preferred name) |
-   | **Application description** | Local development instance of WikiContest              |
+   | **Application name**        | WikiEval Local Development (or your preferred name) |
+   | **Application description** | Local development instance of WikiEval              |
    | **OAuth "callback" URL**    | `http://localhost:5000/api/user/oauth/callback`        |
    | **Contact email**           | Your email address                                     |
    | **Grant settings**          | Request authorization for "Basic rights" (or required permissions) |

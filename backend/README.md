@@ -1,6 +1,6 @@
-# WikiContest Flask Backend
+# WikiEval Flask Backend
 
-A Python Flask backend application for the WikiContest platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
+A Python Flask backend application for the WikiEval platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
 
 ## Table of Contents
 
@@ -613,7 +613,7 @@ Application logs are written to console by default.
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### Guidelines
 
@@ -627,7 +627,7 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 ## Additional Resources
 

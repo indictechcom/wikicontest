@@ -1100,7 +1100,7 @@
       <div class="modal-content">
         <!-- Modal Header -->
         <div class="modal-header py-2">
-          <div class="text-white">WikiContest Tool</div>
+          <div class="text-white">WikiEval Tool</div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
@@ -1950,7 +1950,7 @@ export default {
     const submissions = ref([])
     const loadingSubmissions = ref(false)
     const refreshingMetadata = ref(false)
-    const refreshProgress = ref('')   // persists across batches — unlike 5-sec showAlert toasts
+    const refreshProgress = ref('')// persists across batches — unlike 5-sec showAlert toasts
     const deletingContest = ref(false)
     const canDeleteContest = ref(false)
     const checkingAuth = ref(false)

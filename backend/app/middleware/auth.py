@@ -1,5 +1,5 @@
 """
-Authentication utilities and middleware for WikiContest Application
+Authentication utilities and middleware for WikiEval Application
 Handles JWT token management and user authentication
 """
 

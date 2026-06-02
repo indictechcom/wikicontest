@@ -1,4 +1,4 @@
-# Running WikiContest in Development Mode
+# Running WikiEval in Development Mode
 
 This guide explains how to run the Flask backend and Vue.js frontend during development.
 

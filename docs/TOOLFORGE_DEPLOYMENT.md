@@ -1,6 +1,6 @@
-# WikiContest Toolforge Deployment Guide
+# WikiEval Toolforge Deployment Guide
 
-This guide provides step-by-step instructions for deploying the WikiContest Flask application to Wikimedia Toolforge.
+This guide provides step-by-step instructions for deploying the WikiEval Flask application to Wikimedia Toolforge.
 
 
 
@@ -114,7 +114,7 @@ Build the Vue.js frontend for production **on your local machine** before deploy
 
 4. **Add your configuration:**
 ```toml
-   GREETING = "Welcome to WikiContest on Toolforge!"
+   GREETING = "Welcome to  on Toolforge!"
    
    # Security (use generated keys from step 2)
    SECRET_KEY = "your-generated-secret-key"
@@ -195,7 +195,7 @@ $HOME/
 
 ## Frontend Technology Stack
 
-The WikiContest frontend uses modern web technologies:
+The WikiEval frontend uses modern web technologies:
 
 - **Vue.js 3** – Progressive JavaScript framework
 - **Vue Router** – Client-side routing

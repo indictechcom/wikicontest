@@ -1,5 +1,5 @@
 """
-Contest Routes for WikiContest Application
+Contest Routes for WikiEval Application
 Handles contest creation, retrieval, and management functionality
 """
 

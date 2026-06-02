@@ -260,7 +260,7 @@ export default {
 </script>
 
 <style scoped>
-/* Leaderboard View - Matching WikiContest Theme */
+/* Leaderboard View - Matching WikiEval Theme */
 .leaderboard-view {
     max-width: 1200px;
     margin: 0 auto;

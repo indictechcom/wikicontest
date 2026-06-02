@@ -1,7 +1,7 @@
 /**
  * Vue Router Configuration
  *
- * This file defines all routes for the WikiContest application.
+ * This file defines all routes for the WikiEval application.
  * Routes are protected based on authentication requirements.
  */
 

@@ -1,5 +1,5 @@
 """
-Alembic environment configuration for WikiContest Flask Application
+Alembic environment configuration for WikiEval Flask Application
 
 This file configures Alembic to work with the Flask application factory pattern.
 It automatically detects the database URL from the Flask app configuration.

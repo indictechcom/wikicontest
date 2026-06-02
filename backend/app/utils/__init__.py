@@ -1,5 +1,5 @@
 """
-Utility Functions for WikiContest Application.
+Utility Functions for WikiEval Application.
 
 This module contains shared helpers that are used by the Flask routes,
 Alembic‑backed models, and maintenance scripts.

@@ -1,6 +1,6 @@
 # Vue.js Frontend Setup Guide
 
-A comprehensive guide for setting up and working with the Vue.js 3 frontend for the WikiContest platform.
+A comprehensive guide for setting up and working with the Vue.js 3 frontend for the WikiEval platform.
 
 ## Table of Contents
 
@@ -21,7 +21,7 @@ A comprehensive guide for setting up and working with the Vue.js 3 frontend for 
 
 ## Overview
 
-The WikiContest frontend has been migrated from vanilla JavaScript to **Vue.js 3**, providing significant improvements in:
+The WikiEval frontend has been migrated from vanilla JavaScript to **Vue.js 3**, providing significant improvements in:
 
 - **Component-Based Architecture** - Modular, reusable UI components
 - **State Management** - Predictable state with Composition API
@@ -726,7 +726,7 @@ npm install
 
 ## Migration Notes
 
-The WikiContest frontend was migrated from vanilla JavaScript to Vue.js 3 to improve maintainability and developer experience.
+The WikiEval frontend was migrated from vanilla JavaScript to Vue.js 3 to improve maintainability and developer experience.
 
 ### Key Changes
 

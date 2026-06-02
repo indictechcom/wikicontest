@@ -1,5 +1,5 @@
 """
-Configuration Management for WikiContest Application
+Configuration Management for WikiEval Application
 
 This module provides centralized configuration management for different
 environments (development, testing, production). It uses environment variables
@@ -87,7 +87,7 @@ class Config:
     # -------------------------------------------------------------------------
 
     # Application metadata
-    APP_NAME = 'WikiContest'
+    APP_NAME = 'WikiEval'
     APP_VERSION = '1.0.0'
     APP_DESCRIPTION = 'A platform for hosting and participating in collaborative online competitions'
 

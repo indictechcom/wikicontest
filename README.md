@@ -1,4 +1,4 @@
-# WikiContest Platform
+# WikiEval Platform
 
 A comprehensive web platform for hosting and managing collaborative Wikipedia article competitions. Built with Flask (Python) backend and Vue.js 3 frontend.
 
@@ -43,7 +43,7 @@ Before you begin, ensure you have the following installed:
 
 ## Quick Start
 
-Follow these steps to get the WikiContest platform running locally:
+Follow these steps to get the WikiEval platform running locally:
 
 ### 1. Clone the Repository
 
@@ -164,7 +164,7 @@ python main.py
 - **Development Mode:** `http://localhost:5173`
 - **Production Build:** `http://localhost:5000`
 
-You should see the WikiContest login page. Register a new account to get started!
+You should see the WikiEval login page. Register a new account to get started!
 
 
 
@@ -468,7 +468,7 @@ npm run preview
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### How to Contribute
 
@@ -510,8 +510,8 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 
 
-**WikiContest Platform** - Empowering collaborative Wikipedia article competitions! 
+**WikiEval Platform** - Empowering collaborative Wikipedia article competitions! 

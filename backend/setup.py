@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script for WikiContest Flask Application
+Setup script for WikiEval Flask Application
 Automates the setup process for development and production environments
 """
 
@@ -242,7 +242,7 @@ def main():
     """
     Main setup function
     """
-    print(" WikiContest Flask Application Setup")
+    print(" WikiEval Flask Application Setup")
     print("="*50)
     
     # Check prerequisites

@@ -1,6 +1,8 @@
-# WikiContest Project Description
+# WikiEval Project Description
 
-WikiContest is a web platform for organizing and managing Wikipedia editing contests (edit-a-thons), enabling users to create contests, submit article edits, track submissions, and compete in leaderboards with proper authentication and role-based access control.
+WikiEval Platform
+
+WikiEval is a web platform for organizing and managing Wikipedia editing contests (edit-a-thons), enabling users to create contests, submit article edits, track submissions, and compete in leaderboards with proper authentication and role-based access control.
 
 ## Overview
 

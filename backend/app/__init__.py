@@ -1,9 +1,9 @@
 """
-WikiContest Flask Application
+WikiEval Flask Application
 Main application entry point for the Python Flask backend
 
 This module initializes the Flask application with all necessary configurations,
-extensions, and route blueprints. It serves as the central hub for the WikiContest
+extensions, and route blueprints. It serves as the central hub for the WikiEval
 platform, handling both API endpoints and static file serving.
 
 Architecture:
@@ -13,7 +13,7 @@ Architecture:
 - Database integration with SQLAlchemy ORM
 - Comprehensive error handling and logging
 
-Author: WikiContest Development Team
+Author: WikiEval Development Team
 Version: 1.0.0
 """
 # pylint: disable=too-many-lines
@@ -543,7 +543,7 @@ def health_check():
     """
     return jsonify({
         'status': 'healthy',
-        'message': 'WikiContest API is running',
+        'message': 'WikiEval API is running',
         'version': '1.0.0'
     }), 200
 

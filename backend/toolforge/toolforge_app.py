@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# WikiContest Flask Application for Toolforge
+# WikiEval Flask Application for Toolforge
 #
-# Copyright (C) 2024 WikiContest Contributors
+# Copyright (C) 2024 WikiEval Contributors
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free

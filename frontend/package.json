@@ -2,7 +2,7 @@
   "name": "wikicontest-frontend",
   "version": "1.0.0",
   "type": "module",
-  "description": "WikiContest Platform Frontend - Vue.js Application",
+  "description": "WikiEval Platform Frontend - Vue.js Application",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

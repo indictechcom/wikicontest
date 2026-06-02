@@ -1,12 +1,12 @@
-# WikiContest Project Documentation
+# WikiEval Project Documentation
 
-Complete technical documentation for the WikiContest platform – a web-based system for organizing and managing Wikipedia editing contests (Edit-a-thons).
+Complete technical documentation for the WikiEval platform – a web-based system for organizing and managing Wikipedia editing contests (Edit-a-thons).
 
 
 
 ## Project Overview
 
-**WikiContest** is a platform that enables users to create, participate in, and manage Wikipedia editing contests. It provides comprehensive features for contest management, submission tracking, leaderboards, and role-based access control.
+**WikiEval** is a platform that enables users to create, participate in, and manage Wikipedia editing contests. It provides comprehensive features for contest management, submission tracking, leaderboards, and role-based access control.
 
 ### Key Capabilities
 
@@ -717,4 +717,4 @@ Frontend JavaScript logic and API communication.
 
 
 
-This documentation provides a comprehensive overview of the WikiContest platform's architecture, features, and capabilities for organizing and managing Wikipedia editing contests.
+This documentation provides a comprehensive overview of the WikiEval platform's architecture, features, and capabilities for organizing and managing Wikipedia editing contests.
