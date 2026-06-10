@@ -1208,9 +1208,13 @@ def get_mediawiki_user_edit_count(
     username: str, mw_uri: str = "https://meta.wikimedia.org/w/index.php"
 ) -> Optional[int]:
     """
-    Get the edit count for a MediaWiki user.
+    Get the global edit count for a MediaWiki user.
 
-    Fetches user information from MediaWiki API and returns their edit count.
+    Queries the CentralAuth globaluserinfo API to get the user's combined
+    edit count across all Wikimedia projects (the same source XTools uses).
+    Falls back to the wiki-local edit count if CentralAuth is not available
+    on the target wiki.
+
     This is used to check if a user meets the minimum edit count requirement
     for automatic trusted member status (>= 300 edits).
 
@@ -1225,26 +1229,24 @@ def get_mediawiki_user_edit_count(
         # Build API URL from MediaWiki URI
         # Convert from index.php format to api.php format
         if mw_uri.endswith('/index.php'):
-            api_url = mw_uri.replace('/index.php', '/w/api.php')
+            api_url = mw_uri[: -len('/index.php')] + '/api.php'
         elif mw_uri.endswith('/'):
             api_url = f"{mw_uri}w/api.php"
         else:
             api_url = f"{mw_uri}/w/api.php"
 
-        # Build API parameters to get user info
-        # Use users query to get edit count
+        headers = get_mediawiki_headers()
+
+        # Global edit count across all Wikimedia projects (CentralAuth)
         api_params = {
             'action': 'query',
-            'list': 'users',
-            'ususers': username,
-            'usprop': 'editcount',  # Get edit count
+            'meta': 'globaluserinfo',
+            'guiuser': username,
+            'guiprop': 'editcount',
             'format': 'json',
             'formatversion': '2'
         }
 
-        headers = get_mediawiki_headers()
-
-        # Make request to MediaWiki API
         response = requests.get(
             api_url,
             params=api_params,
@@ -1257,13 +1259,40 @@ def get_mediawiki_user_edit_count(
 
         data = response.json()
 
-        # Check for API errors
+        global_info = data.get('query', {}).get('globaluserinfo', {})
+        if not global_info.get('missing'):
+            edit_count = global_info.get('editcount')
+            if edit_count is not None:
+                return int(edit_count)
+
+        # CentralAuth unavailable or user has no global account:
+        # fall back to the wiki-local edit count
+        api_params = {
+            'action': 'query',
+            'list': 'users',
+            'ususers': username,
+            'usprop': 'editcount',
+            'format': 'json',
+            'formatversion': '2'
+        }
+
+        response = requests.get(
+            api_url,
+            params=api_params,
+            headers=headers,
+            timeout=MEDIAWIKI_API_TIMEOUT
+        )
+
+        if response.status_code != 200:
+            return None
+
+        data = response.json()
+
         if 'error' in data:
             return None
 
-        # Extract edit count from response
         users = data.get('query', {}).get('users', [])
-        if not users or len(users) == 0:
+        if not users:
             return None
 
         user_data = users[0]
@@ -1272,7 +1301,6 @@ def get_mediawiki_user_edit_count(
         if user_data.get('missing'):
             return None
 
-        # Get edit count
         edit_count = user_data.get('editcount')
         if edit_count is None:
             return None
