@@ -3,6 +3,7 @@ Submission Routes for WikiContest Application
 Handles submission management and review functionality
 """
 
+import json
 from urllib.parse import urlparse
 from datetime import datetime
 
@@ -25,7 +26,8 @@ from app.utils import (
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
     get_mediawiki_headers,
-    MEDIAWIKI_API_TIMEOUT
+    get_detailed_reference_counts,
+    MEDIAWIKI_API_TIMEOUT,
 )
 
 # Create blueprint
@@ -249,29 +251,94 @@ def get_submission_stats():
 @handle_errors
 def refresh_metadata(contest_id):
     """
-    Refresh article metadata (word count, author, etc.) for all submissions in a contest.
+    Refresh article metadata for submissions in a contest.
 
-    This endpoint fetches the latest metadata from MediaWiki API for all submissions
-    in the specified contest and updates the database with the current values.
+    Supports offset-based pagination so large contests can be processed in
+    multiple smaller batches without hitting server or MediaWiki API timeouts.
 
-    Args:
-        contest_id: The ID of the contest to refresh submissions for
+    Query parameters:
+        offset     (int, default 0)  — how many submissions to skip before
+                                       starting this batch.
+        batch_size (int, default 50) — how many submissions to process in this
+                                       call. Capped at 100 to prevent timeouts.
 
-    Returns:
-        JSON response with refresh results
+    Response includes pagination fields:
+        has_more    — True if there are more submissions after this batch.
+        next_offset — Pass this as `offset` in the next request.
+        total_count — Total number of submissions in the contest.
+
+    PR #198 Comment #11.
     """
     user = request.current_user
 
     # Validate contest access and permissions
-    # Note: contest variable is validated but not used in this route
-    _contest, error_response = validate_contest_submission_access(
+    contest, error_response = validate_contest_submission_access(
         contest_id, user, Contest
     )
     if error_response:
         return error_response
 
-    # Get all submissions for this contest
-    submissions = Submission.query.filter_by(contest_id=contest_id).all()
+    # Check if this is an automated scoring contest
+    is_automated = False
+    try:
+        is_automated = contest.get_scoring_mode() == "automated"
+        scoring_mode = contest.get_scoring_mode()
+        current_app.logger.info(
+            "Contest %s scoring mode: %s, is_automated: %s",
+            contest_id, scoring_mode, is_automated
+        )
+    except Exception as scoring_err:  # pylint: disable=broad-exception-caught
+        current_app.logger.warning(
+            "Failed to check scoring mode: %s", str(scoring_err)
+        )
+
+    # ------------------------------------------------------------------ #
+    # Pagination — automated scoring only                                  #
+    # For simple / multi-parameter contests we preserve the original       #
+    # behaviour: process every submission in a single request.             #
+    # ------------------------------------------------------------------ #
+    if is_automated:
+        # IMPORTANT: Each article requires ~6 Wikipedia API calls in
+        # automated mode (revisions, refs, incoming/outgoing links,
+        # images, infoboxes).  A batch of 50 = ~300 network calls which
+        # can easily take 10+ minutes and appear "stuck".
+        # Default is 10 (≈60 calls, completes in under 60 s).
+        _DEFAULT_BATCH_SIZE = 10
+        _MAX_BATCH_SIZE = 50
+
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+        except (ValueError, TypeError):
+            offset = 0
+
+        try:
+            batch_size = min(
+                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+                _MAX_BATCH_SIZE,
+            )
+        except (ValueError, TypeError):
+            batch_size = _DEFAULT_BATCH_SIZE
+
+        total_count = Submission.query.filter_by(contest_id=contest_id).count()
+
+        submissions = (
+            Submission.query
+            .filter_by(contest_id=contest_id)
+            .order_by(Submission.id)
+            .offset(offset)
+            .limit(batch_size)
+            .all()
+        )
+    else:
+        # Non-automated: fetch ALL submissions at once (original behaviour)
+        offset = 0
+        submissions = (
+            Submission.query
+            .filter_by(contest_id=contest_id)
+            .order_by(Submission.id)
+            .all()
+        )
+        total_count = len(submissions)
 
     if not submissions:
         return (
@@ -280,7 +347,10 @@ def refresh_metadata(contest_id):
                     "message": "No submissions found for this contest",
                     "updated": 0,
                     "failed": 0,
-                    "total": 0,
+                    "total": total_count,
+                    "has_more": False,
+                    "next_offset": offset,
+                    "total_count": total_count,
                 }
             ),
             200,
@@ -409,10 +479,9 @@ def refresh_metadata(contest_id):
         except Exception as exp_error:  # pylint: disable=broad-exception-caught
             # If expansion calculation fails, log but don't fail the update
             try:
-                from flask import current_app
-
                 current_app.logger.warning(
-                    f"Failed to calculate expansion for submission {submission_item.id}: {str(exp_error)}"
+                    "Failed to calculate expansion for submission %s: %s",
+                    submission_item.id, str(exp_error)
                 )
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
@@ -447,8 +516,12 @@ def refresh_metadata(contest_id):
                     submission.article_created_at = timestamp_str
                 else:
                     submission.article_created_at = None
-            # Do NOT update article_word_count - it should remain fixed at submission time
-            # article_word_count represents the size at the time of submission
+
+            # For crawler-imported submissions (no article_word_count), fetch it from API
+            # This is needed for automated evaluation
+            if not submission.article_word_count and info.get("current_size"):
+                submission.article_word_count = info["current_size"]
+
             if info.get("article_page_id"):
                 submission.article_page_id = info["article_page_id"]
 
@@ -459,6 +532,106 @@ def refresh_metadata(contest_id):
             # Do NOT update: article_author, article_word_count, article_size_at_start
             # These should remain fixed at submission time
             calculate_expansion_bytes(submission, info)
+
+            # Update detailed reference counts on refresh
+            try:
+                ref_counts = get_detailed_reference_counts(submission.article_link)
+                submission.ref_new_count = int(ref_counts.get("new", 0) or 0)
+                submission.ref_reused_count = int(ref_counts.get("reused", 0) or 0)
+            except Exception as ref_error:  # pylint: disable=broad-exception-caught
+                try:
+                    current_app.logger.warning(
+                        "Failed to refresh reference counts for submission %s: %s",
+                        submission.id,
+                        str(ref_error),
+                    )
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+
+            # --- Automated Scoring Evaluation ---
+            # For automated contests, fetch additional metrics and evaluate
+            if is_automated:
+                current_app.logger.info(
+                    "Evaluating submission %s in automated mode",
+                    submission.id
+                )
+                try:
+                    # Fetch incoming/outgoing links
+                    from app.utils import (  # pylint: disable=import-outside-toplevel
+                        get_article_incoming_links,
+                        get_article_outgoing_links,
+                        get_article_image_count,
+                        get_article_infobox_count,
+                    )
+
+                    incoming = get_article_incoming_links(submission.article_link) or 0
+                    outgoing = get_article_outgoing_links(submission.article_link) or 0
+                    images = get_article_image_count(submission.article_link) or 0
+                    infoboxes = get_article_infobox_count(submission.article_link) or 0
+
+                    current_app.logger.info(
+                        "Submission %s: incoming=%s, outgoing=%s, images=%s, infoboxes=%s",
+                        submission.id, incoming, outgoing, images, infoboxes
+                    )
+
+                    # Update submission with link counts
+                    submission.incoming_links = incoming
+                    submission.outgoing_links = outgoing
+                    submission.image_count = images
+                    submission.infobox_count = infoboxes
+
+                    # Evaluate submission against automated criteria
+                    submission_data = {
+                        "article_word_count": submission.article_word_count,
+                        "incoming_links": incoming,
+                        "outgoing_links": outgoing,
+                        "ref_new_count": submission.ref_new_count,
+                        "ref_reused_count": submission.ref_reused_count,
+                        "image_count": images,
+                        "infobox_count": infoboxes,
+                    }
+
+                    current_app.logger.info(
+                        "Submission %s data for evaluation: %s",
+                        submission.id, submission_data
+                    )
+
+                    is_eligible, final_score, reason, breakdown = (
+                        contest.evaluate_automated_submission(submission_data)
+                    )
+
+                    current_app.logger.info(
+                        "Submission %s result: eligible=%s, score=%s, reason=%s",
+                        submission.id, is_eligible, final_score, reason
+                    )
+
+                    # Update submission status, score, and evaluation details
+                    if is_eligible:
+                        submission.status = "accepted"
+                        submission.score = int(round(final_score))
+                        submission.evaluation_reason = reason
+                        submission.score_breakdown = json.dumps(breakdown) if breakdown else None
+                    else:
+                        submission.status = "rejected"
+                        submission.score = 0
+                        submission.evaluation_reason = reason
+                        submission.score_breakdown = None
+
+                    current_app.logger.info(
+                        "Automated evaluation for submission %s: %s - %s",
+                        submission.id,
+                        submission.status,
+                        reason,
+                    )
+
+                except Exception as eval_error:  # pylint: disable=broad-exception-caught
+                    current_app.logger.error(
+                        "Failed to evaluate submission %s: %s",
+                        submission.id,
+                        str(eval_error),
+                    )
+                    import traceback  # pylint: disable=import-outside-toplevel
+                    current_app.logger.error(traceback.format_exc())
 
             updated += 1
         else:
@@ -471,13 +644,41 @@ def refresh_metadata(contest_id):
         db.session.rollback()
         return jsonify({"error": "Failed to save updates to database"}), 500
 
+    # ------------------------------------------------------------------ #
+    # Build response                                                        #
+    # ------------------------------------------------------------------ #
+    if is_automated:
+        # Automated: paginated response so frontend can loop
+        processed_up_to = offset + len(submissions)
+        has_more = processed_up_to < total_count
+        next_offset = processed_up_to if has_more else offset
+
+        return (
+            jsonify(
+                {
+                    "message": f"Refreshed metadata for {updated} submissions",
+                    "updated": updated,
+                    "failed": failed,
+                    "total": total_count,
+                    # Pagination fields (PR #198 Comment #11)
+                    "has_more": has_more,
+                    "next_offset": next_offset,
+                    "total_count": total_count,
+                    "batch_size": batch_size,
+                    "offset": offset,
+                }
+            ),
+            200,
+        )
+
+    # Non-automated: simple response (original behaviour, no pagination)
     return (
         jsonify(
             {
                 "message": f"Refreshed metadata for {updated} submissions",
                 "updated": updated,
                 "failed": failed,
-                "total": len(submissions),
+                "total": total_count,
             }
         ),
         200,
@@ -485,14 +686,74 @@ def refresh_metadata(contest_id):
 
 
 # ------------------------------------------------------------------------
+# SUBMISSION DELETION ENDPOINT
+# ------------------------------------------------------------------------
+
+@submission_bp.route("/<int:submission_id>", methods=["DELETE"])
+@require_auth
+@handle_errors
+def delete_submission(submission_id):
+    """
+    Delete a specific submission by ID.
+
+    Only admins, jury members of the contest, and contest creators/organizers
+    are allowed to delete submissions.  When a submission is deleted its score
+    is subtracted from the submitter's total so the leaderboard stays accurate.
+
+    Args:
+        submission_id: Submission ID
+
+    Returns:
+        JSON response confirming deletion
+    """
+    user = request.current_user
+
+    # Load submission with related data for permission check and score update
+    submission = Submission.query.options(
+        joinedload(Submission.submitter),
+        joinedload(Submission.contest),
+    ).get(submission_id)
+
+    if not submission:
+        return jsonify({"error": "Submission not found"}), 404
+
+    # Permission check using existing model method
+    if not submission.can_be_deleted_by(user):
+        return jsonify({"error": "You are not allowed to delete this submission"}), 403
+
+    try:
+        # Subtract the submission's score from the user's total before deleting
+        if submission.score and submission.submitter:
+            submission.submitter.update_score(-submission.score)
+
+        # Remove the submission from the database
+        submission.delete()
+
+        return jsonify({"message": "Submission deleted successfully"}), 200
+
+    except Exception as delete_err:  # pylint: disable=broad-exception-caught
+        db.session.rollback()
+        current_app.logger.error(
+            "Failed to delete submission %s: %s", submission_id, str(delete_err)
+        )
+        return jsonify({"error": "Failed to delete submission"}), 500
+
+
+# ------------------------------------------------------------------------
 # SUBMISSION REVIEW ENDPOINT
 # ------------------------------------------------------------------------
+
+
+
+
+
+
 
 @submission_bp.route("/<int:submission_id>/review", methods=["PUT"])
 @require_auth
 @handle_errors
 @validate_json_data(["status"])
-def review_submission(submission_id):
+def review_submission(submission_id):  # pylint: disable=too-many-return-statements
     user = request.current_user
     data = request.validated_data
 
@@ -574,9 +835,9 @@ def review_submission(submission_id):
                     contest=contest,
                     parameter_scores=parameter_scores,
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (multi-parameter): {str(e)}")
+                print(f"Review error (multi-parameter): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
@@ -591,9 +852,9 @@ def review_submission(submission_id):
                     comment=comment,
                     contest=contest,
                 )
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (rejected, multi): {str(e)}")
+                print(f"Review error (rejected, multi): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
     # --- Simple Scoring Mode ---
@@ -628,9 +889,9 @@ def review_submission(submission_id):
                 comment=comment,
                 contest=contest,
             )
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as review_err:  # pylint: disable=broad-exception-caught
             db.session.rollback()
-            print(f"Review error (simple): {str(e)}")
+            print(f"Review error (simple): {str(review_err)}")
             return jsonify({"error": "Internal server error"}), 500
 
     return (

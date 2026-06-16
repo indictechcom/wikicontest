@@ -59,7 +59,7 @@
 
           <!-- Trusted Member Status -->
           <div class="info-item">
-            <i class="fas fa-users-shield"></i>
+            <i class="fas fa-user-shield me-2"></i>
             <span>
               <strong>Trusted Member</strong> :
               <span v-if="isTrustedMember" class="badge bg-success">

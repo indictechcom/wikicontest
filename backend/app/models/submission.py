@@ -70,6 +70,23 @@ class Submission(BaseModel):
     # Can be negative if article was reduced in size
     article_expansion_bytes = db.Column(db.Integer, nullable=True)
 
+    # Image count
+    image_count = db.Column(db.Integer, nullable=True)
+
+    # Infobox count
+    infobox_count = db.Column(db.Integer, nullable=True)
+
+    # Reference Analysis Metrics
+    ref_new_count = db.Column(db.Integer, nullable=True, default=0)
+    ref_reused_count = db.Column(db.Integer, nullable=True, default=0)
+
+    # Link counts for future scoring evaluation
+    # Number of other mainspace articles that link to this article
+    incoming_links = db.Column(db.Integer, nullable=True)
+    
+    # Number of mainspace articles this article links to
+    outgoing_links = db.Column(db.Integer, nullable=True)
+
     # Template enforcement tracking
     # True if template was automatically added to the article during submission
     template_added = db.Column(db.Boolean, nullable=True, default=False)
@@ -90,6 +107,14 @@ class Submission(BaseModel):
     # Individual parameter scores (stored as JSON) for multi-parameter scoring
     # Example: {"Quality": 8, "Sources": 7, "Neutrality": 9, "Formatting": 6}
     parameter_scores = db.Column(db.Text, nullable=True)
+
+    # Automated evaluation details (for automated scoring contests)
+    # Reason for rejection (if status is rejected) or success message
+    evaluation_reason = db.Column(db.Text, nullable=True)
+    
+    # Score breakdown as JSON (for accepted submissions in automated contests)
+    # Example: {"base_points": 10, "bytes_points": 5.2, "links_points": 3, ...}
+    score_breakdown = db.Column(db.Text, nullable=True)
 
 
     # ------------------------------------------------------------------------
@@ -173,6 +198,12 @@ class Submission(BaseModel):
         template_added=False,
         categories_added=None,
         category_error=None,
+        image_count=None,
+        infobox_count=None,
+        ref_new_count=0,
+        ref_reused_count=0,
+        incoming_links=None,
+        outgoing_links=None,
     ):
         """
         Initialize a new Submission instance
@@ -192,6 +223,12 @@ class Submission(BaseModel):
             template_added: Whether template was automatically added to article (optional)
             categories_added: List of category names that were automatically added (optional, stored as JSON)
             category_error: Error message if category attachment failed (optional)
+            image_count: Number of images in the article (optional)
+            infobox_count: Number of infoboxes in the article (optional)
+            ref_new_count: Number of new references added to the article (optional)
+            ref_reused_count: Number of reused references in the article (optional)
+            incoming_links: Number of other mainspace articles that link to this article (optional)
+            outgoing_links: Number of mainspace articles this article links to (optional)
         """
         # Set required fields
         self.user_id = user_id
@@ -219,6 +256,12 @@ class Submission(BaseModel):
         else:
             self.categories_added = None
         self.category_error = category_error
+        self.image_count = image_count
+        self.infobox_count = infobox_count
+        self.ref_new_count = ref_new_count
+        self.ref_reused_count = ref_reused_count
+        self.incoming_links = incoming_links
+        self.outgoing_links = outgoing_links
         self.reviewed_by = None
         self.reviewed_at = None
         self.review_comment = None
@@ -315,6 +358,45 @@ class Submission(BaseModel):
             return json.loads(self.parameter_scores)
         except json.JSONDecodeError:
             return None
+
+    def get_score_breakdown(self):
+        """
+        Get score breakdown for automated scoring
+
+        Returns:
+            dict or None: Score breakdown with points per category
+        """
+        if not self.score_breakdown:
+            return None
+        try:
+            return json.loads(self.score_breakdown)
+        except json.JSONDecodeError:
+            return None
+
+
+    # ------------------------------------------------------------------------
+    # BYTE COUNT ALIAS  (PR #198 Comment #9)
+    # ------------------------------------------------------------------------
+
+    @property
+    def article_byte_count(self):
+        """
+        Clearer alias for the article_word_count column.
+
+        HISTORICAL NOTE: The column is named 'article_word_count' but it stores
+        the article's size in BYTES as returned by the MediaWiki API 'size' field —
+        not a word count.  The column name is intentionally left unchanged in the
+        database to avoid a risky Alembic migration.  All NEW code should use this
+        alias instead of referencing article_word_count directly.
+
+        See PR #198 Comment #9 for full context.
+        """
+        return self.article_word_count
+
+    @article_byte_count.setter
+    def article_byte_count(self, value):
+        """Set the article byte count (stored in the article_word_count column)."""
+        self.article_word_count = value
 
 
     # ------------------------------------------------------------------------
@@ -530,6 +612,12 @@ class Submission(BaseModel):
             "article_page_id": self.article_page_id,
             "article_size_at_start": self.article_size_at_start,
             "article_expansion_bytes": self.article_expansion_bytes,
+            "image_count": self.image_count,
+            "infobox_count": self.infobox_count,
+            "ref_new_count": self.ref_new_count,
+            "ref_reused_count": self.ref_reused_count,
+            "incoming_links": self.incoming_links,
+            "outgoing_links": self.outgoing_links,
             "template_added": self.template_added,
             "categories_added": self.get_categories_added(),
             "category_error": self.category_error,
@@ -542,6 +630,10 @@ class Submission(BaseModel):
 
             # Multi-parameter scoring data
             "parameter_scores": self.get_parameter_scores(),
+
+            # Automated evaluation details
+            "evaluation_reason": self.evaluation_reason,
+            "score_breakdown": self.get_score_breakdown(),
         }
 
         # Optionally include related user and contest information

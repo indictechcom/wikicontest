@@ -73,7 +73,7 @@ id="userDropdown"
                     <!-- Trusted Members link - only visible to superadmins -->
                     <li v-if="isSuperadmin">
                       <router-link class="dropdown-item" to="/trusted-members">
-                        <i class="fas fa-users-shield me-2"></i>Trusted Members
+                        <i class="fas fa-user-shield me-2"></i>Trusted Members
                       </router-link>
                     </li>
                     <!-- Jury Dashboard link - only visible to jury members -->

@@ -2,7 +2,7 @@
   <div
     id="alertContainer"
     class="position-fixed end-0 p-3"
-    style="z-index: 1050; top: 80px;"
+     style="z-index: 9999; top: 80px;"
   >
     <!-- Transition group provides smooth enter/leave animations for alerts -->
     <transition-group name="alert" tag="div">

@@ -270,15 +270,15 @@ def update_contest(contest_id):
 
 ### Immediate (Before Any Production Deployment)
 
-1. ✅ **Fix hardcoded secrets** - Remove `'rohank10'` defaults
-2. ✅ **Secure debug endpoint** - Add authentication or remove
-3. ✅ **Revoke OAuth credentials** - Generate new ones, move to env vars
-4. ✅ **Disable debug mode** - Use environment variable
+1. **Fix hardcoded secrets** - Remove `'rohank10'` defaults
+2. **Secure debug endpoint** - Add authentication or remove
+3. **Revoke OAuth credentials** - Generate new ones, move to env vars
+4. **Disable debug mode** - Use environment variable
 
 ### High Priority (Before Next Release)
 
-5. ✅ **Fix database password default** - Require DATABASE_URL
-6. ✅ **Add error handler** - Fix update_contest route
+5. **Fix database password default** - Require DATABASE_URL
+6. **Add error handler** - Fix update_contest route
 
 ### Additional Recommendations
 

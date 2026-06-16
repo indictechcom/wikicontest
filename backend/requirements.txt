@@ -27,6 +27,7 @@ marshmallow==3.20.2
 marshmallow-sqlalchemy==0.29.0
 mccabe==0.7.0
 mwoauth==0.4.0
+mwparserfromhell==0.6.6
 oauthlib==3.3.1
 packaging==25.0
 platformdirs==4.5.1

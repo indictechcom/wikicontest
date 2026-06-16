@@ -6,17 +6,12 @@
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
-        <button v-if="contest"
-class="btn btn-primary text-white"
-@click="goToLeaderboard"
-          title="View Contest Leaderboard">
+        <button v-if="contest && contestScoringMode !== 'automated'" class="btn btn-primary text-white"
+          @click="goToLeaderboard" title="View Contest Leaderboard">
           <i class="fas fa-trophy me-2"></i>Leaderboard
         </button>
         <!-- Only contest creators and admins can delete -->
-        <button v-if="canDeleteContest"
-class="btn btn-danger"
-@click="handleDeleteContest"
-:disabled="deletingContest">
+        <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest" :disabled="deletingContest">
           <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
           <i v-else class="fas fa-trash me-2"></i>
           {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
@@ -58,26 +53,14 @@ class="btn btn-danger"
       <!-- Main Content with Tabs -->
       <ul class="nav nav-tabs mb-4" role="tablist" v-if="contest.outreach_dashboard_url">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active"
-id="overview-tab"
-data-bs-toggle="tab"
-data-bs-target="#overview"
-type="button"
-role="tab"
-aria-controls="overview"
-aria-selected="true">
+          <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
+            type="button" role="tab" aria-controls="overview" aria-selected="true">
             <i class="fas fa-info-circle me-2"></i>Overview
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link"
-id="outreach-tab"
-data-bs-toggle="tab"
-data-bs-target="#outreach"
-type="button"
-role="tab"
-aria-controls="outreach"
-aria-selected="false">
+          <button class="nav-link" id="outreach-tab" data-bs-toggle="tab" data-bs-target="#outreach" type="button"
+            role="tab" aria-controls="outreach" aria-selected="false">
             <i class="fas fa-graduation-cap me-2"></i>Outreach Dashboard
           </button>
         </li>
@@ -85,341 +68,418 @@ aria-selected="false">
 
       <div class="tab-content" :class="{ 'mt-0': !contest.outreach_dashboard_url }">
         <!-- Overview Tab -->
-        <div v-if="contest.outreach_dashboard_url"
-class="tab-pane fade show active"
-id="overview"
-role="tabpanel"
-aria-labelledby="overview-tab">
+        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade show active" id="overview" role="tabpanel"
+          aria-labelledby="overview-tab">
           <div class="row">
             <div :class="canViewSubmissions ? 'col-md-12' : 'col-md-12'">
-          <!-- Basic Contest Information -->
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Contest Details</h5>
-            </div>
-            <div class="card-body">
-              <p><strong>Project:</strong> {{ contest.project_name }}</p>
-              <p><strong>Status:</strong> <span class="badge bg-primary">{{ contest.status }}</span></p>
-              <p v-if="contest.start_date"><strong>Start Date:</strong> {{ formatDate(contest.start_date) }}</p>
-              <p v-if="contest.end_date"><strong>End Date:</strong> {{ formatDate(contest.end_date) }}</p>
-
-              <strong>Organizers:</strong>
-              <div v-if="contest.organizers && contest.organizers.length > 0" class="organizers-flex">
-                <div v-for="organizer in contest.organizers" :key="organizer" class="organizer-chip">
-                  <i class="fas fa-user-tie me-2"></i>
-                  <strong>{{ organizer }}</strong>
+              <!-- Basic Contest Information -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Contest Details</h5>
                 </div>
-              </div>
-            </div>
-          </div>
-          </div>
+                <div class="card-body">
+                  <p><strong>Project:</strong> {{ contest.project_name }}</p>
+                  <p><strong>Status:</strong> <span class="badge bg-primary">{{ contest.status }}</span></p>
+                  <p v-if="contest.start_date"><strong>Start Date:</strong> {{ formatDate(contest.start_date) }}</p>
+                  <p v-if="contest.end_date"><strong>End Date:</strong> {{ formatDate(contest.end_date) }}</p>
 
-          <!-- Scoring System Display -->
-      <div class="col-md-12">
-        <div class="scoring-card">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-chart-line"></i> Scoring System</h5>
-          </div>
-
-          <div class="scoring-content">
-            <!-- Multi-Parameter Scoring Display -->
-            <div v-if="contest.scoring_parameters?.enabled === true">
-              <div class="scoring-meta">
-                <span class="max-points">Accepted points: {{ contest.scoring_parameters.max_score }}</span>
-                <span class="max-points">Rejected points: {{ contest.scoring_parameters.min_score }}</span>
-              </div>
-
-              <div class="params-list">
-                <div v-for="param in contest.scoring_parameters.parameters" :key="param.name" class="param-item">
-                  <div class="param-row">
-                    <span class="param-label">{{ param.name }}</span>
-                    <span class="param-value">{{ param.weight }}%</span>
+                  <strong>Organizers:</strong>
+                  <div v-if="contest.organizers && contest.organizers.length > 0" class="organizers-flex">
+                    <div v-for="organizer in contest.organizers" :key="organizer" class="organizer-chip">
+                      <i class="fas fa-user-tie me-2"></i>
+                      <strong>{{ organizer }}</strong>
+                    </div>
                   </div>
-                  <p v-if="param.description" class="param-note">{{ param.description }}</p>
+                </div>
+              </div>
+              <!-- Scoring System Display -->
+              <div class="col-md-12">
+                <div class="card mb-4">
+                  <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Scoring System</h5>
+                  </div>
+
+                  <div class="scoring-content">
+                    <!-- Multi-Parameter Scoring Display -->
+                    <div v-if="contest.scoring_parameters?.enabled === true">
+                      <div class="scoring-meta">
+                        <span class="max-points">Accepted points: {{ contest.scoring_parameters.max_score }}</span>
+                        <span class="max-points">Rejected points: {{ contest.scoring_parameters.min_score }}</span>
+                      </div>
+
+                      <div class="params-list">
+                        <div v-for="param in contest.scoring_parameters.parameters" :key="param.name"
+                          class="param-item">
+                          <div class="param-row">
+                            <span class="param-label">{{ param.name }}</span>
+                            <span class="param-value">{{ param.weight }}%</span>
+                          </div>
+                          <p v-if="param.description" class="param-note">{{ param.description }}</p>
+                        </div>
+                      </div>
+
+                      <div class="info-note">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Each parameter scored 0-10, weighted average calculated</span>
+                      </div>
+                    </div>
+
+                    <!-- Simple Accept/Reject Scoring Display -->
+                    <div v-else>
+                      <div class="points-row">
+                        <div class="point-item">
+                          <span class="point-label">Accepted</span>
+                          <span class="point-value">{{ contest.marks_setting_accepted }}</span>
+                        </div>
+
+                        <div class="point-item">
+                          <span class="point-label">Rejected</span>
+                          <span class="point-value">{{ contest.marks_setting_rejected }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- Contest Description -->
+                <div v-if="contest.description" class="card mb-4 description-section">
+                  <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
+                  </div>
+                  <div class="card-body">
+                    <p class="description-text">{{ contest.description }}</p>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Contest Rules -->
+              <div v-if="contest.rules && contest.rules.text" class="card mb-4 contest-rules-card">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
+                </div>
+                <div class="card-body">
+                  <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">{{ contest.rules.text }}</pre>
                 </div>
               </div>
 
-              <div class="info-note">
-                <i class="fas fa-info-circle"></i>
-                <span>Each parameter scored 0-10, weighted average calculated</span>
-              </div>
-            </div>
-
-            <!-- Simple Accept/Reject Scoring Display -->
-            <div v-else>
-              <div class="points-row">
-                <div class="point-item">
-                  <span class="point-label">Accepted</span>
-                  <span class="point-value">{{ contest.marks_setting_accepted }}</span>
+              <!-- Submission Type Information -->
+              <div class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submission Type Allowed</h5>
                 </div>
+                <div class="card-body">
+                  <p>
+                    <strong>
+                      {{
+                        contest.allowed_submission_type === 'new'
+                          ? 'New Articles Only'
+                          : contest.allowed_submission_type === 'expansion'
+                            ? 'Improved Articles Only'
+                            : 'Both (New Articles + Improved Articles)'
+                      }}
+                    </strong>
+                  </p>
 
-                <div class="point-item">
-                  <span class="point-label">Rejected</span>
-                  <span class="point-value">{{ contest.marks_setting_rejected }}</span>
+                  <p class="mt-2 small text-muted">
+                    <em>
+                      • <strong>New Articles</strong> = Completely new Wikipedia article created during the
+                      contest.<br />
+                      • <strong>Improved Articles</strong> = An existing article improved or expanded with substantial
+                      content.
+                    </em>
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Contest Description -->
-      <div v-if="contest.description" class="card mb-4 description-section">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
-        </div>
-        <div class="card-body">
-          <p class="description-text">{{ contest.description }}</p>
-        </div>
-      </div>
+              <!-- Required MediaWiki Categories -->
+              <div v-if="contest.categories && contest.categories.length > 0" class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Required Categories</h5>
+                </div>
+                <div class="card-body">
+                  <p class="mb-2">
+                    <strong>Articles must belong to the following MediaWiki categories:</strong>
+                  </p>
+                  <ul class="list-unstyled">
+                    <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
+                      <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                        <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
+                      </a>
+                    </li>
+                  </ul>
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Submitted articles must be categorized under at least one of these categories.
+                  </small>
+                </div>
+              </div>
 
-      <!-- Contest Rules -->
-      <div v-if="contest.rules && contest.rules.text" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
-        </div>
-        <div class="card-body">
-          <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">{{ contest.rules.text }}</pre>
-        </div>
-      </div>
+              <!-- Minimum Reference Requirement -->
+              <div v-if="contest.min_reference_count > 0" class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-link me-2"></i>Minimum Reference Count</h5>
+                </div>
+                <div class="card-body">
+                  <p>
+                    <strong>{{ contest.min_reference_count }} References required</strong>
+                  </p>
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Submitted articles must have at least {{ contest.min_reference_count }} external references.
+                  </small>
+                </div>
+              </div>
 
-      <!-- Submission Type Information -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submission Type Allowed</h5>
-        </div>
-        <div class="card-body">
-          <p>
-            <strong>
-              {{
-                contest.allowed_submission_type === 'new'
-                  ? 'New Articles Only'
-                  : contest.allowed_submission_type === 'expansion'
-                    ? 'Improved Articles Only'
-                    : 'Both (New Articles + Improved Articles)'
-              }}
-            </strong>
-          </p>
+              <!-- Jury Members List -->
+              <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-users me-2"></i>Jury Members</h5>
+                </div>
+                <div class="card-body">
+                  <div class="organizers-flex">
+                    <div v-for="jury in contest.jury_members" :key="jury" class="organizer-chip">
+                      <i class="fas fa-gavel me-2"></i>
+                      <strong>{{ jury }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          <p class="mt-2 small text-muted">
-            <em>
-              • <strong>New Articles</strong> = Completely new Wikipedia article created during the contest.<br />
-              • <strong>Improved Articles</strong> = An existing article improved or expanded with substantial content.
-            </em>
-          </p>
-        </div>
-      </div>
+              <!-- Category Crawler Section (for Automated Scoring Contests) -->
+              <div
+                v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles"
+                class="card mb-4">
+                <div class="card-header">
+                  <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted mb-3">Import articles from the contest's configured categories as pending
+                    submissions.</p>
 
-      <!-- Required MediaWiki Categories -->
-      <div v-if="contest.categories && contest.categories.length > 0" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Required Categories</h5>
-        </div>
-        <div class="card-body">
-          <p class="mb-2">
-            <strong>Articles must belong to the following MediaWiki categories:</strong>
-          </p>
-          <ul class="list-unstyled">
-            <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-              <a :href="category"
-target="_blank"
-rel="noopener noreferrer"
-class="text-decoration-none">
-                <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
-              </a>
-            </li>
-          </ul>
-          <small class="text-muted">
-            <i class="fas fa-info-circle me-1"></i>
-            Submitted articles must be categorized under at least one of these categories.
-          </small>
-        </div>
-      </div>
-
-      <!-- Minimum Reference Requirement -->
-      <div v-if="contest.min_reference_count > 0" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-link me-2"></i>Minimum Reference Count</h5>
-        </div>
-        <div class="card-body">
-          <p>
-            <strong>{{ contest.min_reference_count }} References required</strong>
-          </p>
-          <small class="text-muted">
-            <i class="fas fa-info-circle me-1"></i>
-            Submitted articles must have at least {{ contest.min_reference_count }} external references.
-          </small>
-        </div>
-      </div>
-
-      <!-- Jury Members List -->
-      <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-users me-2"></i>Jury Members</h5>
-        </div>
-        <div class="card-body">
-          <div class="organizers-flex">
-            <div v-for="jury in contest.jury_members" :key="jury" class="organizer-chip">
-              <i class="fas fa-gavel me-2"></i>
-              <strong>{{ jury }}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Submissions Table (Visible to Jury and Organizers) -->
-      <div v-if="canViewSubmissions" class="card mb-4">
-        <div class="card-header">
-          <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-            <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary" disabled>
-              <span class="spinner-border spinner-border-sm me-2"></span>
-              {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
-            </button>
-            <!-- Refresh metadata fetches latest article data from MediaWiki -->
-            <button v-else
-class="btn btn-sm btn-outline-light"
-@click="refreshMetadata"
-              :disabled="submissions.length === 0"
-title="Refresh article metadata"
-              style="color: white; border-color: white;">
-              <i class="fas fa-database me-1"></i>Refresh Metadata
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
-          </div>
-
-          <div v-else-if="submissions.length > 0" class="table-responsive">
-            <table class="table table-sm table-hover">
-              <thead>
-                <tr>
-                  <th>Article Title</th>
-                  <th>Article Author</th>
-                  <th>Submitted By</th>
-                  <th>Status</th>
-                  <th>Score</th>
-                  <th>Submitted At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="submission in submissions" :key="submission.id">
-                  <!-- Article Title with Metadata -->
-                  <td>
-                    <a href="#"
-@click.prevent="showArticlePreview(submission)"
-                      class="text-decoration-none article-title-link"
-:title="submission.article_link">
-                      {{ submission.article_title }}
-                    </a>
-                    <!-- Expansion bytes (can be negative for content removal) -->
-                    <div v-if="submission.article_expansion_bytes !== null &&
-                      submission.article_expansion_bytes !== undefined"
-class="text-muted small mt-1">
-                      <i class="me-1"
-:class="submission.article_expansion_bytes > 0
-                        ? 'fas fa-arrow-up'
-                        : submission.article_expansion_bytes < 0
-                          ? 'fas fa-arrow-down'
-                          : 'fas fa-arrows-left-right'
-                        "></i>
-                      Expansion bytes:
-                      <span :class="submission.article_expansion_bytes > 0
-                        ? 'text-success'
-                        : submission.article_expansion_bytes < 0
-                          ? 'text-danger'
-                          : 'text-muted'">
-                        {{ submission.article_expansion_bytes > 0
-                          ? '+'
-                          : submission.article_expansion_bytes < 0
-                            ? '-'
-                            : ''
-                        }}{{ formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
+                  <div class="crawler-form">
+                    <select v-model="selectedCategory" class="form-select crawler-select">
+                      <option value="">Select a category...</option>
+                      <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
+                    <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="5000"
+                      class="form-control crawler-limit" />
+                    <button class="btn btn-primary crawler-btn" @click="crawlCategory"
+                      :disabled="crawling || !selectedCategory">
+                      <span v-if="crawling">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Importing...
                       </span>
-                    </div>
-                  </td>
-                  <!-- Author Information with Latest Revision -->
-                  <td>
-                    <div v-if="submission.article_author">
-                      <i class="fas fa-user me-1"></i>{{ submission.article_author }}
-                    </div>
-                    <div v-else class="text-muted small">Unknown</div>
-                    <div v-if="submission.article_created_at" class="text-muted small mt-1">
-                      <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
-                    </div>
-                    <!-- Latest revision author may differ from original -->
-                    <div v-if="submission.latest_revision_author"
-class="mt-2 pt-2"
-                      style="border-top: 1px solid #dee2e6;">
-                      <div>
-                        <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
-                        <span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span>
-                      </div>
-                      <div v-if="submission.latest_revision_timestamp" class="text-muted small mt-1">
-                        <i class="fas fa-calendar me-1"></i>
-                        {{ formatDateShort(submission.latest_revision_timestamp) }}
-                      </div>
-                    </div>
-                  </td>
-                  <td>{{ submission.username || 'Unknown' }}</td>
-                  <td>
-                    <span :class="`badge bg-${getStatusColor(submission.status)}`">
-                      {{ submission.status }}
-                    </span>
-                    <div v-if="submission.already_reviewed" class="text-muted small mt-1">
-                      <i class="fas fa-check-circle me-1"></i>Reviewed
-                    </div>
-                  </td>
-                  <td>{{ submission.score || 0 }}</td>
-                  <td>{{ formatDate(submission.submitted_at) }}</td>
-                  <td>
-                    <button v-if="canViewSubmissions"
-@click="handleDeleteSubmission(submission)"
-                      class="btn btn-sm btn-outline-danger"
-title="Delete Submission"
-                      :disabled="deletingSubmissionId === submission.id">
-                      <span v-if="deletingSubmissionId === submission.id"
-                        class="spinner-border spinner-border-sm"></span>
-                      <i v-else class="fas fa-trash"></i>
+                      <span v-else>
+                        <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                      </span>
                     </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+
+                  <div v-if="crawlResult" class="crawl-result mt-3">
+                    <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                      <i class="fas fa-check-circle me-2"></i>
+                      {{ crawlResult.message }}
+                      <br />
+                      <small>Category: {{ crawlResult.category }}</small>
+                      <br />
+                      <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+                    </div>
+                    <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                      <i class="fas fa-exclamation-triangle me-2"></i>
+                      All {{ crawlResult.skipped }} articles were duplicates
+                    </div>
+                    <div class="alert alert-info" v-else>
+                      <i class="fas fa-info-circle me-2"></i>
+                      No articles found in category
+                    </div>
+                  </div>
+                  <div v-if="crawlError" class="alert alert-danger mt-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    {{ crawlError }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submissions Table (Visible to Jury and Organizers) -->
+              <div v-if="canViewSubmissions" class="card mb-4">
+                <div class="card-header">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
+                    <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                      disabled>
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                      {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
+                    </button>
+                    <!-- Refresh metadata fetches latest article data from MediaWiki -->
+                    <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
+                      :disabled="submissions.length === 0" title="Refresh article metadata"
+                      style="color: white; border-color: white;">
+                      <i class="fas fa-database me-1"></i>Refresh Metadata
+                    </button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <!-- Filter Tabs (automated scoring only) -->
+                  <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
+                    <div class="btn-group" role="group" aria-label="Filter submissions">
+                      <button type="button" class="btn btn-sm"
+                        :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'"
+                        @click="submissionFilter = 'all'">
+                        All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
+                      </button>
+                      <button type="button" class="btn btn-sm"
+                        :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'"
+                        @click="submissionFilter = 'accepted'">
+                        Accepted <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                          'accepted').length}}</span>
+                      </button>
+                      <button type="button" class="btn btn-sm"
+                        :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
+                        @click="submissionFilter = 'rejected'">
+                        Rejected <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                          'rejected').length}}</span>
+                      </button>
+                      <button type="button" class="btn btn-sm"
+                        :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'"
+                        @click="submissionFilter = 'pending'">
+                        Pending <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                          'pending').length}}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
+                  </div>
+
+                  <div v-else-if="filteredSubmissions.length > 0" class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Article Title</th>
+                          <th>Article Author</th>
+                          <th>Submitted By</th>
+                          <th>Status</th>
+                          <th>Score</th>
+                          <th>Submitted At</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="submission in filteredSubmissions" :key="submission.id">
+                          <!-- Article Title with Metadata -->
+                          <td>
+                            <a href="#" @click.prevent="showArticlePreview(submission)"
+                              class="text-decoration-none article-title-link" :title="submission.article_link">
+                              {{ submission.article_title }}
+                            </a>
+                            <!-- Expansion bytes (can be negative for content removal) -->
+                            <div v-if="submission.article_expansion_bytes !== null &&
+                              submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
+                              <i class="me-1" :class="submission.article_expansion_bytes > 0
+                                ? 'fas fa-arrow-up'
+                                : submission.article_expansion_bytes < 0
+                                  ? 'fas fa-arrow-down'
+                                  : 'fas fa-arrows-left-right'
+                                "></i>
+                              Expansion bytes:
+                              <span :class="submission.article_expansion_bytes > 0
+                                ? 'text-success'
+                                : submission.article_expansion_bytes < 0
+                                  ? 'text-danger'
+                                  : 'text-muted'">
+                                {{ submission.article_expansion_bytes > 0
+                                  ? '+'
+                                  : submission.article_expansion_bytes < 0 ? '-' : '' }}{{
+                                  formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }} </span>
+                            </div>
+                          </td>
+                          <!-- Author Information with Latest Revision -->
+                          <td>
+                            <div v-if="submission.article_author">
+                              <i class="fas fa-user me-1"></i>{{ submission.article_author }}
+                            </div>
+                            <div v-else class="text-muted small">Unknown</div>
+                            <div v-if="submission.article_created_at" class="text-muted small mt-1">
+                              <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
+                            </div>
+                            <!-- Latest revision author may differ from original -->
+                            <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
+                              style="border-top: 1px solid #dee2e6;">
+                              <div>
+                                <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
+                                <span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span>
+                              </div>
+                              <div v-if="submission.latest_revision_timestamp" class="text-muted small mt-1">
+                                <i class="fas fa-calendar me-1"></i>
+                                {{ formatDateShort(submission.latest_revision_timestamp) }}
+                              </div>
+                            </div>
+                          </td>
+                          <td>{{ submission.username || 'Unknown' }}</td>
+                          <td>
+                            <span :class="`badge bg-${getStatusColor(submission.status)}`"
+                              :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                              @click="showEvaluationDetails(submission)"
+                              :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                              {{ submission.status }}
+                            </span>
+                            <div v-if="submission.already_reviewed" class="text-muted small mt-1">
+                              <i class="fas fa-check-circle me-1"></i>Reviewed
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                              @click="showEvaluationDetails(submission)"
+                              :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                              {{ submission.score || 0 }}
+                            </span>
+                          </td>
+                          <td>{{ formatDate(submission.submitted_at) }}</td>
+                          <td>
+                            <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
+                              class="btn btn-sm btn-outline-danger" title="Delete Submission"
+                              :disabled="deletingSubmissionId === submission.id">
+                              <span v-if="deletingSubmissionId === submission.id"
+                                class="spinner-border spinner-border-sm"></span>
+                              <i v-else class="fas fa-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+
+            <!-- Bottom Action Row -->
+            <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
+              <!-- Debug warning for auth issues -->
+              <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <strong>User not loaded!</strong>
+                <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh">
+                  <i class="fas fa-sync-alt me-1"></i>Refresh Auth
+                </button>
+              </div>
+
+              <!-- Submit article button for active contests -->
+              <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
+                class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+                <i class="fas fa-paper-plane me-2"></i>Submit Article
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Bottom Action Row -->
-      <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
-        <!-- Debug warning for auth issues -->
-        <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
-          <i class="fas fa-exclamation-triangle me-1"></i>
-          <strong>User not loaded!</strong>
-          <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh">
-            <i class="fas fa-sync-alt me-1"></i>Refresh Auth
-          </button>
-        </div>
-
-        <!-- Submit article button for active contests -->
-        <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-          class="btn btn-primary ms-auto"
-@click="handleSubmitArticle">
-          <i class="fas fa-paper-plane me-2"></i>Submit Article
-        </button>
-      </div>
-        </div>
         </div>
 
         <!-- Outreach Dashboard Tab -->
-        <div v-if="contest.outreach_dashboard_url"
-class="tab-pane fade"
-id="outreach"
-role="tabpanel"
-aria-labelledby="outreach-tab">
+        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade" id="outreach" role="tabpanel"
+          aria-labelledby="outreach-tab">
           <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
       </div>
@@ -451,14 +511,94 @@ aria-labelledby="outreach-tab">
 
         <!-- Scoring System Display -->
         <div class="col-md-12">
-          <div class="scoring-card">
+          <div class="card mb-4">
             <div class="card-header">
               <h5 class="mb-0"><i class="fas fa-chart-line"></i> Scoring System</h5>
             </div>
 
             <div class="scoring-content">
+              <!-- Automated Scoring Display -->
+              <div v-if="contest.automated_settings?.enabled === true">
+                <div class="automated-header">
+                  <i class="fas fa-robot me-2"></i>
+                  <strong>Automated Scoring</strong>
+                  <span class="badge bg-info ms-2">Auto-evaluated</span>
+                </div>
+
+                <!-- Eligibility Criteria -->
+                <div class="automated-section">
+                  <h6 class="section-title"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                  <div class="criteria-grid">
+                    <div class="criteria-item">
+                      <span class="criteria-label">Min Edits</span>
+                      <span class="criteria-value">{{ contest.automated_settings.eligibility?.min_edits ?? 0 }}</span>
+                    </div>
+                    <div class="criteria-item">
+                      <span class="criteria-label">Min Outgoing Links</span>
+                      <span class="criteria-value">{{ contest.automated_settings.eligibility?.min_outgoing_links ?? 0
+                      }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Evaluation Points -->
+                <div class="automated-section">
+                  <h6 class="section-title"><i class="fas fa-calculator me-2"></i>Evaluation Points</h6>
+                  <div class="points-grid">
+                    <div class="point-chip">
+                      <span class="chip-label">Accepted</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_accepted ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Per Byte</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_byte ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Incoming Link</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_incoming_link ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Outgoing Link</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_outgoing_link ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Category</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_category ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">New Ref</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_new_reference ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Reused Ref</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_reused_reference ??
+                        0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Infobox</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_infobox ?? 0
+                      }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Image</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_image ?? 0 }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="info-note">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Articles are automatically scored based on metrics and eligibility criteria</span>
+                </div>
+              </div>
+
               <!-- Multi-Parameter Scoring Display -->
-              <div v-if="contest.scoring_parameters?.enabled === true">
+              <div v-else-if="contest.scoring_parameters?.enabled === true">
                 <div class="scoring-meta">
                   <span class="max-points">Accepted points: {{ contest.scoring_parameters.max_score }}</span>
                   <span class="max-points">Rejected points: {{ contest.scoring_parameters.min_score }}</span>
@@ -496,238 +636,345 @@ aria-labelledby="outreach-tab">
               </div>
             </div>
           </div>
-        </div>
+          <!-- Contest Description -->
+          <div v-if="contest.description" class="card mb-4 description-section">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
+            </div>
+            <div class="card-body">
+              <p class="description-text">{{ contest.description }}</p>
+            </div>
+          </div>
 
-        <!-- Contest Description -->
-        <div v-if="contest.description" class="card mb-4 description-section">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
+          <!-- Contest Rules -->
+          <div v-if="contest.rules && contest.rules.text" class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
+            </div>
+            <div class="card-body">
+              <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">{{ contest.rules.text }}</pre>
+            </div>
           </div>
-          <div class="card-body">
-            <p class="description-text">{{ contest.description }}</p>
-          </div>
-        </div>
 
-        <!-- Contest Rules -->
-        <div v-if="contest.rules && contest.rules.text" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
-          </div>
-          <div class="card-body">
-            <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">{{ contest.rules.text }}</pre>
-          </div>
-        </div>
+          <!-- Submission Type Information -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submission Type Allowed</h5>
+            </div>
+            <div class="card-body">
+              <p>
+                <strong>
+                  {{
+                    contest.allowed_submission_type === 'new'
+                      ? 'New Articles Only'
+                      : contest.allowed_submission_type === 'expansion'
+                        ? 'Improved Articles Only'
+                        : 'Both (New Articles + Improved Articles)'
+                  }}
+                </strong>
+              </p>
 
-        <!-- Submission Type Information -->
-        <div class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submission Type Allowed</h5>
-          </div>
-          <div class="card-body">
-            <p>
-              <strong>
-                {{
-                  contest.allowed_submission_type === 'new'
-                    ? 'New Articles Only'
-                    : contest.allowed_submission_type === 'expansion'
-                      ? 'Improved Articles Only'
-                      : 'Both (New Articles + Improved Articles)'
-                }}
-              </strong>
-            </p>
-
-            <p class="mt-2 small text-muted">
-              <em>
-                • <strong>New Articles</strong> = Completely new Wikipedia article created during the contest.<br />
-                • <strong>Improved Articles</strong> = An existing article improved or expanded
+              <p class="mt-2 small text-muted">
+                <em>
+                  • <strong>New Articles</strong> = Completely new Wikipedia article created during the contest.<br />
+                  • <strong>Improved Articles</strong> = An existing article improved or expanded
                   with substantial content.
-              </em>
-            </p>
+                </em>
+              </p>
+            </div>
           </div>
-        </div>
 
-        <!-- Required MediaWiki Categories -->
-        <div v-if="contest.categories && contest.categories.length > 0" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Required Categories</h5>
+          <!-- Required MediaWiki Categories -->
+          <div v-if="contest.categories && contest.categories.length > 0" class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Required Categories</h5>
+            </div>
+            <div class="card-body">
+              <p class="mb-2">
+                <strong>Articles must belong to the following MediaWiki categories:</strong>
+              </p>
+              <ul class="list-unstyled">
+                <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
+                  <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                    <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
+                  </a>
+                </li>
+              </ul>
+              <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Submitted articles must be categorized under at least one of these categories.
+              </small>
+            </div>
           </div>
-          <div class="card-body">
-            <p class="mb-2">
-              <strong>Articles must belong to the following MediaWiki categories:</strong>
-            </p>
-            <ul class="list-unstyled">
-              <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-                <a :href="category"
-target="_blank"
-rel="noopener noreferrer"
-class="text-decoration-none">
-                  <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
-                </a>
-              </li>
-            </ul>
-            <small class="text-muted">
-              <i class="fas fa-info-circle me-1"></i>
-              Submitted articles must be categorized under at least one of these categories.
-            </small>
-          </div>
-        </div>
 
-        <!-- Minimum Reference Requirement -->
-        <div v-if="contest.min_reference_count > 0" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-link me-2"></i>Minimum Reference Count</h5>
+          <!-- Minimum Reference Requirement -->
+          <div v-if="contest.min_reference_count > 0" class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-link me-2"></i>Minimum Reference Count</h5>
+            </div>
+            <div class="card-body">
+              <p>
+                <strong>{{ contest.min_reference_count }} References required</strong>
+              </p>
+              <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Submitted articles must have at least {{ contest.min_reference_count }} external references.
+              </small>
+            </div>
           </div>
-          <div class="card-body">
-            <p>
-              <strong>{{ contest.min_reference_count }} References required</strong>
-            </p>
-            <small class="text-muted">
-              <i class="fas fa-info-circle me-1"></i>
-              Submitted articles must have at least {{ contest.min_reference_count }} external references.
-            </small>
-          </div>
-        </div>
 
-        <!-- Jury Members List -->
-        <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Jury Members</h5>
+          <!-- Jury Members List -->
+          <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-users me-2"></i>Jury Members</h5>
+            </div>
+            <div class="card-body">
+              <div class="organizers-flex">
+                <div v-for="jury in contest.jury_members" :key="jury" class="organizer-chip">
+                  <i class="fas fa-gavel me-2"></i>
+                  <strong>{{ jury }}</strong>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="organizers-flex">
-              <div v-for="jury in contest.jury_members" :key="jury" class="organizer-chip">
-                <i class="fas fa-gavel me-2"></i>
-                <strong>{{ jury }}</strong>
+
+          <!-- Category Crawler Section (for Automated Scoring Contests) -->
+          <div
+            v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles"
+            class="card mb-4">
+            <div class="card-header">
+              <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+            </div>
+            <div class="card-body">
+              <p class="text-muted mb-3">Import articles from the contest's configured categories as pending
+                submissions.
+              </p>
+
+              <div class="crawler-form">
+                <select v-model="selectedCategory" class="form-select crawler-select">
+                  <option value="">Select a category...</option>
+                  <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+                <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="2000"
+                  class="form-control crawler-limit" />
+
+                <button class="btn btn-primary crawler-btn" @click="crawlCategory"
+                  :disabled="crawling || !selectedCategory">
+                  <span v-if="crawling">
+                    <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                  </span>
+                  <span v-else>
+                    <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                  </span>
+                </button>
+              </div>
+
+              <div v-if="crawlResult" class="crawl-result mt-3">
+                <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                  <i class="fas fa-check-circle me-2"></i>
+                  {{ crawlResult.message }}
+                  <br />
+                  <small>Category: {{ crawlResult.category }}</small>
+                  <br />
+                  <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+                </div>
+                <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                  <i class="fas fa-exclamation-triangle me-2"></i>
+                  All {{ crawlResult.skipped }} articles were duplicates
+                </div>
+                <div class="alert alert-info" v-else>
+                  <i class="fas fa-info-circle me-2"></i>
+                  No articles found in category
+                </div>
+
+                <!-- Import Next Batch button — shown when the category has more
+                     articles beyond the current batch (cmcontinue pagination) -->
+                <div v-if="crawlNextToken" class="mt-2">
+                  <div class="alert alert-info py-2 d-flex align-items-center justify-content-between">
+                    <span>
+                      <i class="fas fa-info-circle me-2"></i>
+                      More articles available in this category.
+                    </span>
+                    <button class="btn btn-sm btn-primary ms-3" @click="crawlNextBatch"
+                      :disabled="crawling">
+                      <span v-if="crawling">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                      </span>
+                      <span v-else>
+                        <i class="fas fa-cloud-download-alt me-1"></i> Import Next Batch
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div v-if="crawlError" class="alert alert-danger mt-3">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                {{ crawlError }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Submissions Table (Visible to Jury and Organizers) -->
+          <div v-if="canViewSubmissions" class="card mb-4">
+            <div class="card-header">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
+                <div class="d-flex align-items-center gap-2">
+                  <!-- Persistent batch-progress text (stays visible for the whole refresh) -->
+                  <span v-if="refreshProgress" class="text-muted small fst-italic">
+                    <i class="fas fa-spinner fa-spin me-1"></i>{{ refreshProgress }}
+                  </span>
+                  <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                    disabled>
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
+                  </button>
+                  <!-- Refresh metadata fetches latest article data from MediaWiki -->
+                  <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
+                    :disabled="submissions.length === 0" title="Refresh article metadata"
+                    style="color: white; border-color: white;">
+                    <i class="fas fa-database me-1"></i>Refresh Metadata
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Filter Tabs (automated scoring only) -->
+              <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
+                <div class="btn-group" role="group" aria-label="Filter submissions">
+                  <button type="button" class="btn btn-sm"
+                    :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="submissionFilter = 'all'">
+                    All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
+                  </button>
+                  <button type="button" class="btn btn-sm"
+                    :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'"
+                    @click="submissionFilter = 'accepted'">
+                    Accepted <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                      'accepted').length}}</span>
+                  </button>
+                  <button type="button" class="btn btn-sm"
+                    :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
+                    @click="submissionFilter = 'rejected'">
+                    Rejected <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                      'rejected').length}}</span>
+                  </button>
+                  <button type="button" class="btn btn-sm"
+                    :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'"
+                    @click="submissionFilter = 'pending'">
+                    Pending <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
+                      'pending').length}}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
+              </div>
+
+              <div v-else-if="filteredSubmissions.length > 0" class="table-responsive">
+                <table class="table table-sm table-hover">
+                  <thead>
+                    <tr>
+                      <th>Article Title</th>
+                      <th>Article Author</th>
+                      <th>Submitted By</th>
+                      <th>Status</th>
+                      <th>Score</th>
+                      <th>Submitted At</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="submission in filteredSubmissions" :key="submission.id">
+                      <!-- Article Title with Metadata -->
+                      <td>
+                        <a href="#" @click.prevent="showArticlePreview(submission)"
+                          class="text-decoration-none article-title-link" :title="submission.article_link">
+                          {{ submission.article_title }}
+                        </a>
+                        <!-- Expansion bytes (can be negative for content removal) -->
+                        <div v-if="submission.article_expansion_bytes !== null &&
+                          submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
+                          <i class="me-1" :class="submission.article_expansion_bytes > 0
+                            ? 'fas fa-arrow-up'
+                            : submission.article_expansion_bytes < 0
+                              ? 'fas fa-arrow-down'
+                              : 'fas fa-arrows-left-right'
+                            "></i>
+                          Expansion bytes:
+                          <span :class="submission.article_expansion_bytes > 0
+                            ? 'text-success'
+                            : submission.article_expansion_bytes < 0
+                              ? 'text-danger'
+                              : 'text-muted'">
+                            {{ submission.article_expansion_bytes > 0
+                              ? '+'
+                              : submission.article_expansion_bytes < 0 ? '-' : '' }}{{
+                              formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }} </span>
+                        </div>
+                      </td>
+                      <!-- Author Information with Latest Revision -->
+                      <td>
+                        <div v-if="submission.article_author">
+                          <i class="fas fa-user me-1"></i>{{ submission.article_author }}
+                        </div>
+                        <div v-else class="text-muted small">Unknown</div>
+                        <div v-if="submission.article_created_at" class="text-muted small mt-1">
+                          <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
+                        </div>
+                        <!-- Latest revision author may differ from original -->
+                        <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
+                          style="border-top: 1px solid #dee2e6;">
+                          <div>
+                            <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
+                            <span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span>
+                          </div>
+                          <div v-if="submission.latest_revision_timestamp" class="text-muted small mt-1">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ formatDateShort(submission.latest_revision_timestamp) }}
+                          </div>
+                        </div>
+                      </td>
+                      <td>{{ submission.username || 'Unknown' }}</td>
+                      <td>
+                        <span :class="`badge bg-${getStatusColor(submission.status)}`"
+                          :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                          @click="showEvaluationDetails(submission)"
+                          :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                          {{ submission.status }}
+                        </span>
+                        <div v-if="submission.already_reviewed" class="text-muted small mt-1">
+                          <i class="fas fa-check-circle me-1"></i>Reviewed
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                          @click="showEvaluationDetails(submission)"
+                          :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                          {{ submission.score || 0 }}
+                        </span>
+                      </td>
+                      <td>{{ formatDate(submission.submitted_at) }}</td>
+                      <td>
+                        <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
+                          class="btn btn-sm btn-outline-danger" title="Delete Submission"
+                          :disabled="deletingSubmissionId === submission.id">
+                          <span v-if="deletingSubmissionId === submission.id"
+                            class="spinner-border spinner-border-sm"></span>
+                          <i v-else class="fas fa-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Submissions Table (Visible to Jury and Organizers) -->
-        <div v-if="canViewSubmissions" class="card mb-4">
-          <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-              <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-              <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary" disabled>
-                <span class="spinner-border spinner-border-sm me-2"></span>
-                {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
-              </button>
-              <!-- Refresh metadata fetches latest article data from MediaWiki -->
-              <button v-else
-class="btn btn-sm btn-outline-light"
-@click="refreshMetadata"
-                :disabled="submissions.length === 0"
-title="Refresh article metadata"
-                style="color: white; border-color: white;">
-                <i class="fas fa-database me-1"></i>Refresh Metadata
-              </button>
-            </div>
-          </div>
-          <div class="card-body">
-            <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
-            </div>
 
-            <div v-else-if="submissions.length > 0" class="table-responsive">
-              <table class="table table-sm table-hover">
-                <thead>
-                  <tr>
-                    <th>Article Title</th>
-                    <th>Article Author</th>
-                    <th>Submitted By</th>
-                    <th>Status</th>
-                    <th>Score</th>
-                    <th>Submitted At</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="submission in submissions" :key="submission.id">
-                    <!-- Article Title with Metadata -->
-                    <td>
-                      <a href="#"
-@click.prevent="showArticlePreview(submission)"
-                        class="text-decoration-none article-title-link"
-:title="submission.article_link">
-                        {{ submission.article_title }}
-                      </a>
-                      <!-- Expansion bytes (can be negative for content removal) -->
-                      <div v-if="submission.article_expansion_bytes !== null &&
-                        submission.article_expansion_bytes !== undefined"
-class="text-muted small mt-1">
-                        <i class="me-1"
-:class="submission.article_expansion_bytes > 0
-                          ? 'fas fa-arrow-up'
-                          : submission.article_expansion_bytes < 0
-                            ? 'fas fa-arrow-down'
-                            : 'fas fa-arrows-left-right'
-                          "></i>
-                        Expansion bytes:
-                        <span :class="submission.article_expansion_bytes > 0
-                          ? 'text-success'
-                          : submission.article_expansion_bytes < 0
-                            ? 'text-danger'
-                            : 'text-muted'">
-                          {{ submission.article_expansion_bytes > 0
-                            ? '+'
-                            : submission.article_expansion_bytes < 0
-                              ? '-'
-                              : ''
-                          }}{{ formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
-                        </span>
-                      </div>
-                    </td>
-                    <!-- Author Information with Latest Revision -->
-                    <td>
-                      <div v-if="submission.article_author">
-                        <i class="fas fa-user me-1"></i>{{ submission.article_author }}
-                      </div>
-                      <div v-else class="text-muted small">Unknown</div>
-                      <div v-if="submission.article_created_at" class="text-muted small mt-1">
-                        <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
-                      </div>
-                      <!-- Latest revision author may differ from original -->
-                      <div v-if="submission.latest_revision_author"
-class="mt-2 pt-2"
-                        style="border-top: 1px solid #dee2e6;">
-                        <div>
-                          <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
-                          <span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span>
-                        </div>
-                        <div v-if="submission.latest_revision_timestamp" class="text-muted small mt-1">
-                          <i class="fas fa-calendar me-1"></i>
-                          {{ formatDateShort(submission.latest_revision_timestamp) }}
-                        </div>
-                      </div>
-                    </td>
-                    <td>{{ submission.username || 'Unknown' }}</td>
-                    <td>
-                      <span :class="`badge bg-${getStatusColor(submission.status)}`">
-                        {{ submission.status }}
-                      </span>
-                      <div v-if="submission.already_reviewed" class="text-muted small mt-1">
-                        <i class="fas fa-check-circle me-1"></i>Reviewed
-                      </div>
-                    </td>
-                    <td>{{ submission.score || 0 }}</td>
-                    <td>{{ formatDate(submission.submitted_at) }}</td>
-                    <td>
-                      <button v-if="canViewSubmissions"
-@click="handleDeleteSubmission(submission)"
-                        class="btn btn-sm btn-outline-danger"
-title="Delete Submission"
-                        :disabled="deletingSubmissionId === submission.id">
-                        <span v-if="deletingSubmissionId === submission.id"
-                          class="spinner-border spinner-border-sm"></span>
-                        <i v-else class="fas fa-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
 
         <!-- Bottom Action Row -->
         <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
@@ -742,8 +989,7 @@ title="Delete Submission"
 
           <!-- Submit article button for active contests -->
           <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-            class="btn btn-primary ms-auto"
-@click="handleSubmitArticle">
+            class="btn btn-primary ms-auto" @click="handleSubmitArticle">
             <i class="fas fa-paper-plane me-2"></i>Submit Article
           </button>
         </div>
@@ -752,19 +998,99 @@ title="Delete Submission"
   </div>
 
   <!-- Modals -->
-  <SubmitArticleModal v-if="submittingToContestId"
-:contest-id="submittingToContestId"
+  <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
-  <ArticlePreviewModal v-if="!!currentSubmission"
-:can-review="canUserReview"
-    :article-url="currentSubmission.article_link"
-:article-title="currentSubmission.article_title"
-    :submission-id="currentSubmission.id"
-:submission="currentSubmission"
-    :contest-scoring-config="contest?.scoring_parameters"
-@reviewed="handleSubmissionReviewed"
+  <ArticlePreviewModal v-if="!!currentSubmission" :can-review="canUserReview"
+    :article-url="currentSubmission.article_link" :article-title="currentSubmission.article_title"
+    :submission-id="currentSubmission.id" :submission="currentSubmission"
+    :contest-scoring-config="contest?.scoring_parameters" @reviewed="handleSubmissionReviewed"
     @deleted="handleSubmissionDeleted" />
+
+  <!-- ========================================================================== -->
+  <!-- EVALUATION DETAILS MODAL - Shows score breakdown or rejection reason -->
+  <!-- ========================================================================== -->
+  <div class="modal fade" id="evaluationDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-info-circle me-2"></i>
+            Evaluation Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" v-if="selectedEvaluationSubmission">
+          <h6 class="mb-3">{{ selectedEvaluationSubmission.article_title }}</h6>
+
+          <!-- Status Badge -->
+          <div class="mb-3">
+            <span :class="`badge bg-${getStatusColor(selectedEvaluationSubmission.status)} fs-6`">
+              {{ selectedEvaluationSubmission.status }}
+            </span>
+            <span class="ms-2 fw-bold">Score: {{ selectedEvaluationSubmission.score || 0 }}</span>
+          </div>
+
+          <!-- Rejection Reason -->
+          <div v-if="selectedEvaluationSubmission.status === 'rejected'" class="alert alert-danger">
+            <i class="fas fa-times-circle me-2"></i>
+            <strong>Rejection Reason:</strong>
+            <p class="mb-0 mt-2">{{ selectedEvaluationSubmission.evaluation_reason }}</p>
+          </div>
+
+          <!-- Score Breakdown (for accepted) -->
+          <div
+            v-if="selectedEvaluationSubmission.status === 'accepted' && selectedEvaluationSubmission.score_breakdown">
+            <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Score Breakdown</h6>
+            <table class="table table-sm">
+              <tbody>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.base_points">
+                  <td>Base Points</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.base_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.bytes_points">
+                  <td>Bytes ({{ selectedEvaluationSubmission.score_breakdown.bytes_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.bytes_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.incoming_links_points">
+                  <td>Incoming Links ({{ selectedEvaluationSubmission.score_breakdown.incoming_links_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.outgoing_links_points">
+                  <td>Outgoing Links ({{ selectedEvaluationSubmission.score_breakdown.outgoing_links_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.new_references_points">
+                  <td>New References ({{ selectedEvaluationSubmission.score_breakdown.new_references_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.new_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.reused_references_points">
+                  <td>Reused References ({{ selectedEvaluationSubmission.score_breakdown.reused_references_count || 0
+                  }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.reused_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.infobox_points">
+                  <td>Infoboxes ({{ selectedEvaluationSubmission.score_breakdown.infobox_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.infobox_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.image_points">
+                  <td>Images ({{ selectedEvaluationSubmission.score_breakdown.image_count || 0 }})</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.image_points }}</td>
+                </tr>
+                <tr class="table-primary fw-bold">
+                  <td>Total Score</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================================================== -->
   <!-- REFACTORED EDIT CONTEST MODAL - CLEAR UX FOR SCORING MODE LOCK -->
@@ -800,19 +1126,14 @@ title="Delete Submission"
 
               <div class="mb-3">
                 <label for="editContestDescription" class="form-label">Description</label>
-                <textarea class="form-control"
-id="editContestDescription"
-rows="3"
+                <textarea class="form-control" id="editContestDescription" rows="3"
                   v-model="editForm.description"></textarea>
               </div>
 
               <div class="mb-3">
                 <label for="editContestRules" class="form-label">Contest Rules *</label>
-                <textarea class="form-control"
-id="editContestRules"
-rows="4"
-                  placeholder="Write rules about how articles must be submitted."
-v-model="editForm.rules"
+                <textarea class="form-control" id="editContestRules" rows="4"
+                  placeholder="Write rules about how articles must be submitted." v-model="editForm.rules"
                   required></textarea>
               </div>
 
@@ -828,19 +1149,11 @@ v-model="editForm.rules"
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label for="editStartDate" class="form-label">Start Date *</label>
-                  <input type="date"
-class="form-control"
-id="editStartDate"
-v-model="editForm.start_date"
-required />
+                  <input type="date" class="form-control" id="editStartDate" v-model="editForm.start_date" required />
                 </div>
                 <div class="col-md-6 mb-3">
                   <label for="editEndDate" class="form-label">End Date *</label>
-                  <input type="date"
-class="form-control"
-id="editEndDate"
-v-model="editForm.end_date"
-required />
+                  <input type="date" class="form-control" id="editEndDate" v-model="editForm.end_date" required />
                 </div>
               </div>
             </div>
@@ -856,9 +1169,7 @@ required />
                 <small v-if="editForm.selectedOrganizers.length === 0" class="organizer-placeholder-text">
                   No additional organizers added
                 </small>
-                <span v-for="username in editForm.selectedOrganizers"
-:key="username"
-class="badge bg-success me-2 mb-2"
+                <span v-for="username in editForm.selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
@@ -867,22 +1178,16 @@ class="badge bg-success me-2 mb-2"
 
               <!-- Organizer search input with autocomplete dropdown -->
               <div style="position: relative;">
-                <input type="text"
-class="form-control"
-v-model="organizerSearchQuery"
-@input="searchOrganizers"
-                  placeholder="Type username to add additional organizers..."
-autocomplete="off" />
+                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..." autocomplete="off" />
 
                 <!-- Autocomplete results dropdown -->
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
                   class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in organizerSearchResults"
-:key="user.username"
+                  <div v-for="user in organizerSearchResults" :key="user.username"
                     class="p-2 border-bottom cursor-pointer"
-                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
-style="cursor: pointer;"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
                     @click="addOrganizer(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
@@ -915,10 +1220,8 @@ style="cursor: pointer;"
                 <small v-if="editForm.selectedJuryMembers.length === 0" class="jury-placeholder-text">
                   No jury members selected yet
                 </small>
-                <span v-for="username in editForm.selectedJuryMembers"
-:key="username"
-                  class="badge bg-primary me-2 mb-2"
-style="font-size: 0.9rem; cursor: pointer;">
+                <span v-for="username in editForm.selectedJuryMembers" :key="username"
+                  class="badge bg-primary me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
                   <i class="fas fa-gavel me-1"></i>{{ username }}
                   <i class="fas fa-times ms-1" @click="removeJuryMember(username)"></i>
                 </span>
@@ -926,22 +1229,15 @@ style="font-size: 0.9rem; cursor: pointer;">
 
               <!-- Jury Input with Autocomplete -->
               <div style="position: relative;">
-                <input type="text"
-class="form-control"
-v-model="jurySearchQuery"
-@input="searchJuryMembers"
-                  placeholder="Type username to search and add..."
-autocomplete="off" />
+                <input type="text" class="form-control" v-model="jurySearchQuery" @input="searchJuryMembers"
+                  placeholder="Type username to search and add..." autocomplete="off" />
 
                 <!-- Autocomplete Dropdown -->
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in jurySearchResults"
-:key="user.username"
-class="p-2 border-bottom cursor-pointer"
-                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
-style="cursor: pointer;"
+                  <div v-for="user in jurySearchResults" :key="user.username" class="p-2 border-bottom cursor-pointer"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
                     @click="addJuryMember(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
@@ -997,7 +1293,10 @@ style="cursor: pointer;"
                   </div>
                   <div class="lock-banner-content">
                     <div class="scoring-mode-badge">
-                      <span v-if="contestScoringMode === 'multi_parameter'" class="badge-mode multi">
+                      <span v-if="contestScoringMode === 'automated'" class="badge-mode automated">
+                        <i class="fas fa-robot me-2"></i>Automated Scoring
+                      </span>
+                      <span v-else-if="contestScoringMode === 'multi_parameter'" class="badge-mode multi">
                         <i class="fas fa-star me-2"></i>Multi-Parameter Scoring
                       </span>
                       <span v-else class="badge-mode simple">
@@ -1018,6 +1317,9 @@ style="cursor: pointer;"
                   <i class="fas fa-info-circle me-2"></i>
                   <strong>What you can edit:</strong>
                   <ul class="mb-0 mt-2">
+                    <li v-if="contestScoringMode === 'automated'">
+                      Nothing
+                    </li>
                     <li v-if="contestScoringMode === 'multi_parameter'">
                       Maximum and minimum score values
                     </li>
@@ -1037,22 +1339,12 @@ style="cursor: pointer;"
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted) *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="maxScore"
-min="1"
-max="1000"
-required />
+                      <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
                       <small class="text-muted">Final score scaled to this value</small>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected) *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="minScore"
-min="0"
-max="1000"
-required />
+                      <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
                       <small class="text-muted">Score for rejected submissions</small>
                     </div>
                   </div>
@@ -1066,38 +1358,26 @@ required />
                           <div class="row align-items-center">
                             <div class="col-md-3">
                               <label class="small text-muted mb-1">Parameter Name</label>
-                              <input type="text"
-class="form-control"
-v-model="param.name"
-placeholder="e.g., Quality"
+                              <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
                                 required />
                             </div>
                             <div class="col-md-3">
                               <label class="small text-muted mb-1">Weight (%)</label>
                               <div class="input-group">
-                                <input type="number"
-class="form-control"
-v-model.number="param.weight"
-min="0"
-                                  max="100"
-placeholder="0-100"
-required />
+                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
+                                  max="100" placeholder="0-100" required />
                                 <span class="input-group-text">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
                               <label class="small text-muted mb-1">Description (Optional)</label>
-                              <input type="text"
-class="form-control"
-v-model="param.description"
+                              <input type="text" class="form-control" v-model="param.description"
                                 placeholder="Brief description" />
                             </div>
                             <div class="col-md-1 text-end">
                               <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                              <button type="button"
-class="btn btn-sm btn-outline-danger"
-                                @click="removeParameter(index)"
-:disabled="scoringParameters.length <= 1"
+                              <button type="button" class="btn btn-sm btn-outline-danger"
+                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1"
                                 title="Remove parameter">
                                 <i class="fas fa-trash"></i>
                               </button>
@@ -1133,25 +1413,92 @@ class="btn btn-sm btn-outline-danger"
                 </div>
 
                 <!-- Simple Scoring Locked Editing -->
-                <div v-else>
+                <div v-else-if="contestScoringMode === 'simple'">
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Accepted Submissions *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="editForm.marks_setting_accepted"
-min="0"
+                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
                         required />
                       <small class="text-muted">Maximum points for accepted submissions</small>
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Rejected Submissions *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="editForm.marks_setting_rejected"
-min="0"
+                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
                         required />
                       <small class="text-muted">Points for rejected submissions</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Automated Scoring Locked Editing -->
+                <div v-else-if="contestScoringMode === 'automated'">
+                  <!-- Eligibility Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Edits</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.eligibility.min_edits" min="0" />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Outgoing Links</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.eligibility.min_outgoing_links" min="0" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Evaluation Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Evaluation Criteria (Points)</h6>
+                    <div class="row">
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Accepted</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_accepted" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Byte</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_byte" min="0" step="0.0001" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Incoming Link</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_incoming_link" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Outgoing Link</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_outgoing_link" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Category</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_category" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per New Reference</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_new_reference" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Reused Reference</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_reused_reference" min="0"
+                          step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Infobox</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_infobox" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Image</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_image" min="0" step="0.01" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1159,12 +1506,10 @@ min="0"
 
               <!-- UNLOCKED MODE: Allow Switching -->
               <div v-else class="unlocked-edit-mode">
-                <!-- Toggle Switch -->
-                <div class="scoring-mode-toggle mb-2">
+                <!-- Toggle Switch (hidden for automated scoring - modes are mutually exclusive) -->
+                <div v-if="contestScoringMode !== 'automated'" class="scoring-mode-toggle mb-2">
                   <div class="form-check form-switch">
-                    <input class="form-check-input"
-type="checkbox"
-id="editEnableMultiParam"
+                    <input class="form-check-input" type="checkbox" id="editEnableMultiParam"
                       v-model="enableMultiParameterScoring" />
                     <label class="form-check-label fw-bold" for="editEnableMultiParam">
                       Enable Multi-Parameter Scoring
@@ -1176,24 +1521,87 @@ id="editEnableMultiParam"
                   </small>
                 </div>
 
+                <!-- Automated Scoring Settings (unlocked mode) -->
+                <div v-if="contestScoringMode === 'automated'" class="automated-scoring-form">
+                  <!-- Eligibility Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Edits</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.eligibility.min_edits" min="0" />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Outgoing Links</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.eligibility.min_outgoing_links" min="0" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Evaluation Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Evaluation Criteria (Points)</h6>
+                    <div class="row">
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Accepted</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_accepted" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Incoming Link</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_incoming_link" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Outgoing Link</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_outgoing_link" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per New Reference</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_new_reference" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Reused Reference</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_reused_reference" min="0"
+                          step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Infobox</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_infobox" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Image</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_image" min="0" step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Byte</label>
+                        <input type="number" class="form-control"
+                          v-model.number="automatedSettings.evaluation.points_per_byte" min="0" step="0.0001" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Simple Scoring Form -->
-                <div v-if="!enableMultiParameterScoring" class="simple-scoring-form">
+                <div v-if="contestScoringMode !== 'automated' && !enableMultiParameterScoring"
+                  class="simple-scoring-form">
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Accepted Submissions *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="editForm.marks_setting_accepted"
-min="0"
+                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
                         required />
                       <small class="text-muted">Maximum points that can be awarded</small>
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Rejected Submissions *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="editForm.marks_setting_rejected"
-min="0"
+                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
                         required />
                       <small class="text-muted">Points for rejected submissions (usually 0)</small>
                     </div>
@@ -1201,26 +1609,16 @@ min="0"
                 </div>
 
                 <!-- Multi-Parameter Scoring Form -->
-                <div v-else class="multi-param-scoring-form">
+                <div v-else-if="contestScoringMode !== 'automated'" class="multi-param-scoring-form">
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted) *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="maxScore"
-min="1"
-max="1000"
-required />
+                      <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
                       <small class="text-muted">Final weighted score scaled to this maximum</small>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected) *</label>
-                      <input type="number"
-class="form-control"
-v-model.number="minScore"
-min="0"
-max="1000"
-required />
+                      <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
                       <small class="text-muted">Fixed score for rejected submissions</small>
                     </div>
                   </div>
@@ -1234,38 +1632,26 @@ required />
                           <div class="row align-items-center">
                             <div class="col-md-3">
                               <label class="small text-muted mb-1">Parameter Name</label>
-                              <input type="text"
-class="form-control"
-v-model="param.name"
-placeholder="e.g., Quality"
+                              <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
                                 required />
                             </div>
                             <div class="col-md-3">
                               <label class="small text-muted mb-1">Weight (%)</label>
                               <div class="input-group">
-                                <input type="number"
-class="form-control"
-v-model.number="param.weight"
-min="0"
-                                  max="100"
-placeholder="0-100"
-required />
+                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
+                                  max="100" placeholder="0-100" required />
                                 <span class="input-group-text">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
                               <label class="small text-muted mb-1">Description (Optional)</label>
-                              <input type="text"
-class="form-control"
-v-model="param.description"
+                              <input type="text" class="form-control" v-model="param.description"
                                 placeholder="Brief description" />
                             </div>
                             <div class="col-md-1 text-end">
                               <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                              <button type="button"
-class="btn btn-sm btn-outline-danger"
-                                @click="removeParameter(index)"
-:disabled="scoringParameters.length <= 1"
+                              <button type="button" class="btn btn-sm btn-outline-danger"
+                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1"
                                 title="Remove parameter">
                                 <i class="fas fa-trash"></i>
                               </button>
@@ -1310,21 +1696,14 @@ class="btn btn-sm btn-outline-danger"
 
               <div class="mb-3">
                 <label class="form-label">Minimum Byte Count *</label>
-                <input type="number"
-v-model.number="editForm.min_byte_count"
-class="form-control"
-min="0"
-                  placeholder="e.g., 1000"
-required />
+                <input type="number" v-model.number="editForm.min_byte_count" class="form-control" min="0"
+                  placeholder="e.g., 1000" required />
                 <small class="form-text text-muted">Articles must have at least this many bytes</small>
               </div>
 
               <div class="mb-3">
                 <label class="form-label">Minimum Reference Count</label>
-                <input type="number"
-v-model.number="editForm.min_reference_count"
-class="form-control"
-min="0"
+                <input type="number" v-model.number="editForm.min_reference_count" class="form-control" min="0"
                   placeholder="e.g., 5" />
                 <small class="form-text text-muted">
                   Articles must have at least this many references. Set to 0 for no requirement.
@@ -1342,16 +1721,11 @@ min="0"
                 <!-- Dynamic category URL inputs -->
                 <div v-for="(category, index) in editForm.categories" :key="index" class="mb-2">
                   <div class="input-group">
-                    <input type="url"
-class="form-control"
-v-model="editForm.categories[index]"
+                    <input type="url" class="form-control" v-model="editForm.categories[index]"
                       :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'" />
                     <!-- Allow removing categories -->
-                    <button v-if="editForm.categories.length > 1"
-type="button"
-class="btn btn-outline-danger"
-                      @click="removeCategory(index)"
-title="Remove category">
+                    <button v-if="editForm.categories.length > 1" type="button" class="btn btn-outline-danger"
+                      @click="removeCategory(index)" title="Remove category">
                       <i class="fas fa-times"></i>
                     </button>
                   </div>
@@ -1372,10 +1746,7 @@ title="Remove category">
                   Contest Template Link
                   <span class="badge bg-secondary ms-1">Optional</span>
                 </label>
-                <input type="url"
-class="form-control"
-id="editTemplateLink"
-v-model="editForm.template_link"
+                <input type="url" class="form-control" id="editTemplateLink" v-model="editForm.template_link"
                   placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
                 <small class="form-text text-muted d-block mt-2">
                   <i class="fas fa-info-circle me-1"></i>
@@ -1389,10 +1760,8 @@ v-model="editForm.template_link"
                   Outreach Dashboard URL
                   <span class="badge bg-secondary ms-1">Optional</span>
                 </label>
-                <input type="url"
-class="form-control"
-id="editOutreachDashboardUrl"
-v-model="editForm.outreach_dashboard_url"
+                <input type="url" class="form-control" id="editOutreachDashboardUrl"
+                  v-model="editForm.outreach_dashboard_url"
                   placeholder="https://outreachdashboard.wmflabs.org/courses/WikiClub_Tech_SHUATS/Wikipedia_25_B_Day_Celebration_by_WikiClub_Tech_SHUATS" />
                 <small class="form-text text-muted d-block mt-2">
                   <i class="fas fa-info-circle me-1"></i>
@@ -1411,14 +1780,132 @@ v-model="editForm.outreach_dashboard_url"
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
-          <button type="button"
-class="btn btn-primary"
-@click="saveContestEdits"
-:disabled="savingContest">
+          <button type="button" class="btn btn-primary" @click="saveContestEdits" :disabled="savingContest">
             <span v-if="savingContest" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="fas fa-save me-2"></i>
             {{ savingContest ? 'Saving...' : 'Save Changes' }}
           </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evaluation Details Modal (for automated scoring contests) -->
+  <div class="modal fade" id="evaluationDetailsModal" tabindex="-1" aria-labelledby="evaluationDetailsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="evaluationDetailsModalLabel">
+            <i class="fas fa-chart-bar me-2"></i>Evaluation Details
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" v-if="selectedEvaluationSubmission">
+          <h6 class="mb-3">
+            <a :href="selectedEvaluationSubmission.article_link" target="_blank" class="text-decoration-none">
+              {{ selectedEvaluationSubmission.article_title }}
+              <i class="fas fa-external-link-alt ms-1 small"></i>
+            </a>
+          </h6>
+
+          <!-- Accepted: Show Score Breakdown -->
+          <div
+            v-if="selectedEvaluationSubmission.status === 'accepted' && selectedEvaluationSubmission.score_breakdown">
+            <div class="alert alert-success py-2">
+              <i class="fas fa-check-circle me-2"></i>
+              <strong>Accepted</strong> — Total Score: {{ selectedEvaluationSubmission.score }}
+            </div>
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Component</th>
+                  <th class="text-center">Count</th>
+                  <th class="text-end">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.base_points">
+                  <td><i class="fas fa-star me-1 text-warning"></i>Base Points</td>
+                  <td class="text-center">—</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.base_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.bytes_points !== undefined">
+                  <td><i class="fas fa-file-alt me-1 text-info"></i>Bytes</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.bytes_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.bytes_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.incoming_links_points !== undefined">
+                  <td><i class="fas fa-arrow-left me-1 text-primary"></i>Incoming Links</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_count || 0 }}
+                  </td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.incoming_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.outgoing_links_points !== undefined">
+                  <td><i class="fas fa-arrow-right me-1 text-primary"></i>Outgoing Links</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_count || 0 }}
+                  </td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.outgoing_links_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.new_references_points !== undefined">
+                  <td><i class="fas fa-book me-1 text-success"></i>New References</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.new_references_count || 0 }}
+                  </td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.new_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.reused_references_points !== undefined">
+                  <td><i class="fas fa-book-open me-1 text-secondary"></i>Reused References</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.reused_references_count || 0
+                  }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.reused_references_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.infobox_points !== undefined">
+                  <td><i class="fas fa-info-circle me-1 text-dark"></i>Infoboxes</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.infobox_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.infobox_points }}</td>
+                </tr>
+                <tr v-if="selectedEvaluationSubmission.score_breakdown.image_points !== undefined">
+                  <td><i class="fas fa-image me-1 text-danger"></i>Images</td>
+                  <td class="text-center">{{ selectedEvaluationSubmission.score_breakdown.image_count || 0 }}</td>
+                  <td class="text-end">{{ selectedEvaluationSubmission.score_breakdown.image_points }}</td>
+                </tr>
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th colspan="2">Total Score</th>
+                  <th class="text-end">{{ selectedEvaluationSubmission.score }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Rejected: Show Reason -->
+          <div v-else-if="selectedEvaluationSubmission.status === 'rejected'">
+            <div class="alert alert-danger">
+              <i class="fas fa-times-circle me-2"></i>
+              <strong>Rejected</strong>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <p class="mb-0"><strong>Reason:</strong></p>
+                <p class="mb-0 mt-1 text-danger">{{ selectedEvaluationSubmission.evaluation_reason }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending or No Data -->
+          <div v-else>
+            <div class="alert alert-info">
+              <i class="fas fa-clock me-2"></i>
+              <span v-if="selectedEvaluationSubmission.evaluation_reason">{{
+                selectedEvaluationSubmission.evaluation_reason }}</span>
+              <span v-else>This submission has not been evaluated yet. Click "Refresh Metadata" to run the
+                evaluation.</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
@@ -1434,6 +1921,14 @@ import { showAlert } from '../utils/alerts'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import ArticlePreviewModal from '../components/ArticlePreviewModal.vue'
 import OutreachDashboardTab from '../components/OutreachDashboardTab.vue'
+
+// Helper function to get CSRF token from cookies
+function getCookie(name) {
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith(name + '='))
+    ?.split('=')[1]
+}
 
 export default {
   name: 'ContestView',
@@ -1455,6 +1950,7 @@ export default {
     const submissions = ref([])
     const loadingSubmissions = ref(false)
     const refreshingMetadata = ref(false)
+    const refreshProgress = ref('')   // persists across batches — unlike 5-sec showAlert toasts
     const deletingContest = ref(false)
     const canDeleteContest = ref(false)
     const checkingAuth = ref(false)
@@ -1481,9 +1977,29 @@ export default {
       { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
       { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
     ])
-    const contestScoringMode = ref('simple')
+    const contestScoringMode = ref('simple') // 'simple', 'multi_parameter', or 'automated'
     const scoringModeLocked = ref(false)
     const reviewedSubmissionsCount = ref(0)
+
+    // Automated scoring settings for edit modal
+    const automatedSettings = reactive({
+      enabled: true,
+      eligibility: {
+        min_edits: 100,
+        min_outgoing_links: 3
+      },
+      evaluation: {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
+    })
 
     // Calculate total weight of all parameters
     const totalWeight = computed(() => {
@@ -1521,6 +2037,104 @@ export default {
       ]
     }
 
+    // Reset to default automated settings
+    const loadDefaultAutomatedSettings = () => {
+      automatedSettings.eligibility = {
+        min_edits: 100,
+        min_outgoing_links: 3
+      }
+      automatedSettings.evaluation = {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
+    }
+
+    // Submission filter state (for automated scoring dashboard)
+    const submissionFilter = ref('all') // 'all', 'accepted', 'rejected', 'pending'
+
+    const filteredSubmissions = computed(() => {
+      if (submissionFilter.value === 'all') {
+        return submissions.value
+      }
+      return submissions.value.filter(s => s.status === submissionFilter.value)
+    })
+
+    // Category crawler state
+    const selectedCategory = ref('')
+    const crawlLimit = ref(100)
+    const crawling = ref(false)
+    const crawlResult = ref(null)
+    const crawlError = ref(null)
+    // Stores the cmcontinue token returned by the backend so the next batch
+    // can resume from exactly where the last import left off.
+    const crawlNextToken = ref(null)
+
+    // Core crawl helper — sends one request to the backend and stores result.
+    // Pass continueFrom to resume a previous batch; omit to start fresh.
+    const _doCrawl = async (continueFrom = null) => {
+      crawling.value = true
+      crawlError.value = null
+
+      try {
+        const csrfToken = getCookie('csrf_access_token')
+        const body = {
+          category_url: selectedCategory.value,
+          limit: crawlLimit.value || 100,
+        }
+        if (continueFrom) {
+          body.continue_from = continueFrom
+        }
+
+        const response = await fetch(`/api/contest/${contest.value.id}/crawl-category`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken || ''
+          },
+          credentials: 'include',
+          body: JSON.stringify(body)
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to crawl category')
+        }
+
+        crawlResult.value = data
+        // Store token so the "Import Next Batch" button can resume later
+        crawlNextToken.value = data.has_more ? data.next_continue : null
+
+        // Refresh submissions list to show new imports
+        await loadSubmissions()
+      } catch (err) {
+        crawlError.value = err.message || 'An error occurred while crawling the category'
+      } finally {
+        crawling.value = false
+      }
+    }
+
+    // Import first batch — clears previous result and starts from beginning
+    const crawlCategory = async () => {
+      if (!selectedCategory.value) return
+      crawlResult.value = null
+      crawlNextToken.value = null
+      await _doCrawl(null)
+    }
+
+    // Import next batch — resumes from the stored cmcontinue token
+    const crawlNextBatch = async () => {
+      if (!crawlNextToken.value) return
+      await _doCrawl(crawlNextToken.value)
+    }
+
     // Track current submission for preview modal
     const currentSubmissionId = ref(null)
 
@@ -1529,6 +2143,27 @@ export default {
       if (!currentSubmissionId.value) return null
       return submissions.value.find(s => s.id === currentSubmissionId.value)
     })
+
+    // Selected submission for evaluation details modal
+    const selectedEvaluationSubmission = ref(null)
+    let evaluationDetailsModal = null
+
+    // Show evaluation details modal (for automated scoring)
+    const showEvaluationDetails = (submission) => {
+      if (!submission.evaluation_reason || contestScoringMode.value !== 'automated') {
+        return
+      }
+      selectedEvaluationSubmission.value = submission
+      if (!evaluationDetailsModal) {
+        const modalEl = document.getElementById('evaluationDetailsModal')
+        if (modalEl) {
+          evaluationDetailsModal = new bootstrap.Modal(modalEl)
+        }
+      }
+      if (evaluationDetailsModal) {
+        evaluationDetailsModal.show()
+      }
+    }
 
     // Get current user from multiple possible store locations
     const currentUser = computed(() => {
@@ -1565,6 +2200,29 @@ export default {
       // Jury members can view submissions
       if (contestData.jury_members && Array.isArray(contestData.jury_members)) {
         const juryUsernames = contestData.jury_members.map(j => (j || '').trim().toLowerCase())
+        return juryUsernames.includes(username)
+      }
+
+      return false
+    })
+
+    // Determine if user can import articles (jury member or superadmin only)
+    const canImportArticles = computed(() => {
+      if (!isAuthenticated.value || !contest.value || !currentUser.value) {
+        return false
+      }
+
+      const username = (currentUser.value.username || '').trim().toLowerCase()
+      const role = (currentUser.value.role || '').trim().toLowerCase()
+
+      // Superadmin can always import
+      if (role === 'superadmin') {
+        return true
+      }
+
+      // Jury members can import
+      if (contest.value.jury_members && Array.isArray(contest.value.jury_members)) {
+        const juryUsernames = contest.value.jury_members.map(j => (j || '').trim().toLowerCase())
         return juryUsernames.includes(username)
       }
 
@@ -1776,6 +2434,15 @@ export default {
             : { enabled: false }
         }
 
+        // Set contest scoring mode for the view (used by clickable status/score)
+        if (data.automated_settings?.enabled === true) {
+          contestScoringMode.value = 'automated'
+        } else if (data.scoring_parameters?.enabled === true) {
+          contestScoringMode.value = 'multi_parameter'
+        } else {
+          contestScoringMode.value = 'simple'
+        }
+
         // Check permissions after loading contest
         await checkAuthAndPermissions()
 
@@ -1836,27 +2503,58 @@ export default {
       }
     }
 
-    // Refresh article metadata from MediaWiki for all submissions
+    // Refresh article metadata from MediaWiki for all submissions.
+    // Uses offset-based pagination (PR #198 Comment #11) so large contests
+    // are processed in batches of 50 without timing out.
     const refreshMetadata = async () => {
       if (!contest.value || !canViewSubmissions.value || submissions.value.length === 0) {
         return
       }
 
       refreshingMetadata.value = true
+      refreshProgress.value = 'Starting refresh…'
+      let totalUpdated = 0
+      let totalFailed = 0
+      let offset = 0
+      let hasMore = true
+
       try {
-        const response = await api.post(`/submission/contest/${contest.value.id}/refresh-metadata`)
+        while (hasMore) {
+          const response = await api.post(
+            `/submission/contest/${contest.value.id}/refresh-metadata?offset=${offset}`
+          )
+
+          totalUpdated += response.updated || 0
+          totalFailed += response.failed || 0
+          hasMore = response.has_more || false
+          offset = response.next_offset || 0
+
+          // Update the persistent inline counter so the user always sees progress,
+          // even between batches that take 30-90 s each.
+          if (response.total_count > 0) {
+            const done = hasMore ? offset : response.total_count
+            refreshProgress.value = hasMore
+              ? `Refreshing… ${done} / ${response.total_count} articles done`
+              : `Finishing last batch…`
+          }
+        }
+
+        refreshProgress.value = ''
         showAlert(
-          `Metadata refreshed: ${response.updated} updated, ${response.failed} failed`,
-          response.failed === 0 ? 'success' : 'warning'
+          `Metadata refreshed: ${totalUpdated} updated, ${totalFailed} failed`,
+          totalFailed === 0 ? 'success' : 'warning'
         )
         await loadSubmissions()
       } catch (error) {
         console.error('Failed to refresh metadata:', error)
+        refreshProgress.value = ''
         showAlert('Failed to refresh metadata: ' + error.message, 'danger')
       } finally {
         refreshingMetadata.value = false
+        refreshProgress.value = ''
       }
     }
+
 
     // Delete contest with confirmation
     const handleDeleteContest = async () => {
@@ -2229,7 +2927,10 @@ export default {
       scoringModeLocked.value = reviewedSubmissions.length > 0
 
       // This determines what the contest is CURRENTLY using
-      if (contest.value.scoring_parameters?.enabled === true) {
+      if (contest.value.automated_settings?.enabled === true) {
+        contestScoringMode.value = 'automated'
+        console.log('[EDIT MODAL] Current scoring mode: AUTOMATED')
+      } else if (contest.value.scoring_parameters?.enabled === true) {
         contestScoringMode.value = 'multi_parameter'
         console.log('[EDIT MODAL] Current scoring mode: MULTI-PARAMETER')
       } else {
@@ -2237,7 +2938,37 @@ export default {
         console.log('[EDIT MODAL] Current scoring mode: SIMPLE')
       }
 
-      if (contestScoringMode.value === 'multi_parameter') {
+      if (contestScoringMode.value === 'automated') {
+        // Contest is using automated scoring
+        enableMultiParameterScoring.value = false
+
+        // Load automated settings
+        if (contest.value.automated_settings) {
+          automatedSettings.eligibility = {
+            min_edits: Number(contest.value.automated_settings.eligibility?.min_edits ?? 100),
+            min_outgoing_links: Number(contest.value.automated_settings.eligibility?.min_outgoing_links ?? 3)
+          }
+          automatedSettings.evaluation = {
+            points_per_accepted: Number(contest.value.automated_settings.evaluation?.points_per_accepted ?? 10),
+            points_per_byte: Number(contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001),
+            points_per_incoming_link: Number(contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2),
+            points_per_outgoing_link: Number(contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1),
+            points_per_category: Number(contest.value.automated_settings.evaluation?.points_per_category ?? 1),
+            points_per_new_reference: Number(contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3),
+            points_per_reused_reference: Number(contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1),
+            points_per_infobox: Number(contest.value.automated_settings.evaluation?.points_per_infobox ?? 5),
+            points_per_image: Number(contest.value.automated_settings.evaluation?.points_per_image ?? 2)
+          }
+        } else {
+          loadDefaultAutomatedSettings()
+        }
+
+        editForm.automated_settings = {
+          enabled: true,
+          eligibility: { ...automatedSettings.eligibility },
+          evaluation: { ...automatedSettings.evaluation }
+        }
+      } else if (contestScoringMode.value === 'multi_parameter') {
         // Contest is using multi-parameter scoring
         enableMultiParameterScoring.value = true
 
@@ -2309,8 +3040,30 @@ export default {
         }
 
         let scoringParametersPayload = null
+        let automatedSettingsPayload = null
 
-        if (enableMultiParameterScoring.value) {
+        if (contestScoringMode.value === 'automated') {
+          // Automated scoring is enabled
+          automatedSettingsPayload = {
+            enabled: true,
+            eligibility: {
+              min_edits: Number(automatedSettings.eligibility.min_edits) || 0,
+              min_outgoing_links: Number(automatedSettings.eligibility.min_outgoing_links) || 0
+            },
+            evaluation: {
+              points_per_accepted: Number(automatedSettings.evaluation.points_per_accepted) || 0,
+              points_per_byte: Number(automatedSettings.evaluation.points_per_byte) || 0,
+              points_per_incoming_link: Number(automatedSettings.evaluation.points_per_incoming_link) || 0,
+              points_per_outgoing_link: Number(automatedSettings.evaluation.points_per_outgoing_link) || 0,
+              points_per_category: Number(automatedSettings.evaluation.points_per_category) || 0,
+              points_per_new_reference: Number(automatedSettings.evaluation.points_per_new_reference) || 0,
+              points_per_reused_reference: Number(automatedSettings.evaluation.points_per_reused_reference) || 0,
+              points_per_infobox: Number(automatedSettings.evaluation.points_per_infobox) || 0,
+              points_per_image: Number(automatedSettings.evaluation.points_per_image) || 0
+            }
+          }
+          scoringParametersPayload = null
+        } else if (enableMultiParameterScoring.value) {
           // Multi-parameter scoring is enabled (either locked or unlocked)
 
           // Validate weights sum to 100
@@ -2373,7 +3126,8 @@ export default {
           outreach_dashboard_url: outreachUrlValue,
           marks_setting_accepted: Number(editForm.marks_setting_accepted),
           marks_setting_rejected: Number(editForm.marks_setting_rejected),
-          scoring_parameters: scoringParametersPayload
+          scoring_parameters: scoringParametersPayload,
+          automated_settings: automatedSettingsPayload
         }
         await api.put(`/contest/${contest.value.id}`, payload)
 
@@ -2449,6 +3203,7 @@ export default {
       loadSubmissions,
       refreshMetadata,
       refreshingMetadata,
+      refreshProgress,
       handleDeleteContest,
       handleSubmitArticle,
       handleArticleSubmitted,
@@ -2490,7 +3245,25 @@ export default {
       savingContest,
       scoringModeLocked,
       reviewedSubmissionsCount,
-      contestScoringMode
+      contestScoringMode,
+      automatedSettings,
+      loadDefaultAutomatedSettings,
+      // Category crawler
+      selectedCategory,
+      crawlLimit,
+      crawling,
+      crawlResult,
+      crawlError,
+      crawlNextToken,
+      crawlCategory,
+      crawlNextBatch,
+      canImportArticles,
+      // Evaluation details modal
+      showEvaluationDetails,
+      selectedEvaluationSubmission,
+      // Submission filter tabs
+      submissionFilter,
+      filteredSubmissions,
     }
   }
 }
@@ -2886,22 +3659,6 @@ export default {
   padding: 0.5rem;
 }
 
-/* --------------------------------------------------------------------------
-   Scoring System Display (View Mode)
-   -------------------------------------------------------------------------- */
-.scoring-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 1.5rem;
-}
-
-[data-theme="dark"] .scoring-card {
-  background: #2a2a2a;
-  border-color: #404040;
-}
-
 .scoring-content {
   padding: 1.25rem;
 }
@@ -2991,6 +3748,105 @@ export default {
   font-size: 0.9375em;
 }
 
+/* Automated Scoring Display Styles */
+.automated-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--wiki-border);
+  font-size: 1.125rem;
+  color: var(--wiki-primary);
+}
+
+.automated-section {
+  margin-bottom: 1.25rem;
+}
+
+.automated-section .section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.75rem;
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.criteria-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .criteria-item {
+  background: #1f1f1f;
+  border-color: #404040;
+}
+
+.criteria-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .criteria-label {
+  color: #9ca3af;
+}
+
+.criteria-value {
+  font-weight: 600;
+  color: var(--wiki-primary);
+  font-size: 0.9375rem;
+}
+
+.points-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.point-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.625rem;
+  background: rgba(13, 202, 240, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(13, 202, 240, 0.3);
+}
+
+[data-theme="dark"] .point-chip {
+  background: rgba(13, 202, 240, 0.15);
+  border-color: rgba(13, 202, 240, 0.4);
+}
+
+.chip-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+[data-theme="dark"] .chip-label {
+  color: #9ca3af;
+}
+
+.chip-value {
+  font-weight: 600;
+  color: #0dcaf0;
+  font-size: 0.9375rem;
+}
+
+[data-theme="dark"] .chip-value {
+  color: #5bc8e6;
+}
+
 .points-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -3022,6 +3878,98 @@ export default {
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--wiki-primary);
+}
+
+/* Category Crawler Styles */
+.crawler-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+[data-theme="dark"] .crawler-section {
+  background: #1a1a2e;
+  border-color: #334155;
+}
+
+.crawler-section .section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.75rem;
+}
+
+.crawler-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.crawler-select {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-select {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-input {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-input {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-limit {
+  width: 100px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-limit {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.crawler-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crawl-result {
+  margin-top: 1rem;
+}
+
+.crawl-result .alert {
+  margin-bottom: 0;
+  font-size: 0.875rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -3285,7 +4233,7 @@ export default {
   background: rgba(0, 102, 153, 0.15);
 }
 
-.form-check{
+.form-check {
   display: flex;
   align-items: end;
 }

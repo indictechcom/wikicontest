@@ -4,7 +4,19 @@ Handles contest creation, retrieval, and management functionality
 """
 
 from datetime import datetime, timezone
+import os
 import traceback
+
+# ---------------------------------------------------------------------------
+# Category crawler rate-limiting constants (PR #198 Comment #6)
+# ---------------------------------------------------------------------------
+# Maximum articles that can ever be imported in a single crawl request.
+# Keeps the value configurable on the server without touching code:
+#   export MAX_CRAWL_LIMIT=3000
+_MAX_CRAWL_LIMIT: int = int(os.environ.get("MAX_CRAWL_LIMIT", "2000"))
+
+# Default when the caller omits the `limit` field in the request body.
+_DEFAULT_CRAWL_LIMIT: int = 500
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import IntegrityError
@@ -30,6 +42,12 @@ from app.utils import (
     check_article_has_category,
     append_categories_to_article,
     get_article_reference_count,
+    get_detailed_reference_counts,
+    get_article_image_count,
+    get_article_infobox_count,
+    get_article_incoming_links,
+    get_article_outgoing_links,
+    crawl_category_articles,
     MEDIAWIKI_API_TIMEOUT,
 )
 from app.services.outreach_dashboard import (
@@ -141,26 +159,26 @@ def get_all_contests():
 def get_contest_outreach_data(contest_id):
     """
     Get Outreach Dashboard course data for a contest
-    
+
     Requires authentication - users must be logged in to view contest details.
-    
+
     Args:
         contest_id: Contest ID
-        
+
     Returns:
         JSON response with Outreach Dashboard course data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course data from Outreach Dashboard API
     result = fetch_course_data(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -179,24 +197,24 @@ def get_contest_outreach_data(contest_id):
 def get_outreach_dashboard_users(contest_id):
     """
     Fetch Outreach Dashboard course users data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course users data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course users data from Outreach Dashboard API
     result = fetch_course_users(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -215,24 +233,24 @@ def get_outreach_dashboard_users(contest_id):
 def get_outreach_dashboard_articles(contest_id):
     """
     Fetch Outreach Dashboard course articles data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course articles data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course articles data from Outreach Dashboard API
     result = fetch_course_articles(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -251,24 +269,24 @@ def get_outreach_dashboard_articles(contest_id):
 def get_outreach_dashboard_uploads(contest_id):
     """
     Fetch Outreach Dashboard course uploads data for a contest.
-    
+
     Args:
         contest_id: ID of the contest
-        
+
     Returns:
         JSON response with Outreach Dashboard course uploads data or error message
     """
     contest = Contest.query.get(contest_id)
-    
+
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
-    
+
     if not contest.outreach_dashboard_url:
         return jsonify({"error": "Contest does not have an Outreach Dashboard URL"}), 400
-    
+
     # Fetch course uploads data from Outreach Dashboard API
     result = fetch_course_uploads(contest.outreach_dashboard_url)
-    
+
     if result["success"]:
         return jsonify({
             "success": True,
@@ -738,6 +756,69 @@ def create_contest():
         scoring_parameters = None
 
     # -----------------------------------------------------------------------
+    # Validate Automated Settings (Optional)
+    # -----------------------------------------------------------------------
+
+    automated_settings = data.get("automated_settings")
+
+    if automated_settings:
+        if not isinstance(automated_settings, dict):
+            return jsonify({"error": "Automated settings must be an object"}), 400
+
+        # Validate automated scoring structure if enabled
+        if automated_settings.get("enabled"):
+            current_app.logger.info(f"[AUTOMATED CREATE] Automated scoring enabled")
+
+            # Validate eligibility section
+            eligibility = automated_settings.get("eligibility", {})
+            if not isinstance(eligibility, dict):
+                eligibility = {}
+
+            # Validate evaluation section
+            evaluation = automated_settings.get("evaluation", {})
+            if not isinstance(evaluation, dict):
+                evaluation = {}
+
+            # Validate numeric values in eligibility
+            # NOTE: min_bytes and min_references are intentionally NOT included here.
+            # The automated evaluation engine reads those from the common contest fields
+            # (min_byte_count, min_reference_count) set via the UI, which are shared
+            # across all three scoring modes. This avoids the redundancy of having
+            # two separate sets of fields for the same thresholds.
+            # See PR #198 Comment #13 for full context.
+            for field in ["min_edits", "min_outgoing_links"]:
+                value = eligibility.get(field)
+                if value is not None:
+                    try:
+                        eligibility[field] = int(value)
+                        if eligibility[field] < 0:
+                            return jsonify({"error": f"{field} must be non-negative"}), 400
+                    except (ValueError, TypeError):
+                        return jsonify({"error": f"{field} must be a valid integer"}), 400
+
+            # Validate numeric values in evaluation
+            for field in ["points_per_accepted", "points_per_byte", "points_per_incoming_link",
+                          "points_per_outgoing_link", "points_per_category", "points_per_new_reference",
+                          "points_per_reused_reference", "points_per_infobox", "points_per_image"]:
+                value = evaluation.get(field)
+                if value is not None:
+                    try:
+                        evaluation[field] = float(value)
+                        if evaluation[field] < 0:
+                            return jsonify({"error": f"{field} must be non-negative"}), 400
+                    except (ValueError, TypeError):
+                        return jsonify({"error": f"{field} must be a valid number"}), 400
+
+            # Update with validated values
+            automated_settings["eligibility"] = eligibility
+            automated_settings["evaluation"] = evaluation
+
+            # When automated mode is enabled, scoring_parameters should be null
+            scoring_parameters = None
+    else:
+        automated_settings = None
+
+    # -----------------------------------------------------------------------
     # Create Contest
     # -----------------------------------------------------------------------
 
@@ -805,6 +886,7 @@ def create_contest():
             template_link=template_link,
             outreach_dashboard_url=outreach_dashboard_url,
             scoring_parameters=scoring_parameters,
+            automated_settings=automated_settings,
             organizers=additional_organizers,
             min_reference_count=min_reference_count,
         )
@@ -1194,6 +1276,62 @@ def update_contest(contest_id):
                 except ValueError as ve:
                     return jsonify({"error": str(ve)}), 400
 
+        # --- Automated Settings (Automated Scoring Mode) ---
+        if "automated_settings" in data:
+            as_settings = data.get("automated_settings")
+
+            # Accept explicit null to disable automated settings
+            if as_settings is None:
+                contest.set_automated_settings(None)
+            elif not isinstance(as_settings, dict):
+                return jsonify({"error": "automated_settings must be an object"}), 400
+            else:
+                # Validate automated scoring structure if enabled
+                if as_settings.get("enabled"):
+                    # Validate eligibility section
+                    eligibility = as_settings.get("eligibility", {})
+                    if not isinstance(eligibility, dict):
+                        eligibility = {}
+
+                    # Validate evaluation section
+                    evaluation = as_settings.get("evaluation", {})
+                    if not isinstance(evaluation, dict):
+                        evaluation = {}
+
+                    # Validate numeric values in eligibility
+                    for field in ["min_edits", "min_outgoing_links"]:
+                        value = eligibility.get(field)
+                        if value is not None:
+                            try:
+                                eligibility[field] = int(value)
+                                if eligibility[field] < 0:
+                                    return jsonify({"error": f"{field} must be non-negative"}), 400
+                            except (ValueError, TypeError):
+                                return jsonify({"error": f"{field} must be a valid integer"}), 400
+
+                    # Validate numeric values in evaluation
+                    for field in ["points_per_accepted", "points_per_byte", "points_per_incoming_link",
+                                  "points_per_outgoing_link", "points_per_category", "points_per_new_reference",
+                                  "points_per_reused_reference", "points_per_infobox", "points_per_image"]:
+                        value = evaluation.get(field)
+                        if value is not None:
+                            try:
+                                evaluation[field] = float(value)
+                                if evaluation[field] < 0:
+                                    return jsonify({"error": f"{field} must be non-negative"}), 400
+                            except (ValueError, TypeError):
+                                return jsonify({"error": f"{field} must be a valid number"}), 400
+
+                    # Update with validated values
+                    as_settings["eligibility"] = eligibility
+                    as_settings["evaluation"] = evaluation
+
+                    # When automated mode is enabled, disable multi-parameter scoring
+                    contest.set_scoring_parameters(None)
+
+                # Persist validated automated settings
+                contest.set_automated_settings(as_settings)
+
         # --- Organizers ---
         if "organizers" in data:
             organizers_payload = data.get("organizers")
@@ -1271,6 +1409,39 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if not (article_link.startswith("http://") or article_link.startswith("https://")):
         return jsonify({"error": "Article link must be a valid URL"}), 400
 
+    # --- Domain Validation Against Contest's Wiki (Automated Scoring Only) ---
+    # For automated scoring contests, ensure the submitted article belongs to
+    # the same wiki as the contest's configured categories. This prevents
+    # cross-wiki submissions (e.g., submitting a French Wikipedia article to
+    # an English Wikipedia contest).
+    # This check is scoped to automated contests only — simple and
+    # multi-parameter scoring modes are left untouched.
+    try:
+        _is_automated_contest = contest.get_scoring_mode() == "automated"
+    except Exception:  # pylint: disable=broad-exception-caught
+        _is_automated_contest = False
+
+    if _is_automated_contest:
+        contest_categories = contest.get_categories()
+        if contest_categories:
+            from urllib.parse import urlparse as _urlparse
+            allowed_domains = set()
+            for cat_url in contest_categories:
+                parsed = _urlparse(cat_url)
+                if parsed.netloc:
+                    allowed_domains.add(parsed.netloc.lower())
+
+            if allowed_domains:
+                article_domain = _urlparse(article_link).netloc.lower()
+                if article_domain not in allowed_domains:
+                    return jsonify({
+                        "error": (
+                            f"The article URL belongs to '{article_domain}', but this "
+                            f"contest only accepts articles from: "
+                            f"{', '.join(sorted(allowed_domains))}"
+                        )
+                    }), 400
+
     # --- Contest Status Checks ---
     if not contest.is_active():
         if contest.is_upcoming():
@@ -1301,6 +1472,10 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     article_size_at_start = None
     article_expansion_bytes = None
     article_reference_count = None
+    ref_new_count = 0
+    ref_reused_count = 0
+    image_count = None
+    infobox_count = None
 
     # --- Fetch Article Information from MediaWiki API ---
     # MediaWiki API fetching has deep nesting due to complex error handling
@@ -1686,6 +1861,83 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             pass
         article_reference_count = None
 
+    # --- Fetch Detailed Metrics (Automated Scoring Only) ---
+    # These extra API calls are only needed for automated scoring evaluation.
+    # Skipping them for regular contests avoids MediaWiki API rate-limiting
+    # which was causing CSRF token failures during template/category enforcement.
+    incoming_links = None
+    outgoing_links = None
+
+    is_automated_contest = False
+    try:
+        is_automated_contest = contest.get_scoring_mode() == "automated"
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    if is_automated_contest:
+        # Fetch detailed reference counts
+        try:
+            ref_counts = get_detailed_reference_counts(article_link)
+            ref_new_count = int(ref_counts.get("new", 0) or 0)
+            ref_reused_count = int(ref_counts.get("reused", 0) or 0)
+        except Exception as ref_detail_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch detailed reference counts: %s", str(ref_detail_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            ref_new_count = 0
+            ref_reused_count = 0
+
+        # Fetch image count
+        try:
+            image_count = get_article_image_count(article_link)
+        except Exception as img_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch image count: %s", str(img_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            image_count = None
+
+        # Fetch infobox count
+        try:
+            infobox_count = get_article_infobox_count(article_link)
+        except Exception as ibx_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch infobox count: %s", str(ibx_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            infobox_count = None
+
+        # Fetch incoming links count
+        try:
+            incoming_links = get_article_incoming_links(article_link)
+        except Exception as incoming_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch incoming links count: %s", str(incoming_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            incoming_links = None
+
+        # Fetch outgoing links count
+        try:
+            outgoing_links = get_article_outgoing_links(article_link)
+        except Exception as outgoing_error:  # pylint: disable=broad-exception-caught
+            try:
+                current_app.logger.warning(
+                    "Failed to fetch outgoing links count: %s", str(outgoing_error)
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            outgoing_links = None
+
     # --- Validate Article Requirements ---
     # Validate article byte count against contest requirements
     # This check happens after fetching article information from MediaWiki API
@@ -2047,6 +2299,12 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             template_added=template_added,
             categories_added=categories_added,
             category_error=category_error,
+            image_count=image_count,
+            infobox_count=infobox_count,
+            ref_new_count=ref_new_count,
+            ref_reused_count=ref_reused_count,
+            incoming_links=incoming_links,
+            outgoing_links=outgoing_links,
         )
 
         submission.save()
@@ -2360,19 +2618,19 @@ def remove_contest_organizer(contest_id, username):
 def create_contest_request():
     """
     Create a contest creation request (for non-privileged users)
-    
+
     Regular users who are not superadmin or trusted members can submit
     requests to create contests. Superadmins can review and approve/reject
     these requests.
-    
+
     Expected JSON data: Same as create_contest endpoint
-    
+
     Returns:
         JSON response with success message and request ID
     """
     user = request.current_user
     data = request.validated_data
-    
+
     # -----------------------------------------------------------------------
     # Check if user already has permission to create contests
     # -----------------------------------------------------------------------
@@ -2381,26 +2639,26 @@ def create_contest_request():
         return jsonify({
             'error': 'You already have permission to create contests. Use the regular create contest endpoint.'
         }), 400
-    
+
     # -----------------------------------------------------------------------
     # Validate Required Fields (same as create_contest)
     # -----------------------------------------------------------------------
     name = data["name"].strip()
     project_name = data["project_name"].strip()
     jury_members = data["jury_members"]
-    
+
     if not name:
         return jsonify({"error": "Contest name is required"}), 400
-    
+
     if not project_name:
         return jsonify({"error": "Project name is required"}), 400
-    
+
     if not isinstance(jury_members, list) or len(jury_members) == 0:
         return (
             jsonify({"error": "Jury members must be a non-empty array of usernames"}),
             400,
         )
-    
+
     # -----------------------------------------------------------------------
     # Validate Jury Members Exist in Database
     # -----------------------------------------------------------------------
@@ -2409,7 +2667,7 @@ def create_contest_request():
     missing_users = [
         username for username in jury_members if username not in existing_usernames
     ]
-    
+
     if missing_users:
         return (
             jsonify(
@@ -2419,7 +2677,7 @@ def create_contest_request():
             ),
             400,
         )
-    
+
     # -----------------------------------------------------------------------
     # Parse Optional Fields (same as create_contest)
     # -----------------------------------------------------------------------
@@ -2428,43 +2686,43 @@ def create_contest_request():
         description = None
     else:
         description = str(description_value).strip() or None
-    
+
     # Parse and validate dates
     start_date = validate_date_string(data.get("start_date"))
     end_date = validate_date_string(data.get("end_date"))
-    
+
     # Validate date logic (end must be after start)
     if start_date and end_date and start_date >= end_date:
         return jsonify({"error": "End date must be after start date"}), 400
-    
+
     # Parse rules
     rules = data.get("rules", {})
     if not isinstance(rules, dict):
         rules = {}
-    
+
     # Parse scoring settings
     marks_accepted = data.get("marks_setting_accepted", 0)
     marks_rejected = data.get("marks_setting_rejected", 0)
     allowed_submission_type = data.get("allowed_submission_type", "both")
-    
+
     try:
         marks_accepted = int(marks_accepted)
         marks_rejected = int(marks_rejected)
     except (ValueError, TypeError):
         return jsonify({"error": "Marks settings must be valid integers"}), 400
-    
+
     # Parse article requirements
     min_byte_count = data.get("min_byte_count")
     if min_byte_count is None:
         return jsonify({"error": "Minimum byte count is required"}), 400
-    
+
     try:
         min_byte_count = int(min_byte_count)
         if min_byte_count < 0:
             return jsonify({"error": "Minimum byte count must be non-negative"}), 400
     except (ValueError, TypeError):
         return jsonify({"error": "Minimum byte count must be a valid integer"}), 400
-    
+
     min_reference_count = data.get("min_reference_count", 0)
     try:
         min_reference_count = int(min_reference_count)
@@ -2472,12 +2730,12 @@ def create_contest_request():
             return jsonify({"error": "Minimum reference count must be non-negative"}), 400
     except (ValueError, TypeError):
         return jsonify({"error": "Minimum reference count must be a valid integer"}), 400
-    
+
     # Validate categories
     categories = data.get("categories")
     if not categories or not isinstance(categories, list) or len(categories) == 0:
         return jsonify({"error": "At least one category URL is required"}), 400
-    
+
     for category_url in categories:
         if not isinstance(category_url, str) or not category_url.strip():
             return (
@@ -2491,13 +2749,13 @@ def create_contest_request():
                 jsonify({"error": "All category URLs must be valid HTTP/HTTPS URLs"}),
                 400,
             )
-    
+
     # Validate scoring parameters (same validation as create_contest)
     scoring_parameters = data.get("scoring_parameters")
     if scoring_parameters:
         if not isinstance(scoring_parameters, dict):
             return jsonify({"error": "Scoring parameters must be an object"}), 400
-        
+
         if scoring_parameters.get("enabled"):
             if "parameters" not in scoring_parameters:
                 return (
@@ -2506,14 +2764,14 @@ def create_contest_request():
                     ),
                     400,
                 )
-            
+
             parameters = scoring_parameters["parameters"]
             if not isinstance(parameters, list) or len(parameters) == 0:
                 return (
                     jsonify({"error": "At least one scoring parameter is required"}),
                     400,
                 )
-            
+
             total_weight = 0
             for param in parameters:
                 if not isinstance(param, dict):
@@ -2532,13 +2790,13 @@ def create_contest_request():
                     total_weight += weight
                 except (ValueError, TypeError):
                     return jsonify({"error": "Weight must be a valid integer"}), 400
-            
+
             if total_weight != 100:
                 return (
                     jsonify({"error": f"Weights must sum to 100, got {total_weight}"}),
                     400,
                 )
-    
+
     # Parse template_link
     template_link = data.get('template_link')
     if template_link:
@@ -2551,7 +2809,7 @@ def create_contest_request():
                 }), 400
         else:
             template_link = None
-    
+
     # -----------------------------------------------------------------------
     # Create Contest Request
     # -----------------------------------------------------------------------
@@ -2560,7 +2818,7 @@ def create_contest_request():
         additional_organizers = data.get('organizers', [])
         if not isinstance(additional_organizers, list):
             additional_organizers = []
-        
+
         # Create contest request instance
         contest_request = ContestRequest(
             user_id=user.id,
@@ -2581,10 +2839,10 @@ def create_contest_request():
             organizers=additional_organizers,
             min_reference_count=min_reference_count,
         )
-        
+
         # Save to database
         contest_request.save()
-        
+
         return (
             jsonify(
                 {
@@ -2594,7 +2852,7 @@ def create_contest_request():
             ),
             201,
         )
-    
+
     except Exception:  # pylint: disable=broad-exception-caught
         # Log error internally but don't expose details to client
         return jsonify({"error": "Failed to create contest request"}), 500
@@ -2606,7 +2864,7 @@ def create_contest_request():
 def get_contest_requests():
     """
     Get all contest creation requests (superadmin only)
-    
+
     Returns:
         JSON response with list of contest requests
     """
@@ -2614,7 +2872,7 @@ def get_contest_requests():
     requests = ContestRequest.query.filter_by(status='pending').order_by(
         ContestRequest.created_at.desc()
     ).all()
-    
+
     return jsonify({
         'requests': [req.to_dict() for req in requests]
     }), 200
@@ -2626,29 +2884,29 @@ def get_contest_requests():
 def approve_contest_request(request_id):
     """
     Approve a contest creation request and create the contest (superadmin only)
-    
+
     Args:
         request_id: Contest request ID to approve
-    
+
     Returns:
         JSON response with success message and created contest ID
     """
     user = request.current_user
     contest_request = ContestRequest.query.get(request_id)
-    
+
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
-    
+
     if contest_request.status != 'pending':
         return jsonify({
             'error': f'Request has already been {contest_request.status}'
         }), 400
-    
+
     # Get the requester user to use as contest creator
     requester = User.query.get(contest_request.user_id)
     if not requester:
         return jsonify({'error': 'Requester user not found'}), 404
-    
+
     # Create the contest from the request data
     try:
         contest = Contest(
@@ -2670,22 +2928,22 @@ def approve_contest_request(request_id):
             organizers=contest_request.get_organizers(),
             min_reference_count=contest_request.min_reference_count,
         )
-        
+
         # Save contest to database
         contest.save()
-        
+
         # Update request status
         contest_request.status = 'approved'
         contest_request.reviewed_by = user.id
         contest_request.reviewed_at = datetime.utcnow()
         contest_request.save()
-        
+
         return jsonify({
             'message': 'Contest request approved and contest created successfully',
             'contestId': contest.id,
             'requestId': contest_request.id
         }), 200
-    
+
     except Exception as e:  # pylint: disable=broad-exception-caught
         # Log error for debugging
         current_app.logger.error(f'Error approving contest request: {str(e)}')
@@ -2700,38 +2958,168 @@ def approve_contest_request(request_id):
 def reject_contest_request(request_id):
     """
     Reject a contest creation request (superadmin only)
-    
+
     Args:
         request_id: Contest request ID to reject
-    
+
     Expected JSON data (optional):
         rejection_reason: Reason for rejection
-    
+
     Returns:
         JSON response with success message
     """
     user = request.current_user
     # Get JSON data if provided (rejection_reason is optional)
     data = request.get_json() or {}
-    
+
     contest_request = ContestRequest.query.get(request_id)
-    
+
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
-    
+
     if contest_request.status != 'pending':
         return jsonify({
             'error': f'Request has already been {contest_request.status}'
         }), 400
-    
+
     # Update request status
     contest_request.status = 'rejected'
     contest_request.reviewed_by = user.id
     contest_request.reviewed_at = datetime.utcnow()
     contest_request.rejection_reason = data.get('rejection_reason', '')
     contest_request.save()
-    
+
     return jsonify({
         'message': 'Contest request rejected successfully',
         'requestId': contest_request.id
     }), 200
+
+
+# ------------------------------------------------------------------------
+# CATEGORY CRAWLER ROUTE
+# ------------------------------------------------------------------------
+
+
+@contest_bp.route("/<int:contest_id>/crawl-category", methods=["POST"])
+@require_auth
+@handle_errors
+@validate_json_data(["category_url"])
+def crawl_category_for_contest(contest_id):
+    """
+    Crawl articles from a Wikipedia category and create pending submissions.
+    """
+    try:
+        user = request.current_user
+        data = request.get_json()
+
+        # Fetch contest
+        contest = Contest.query.get(contest_id)
+        if not contest:
+            return jsonify({"error": "Contest not found"}), 404
+
+        # Check if contest uses automated scoring
+        try:
+            scoring_mode = contest.get_scoring_mode()
+        except Exception as e:
+            current_app.logger.error(f"Error getting scoring mode: {str(e)}")
+            scoring_mode = "simple"
+
+        if scoring_mode != "automated":
+            return jsonify({
+                "error": f"Category crawling is only available for automated scoring contests. Current mode: {scoring_mode}"
+            }), 400
+
+        # Permission check: jury member or superadmin only
+        jury_members = contest.get_jury_members() if hasattr(contest, "get_jury_members") else []
+        is_jury_member = user.username in jury_members if jury_members else False
+        is_superadmin = getattr(user, "role", None) == "superadmin"
+
+        if not (is_jury_member or is_superadmin):
+            return jsonify({"error": "You do not have permission to crawl categories for this contest"}), 403
+
+        # Get parameters
+        category_url = data.get("category_url")
+
+        # Enforce rate limiting: cap imports per request to prevent server
+        # overload and MediaWiki API timeouts (PR #198 Comment #6).
+        # Default: 500  |  Hard cap: MAX_CRAWL_LIMIT (default 2000, env-configurable)
+        try:
+            requested_limit = int(data.get("limit", _DEFAULT_CRAWL_LIMIT))
+            limit = min(max(requested_limit, 1), _MAX_CRAWL_LIMIT)
+        except (ValueError, TypeError):
+            limit = _DEFAULT_CRAWL_LIMIT
+
+        # Optional cmcontinue token from a previous crawl batch.
+        # When present the crawler resumes from this position in the category
+        # instead of starting from the beginning (supports "Import Next Batch").
+        continue_from = data.get("continue_from") or None
+
+        # Crawl the category
+        result = crawl_category_articles(
+            category_url,
+            limit=limit,
+            continue_from=continue_from,
+        )
+
+        if not result:
+            return jsonify({
+                "error": "Failed to crawl category. Please check the category URL."
+            }), 400
+
+        articles = result.get("articles", [])
+        imported = []
+        skipped = 0
+
+        # Get existing article links for this contest to avoid duplicates
+        existing_links = set(
+            s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
+        )
+
+        # Create submissions for each article
+        for article in articles:
+            article_url = article.get("url")
+            article_title = article.get("title")
+
+            # Skip if already submitted
+            if article_url in existing_links:
+                skipped += 1
+                continue
+
+            # Create pending submission
+            submission = Submission(
+                user_id=user.id,
+                contest_id=contest_id,
+                article_title=article_title,
+                article_link=article_url,
+                status="pending",
+            )
+
+            try:
+                submission.save()
+                imported.append(article_title)
+                existing_links.add(article_url)
+            except IntegrityError:
+                db.session.rollback()
+                skipped += 1
+            except Exception as e:
+                current_app.logger.error(f"Error creating submission for {article_title}: {str(e)}")
+                db.session.rollback()
+                skipped += 1
+
+        return jsonify({
+            "message": f"Successfully imported {len(imported)} articles from category",
+            "total_imported": len(imported),
+            "skipped": skipped,
+            "category": result.get("category"),
+            "wiki_base": result.get("wiki_base"),
+            "articles": imported[:100],
+            # Pagination: pass next_continue back to the client so it can
+            # request the next batch with "Import Next Batch" (Option B).
+            "has_more": result.get("has_more", False),
+            "next_continue": result.get("next_continue"),
+        }), 200
+
+
+    except Exception as e:
+        current_app.logger.error(f"crawl_category_for_contest error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500

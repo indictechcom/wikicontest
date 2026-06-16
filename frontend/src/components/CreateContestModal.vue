@@ -107,34 +107,48 @@ required
                 <!-- Radio Button Selection -->
                 <div class="row mb-4">
                   <!-- Simple Scoring Option -->
-                  <div class="col-md-6">
-                    <label :class="{ 'active': !enableMultiParameterScoring }">
+                  <div class="col-md-4">
+                    <label :class="{ 'active': scoringMode === 'simple' }">
                       <input type="radio"
 name="scoringMode"
-:value="false"
-v-model="enableMultiParameterScoring"
+value="simple"
+v-model="scoringMode"
                         :disabled="loading" />
                       <h6>Simple Scoring</h6>
                     </label>
                   </div>
 
                   <!-- Multi-Parameter Scoring Option -->
-                  <div class="col-md-6">
-                    <label :class="{ 'active': enableMultiParameterScoring }">
+                  <div class="col-md-4">
+                    <label :class="{ 'active': scoringMode === 'multi_parameter' }">
                       <input type="radio"
 name="scoringMode"
-:value="true"
-v-model="enableMultiParameterScoring"
+value="multi_parameter"
+v-model="scoringMode"
                         :disabled="loading" />
                       <div>
                         <h6>Multi-Parameter Scoring</h6>
                       </div>
                     </label>
                   </div>
+
+                  <!-- Automated Scoring Option -->
+                  <div class="col-md-4">
+                    <label :class="{ 'active': scoringMode === 'automated' }">
+                      <input type="radio"
+name="scoringMode"
+value="automated"
+v-model="scoringMode"
+                        :disabled="loading" />
+                      <div>
+                        <h6>Automated Scoring</h6>
+                      </div>
+                    </label>
+                  </div>
                 </div>
 
-                <!--  SIMPLE SCORING CONTENT - Shown when enableMultiParameterScoring is FALSE -->
-                <div v-if="!enableMultiParameterScoring">
+                <!--  SIMPLE SCORING CONTENT - Shown when scoringMode is 'simple' -->
+                <div v-if="scoringMode === 'simple'">
                   <div class="alert alert-success">
                     <i class="fas fa-check-circle me-2"></i>
                     <strong>Simple Scoring Enabled:</strong> Jury will assign a single score for each submission.
@@ -171,8 +185,8 @@ required
                   </div>
                 </div>
 
-                <!--  MULTI-PARAMETER SCORING CONTENT - Shown when enableMultiParameterScoring is TRUE -->
-                <div v-else>
+                <!--  MULTI-PARAMETER SCORING CONTENT - Shown when scoringMode is 'multi_parameter' -->
+                <div v-else-if="scoringMode === 'multi_parameter'">
                   <div class="alert alert-primary">
                     <i class="fas fa-star me-2"></i>
                     <strong>Multi-Parameter Scoring Enabled:</strong> Jury will score submissions on multiple parameters
@@ -288,6 +302,153 @@ class="btn btn-sm btn-outline-secondary"
 @click="loadDefaultParameters"
                     :disabled="loading">
                     <i class="fas fa-redo me-1"></i>Load Default Parameters
+                  </button>
+                </div>
+
+                <!--  AUTOMATED SCORING CONTENT - Shown when scoringMode is 'automated' -->
+                <div v-else-if="scoringMode === 'automated'">
+                  <div class="alert alert-info">
+                    <i class="fas fa-robot me-2"></i>
+                    <strong>Automated Scoring Enabled:</strong> Articles will be automatically evaluated and scored
+                    based on eligibility criteria and article metrics.
+                  </div>
+
+                  <!-- Eligibility Criteria Section -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                    <p class="text-muted small mb-3">
+                      Articles must meet these minimum requirements to be accepted automatically.
+                    </p>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Edits</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_edits"
+min="0"
+placeholder="e.g., 100"
+                          :disabled="loading" />
+                        <small class="form-text text-muted">Minimum edit count required</small>
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Outgoing Links</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_outgoing_links"
+min="0"
+placeholder="e.g., 3"
+                          :disabled="loading" />
+                        <small class="form-text text-muted">Links from this article to other articles</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Evaluation Criteria Section -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Evaluation Criteria (Points)</h6>
+                    <p class="text-muted small mb-3">
+                      Points awarded for each metric when calculating the final score.
+                    </p>
+                    <div class="row">
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Accepted</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_accepted"
+min="0"
+step="0.01"
+placeholder="e.g., 10"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Byte</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_byte"
+min="0"
+step="0.0001"
+placeholder="e.g., 0.001"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Incoming Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_incoming_link"
+min="0"
+step="0.01"
+placeholder="e.g., 2"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Outgoing Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_outgoing_link"
+min="0"
+step="0.01"
+placeholder="e.g., 1"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Category</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_category"
+min="0"
+step="0.01"
+placeholder="e.g., 1"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per New Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_new_reference"
+min="0"
+step="0.01"
+placeholder="e.g., 3"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Reused Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_reused_reference"
+min="0"
+step="0.01"
+placeholder="e.g., 1"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Infobox</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_infobox"
+min="0"
+step="0.01"
+placeholder="e.g., 5"
+                          :disabled="loading" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Image</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_image"
+min="0"
+step="0.01"
+placeholder="e.g., 2"
+                          :disabled="loading" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Reset to default automated settings -->
+                  <button type="button"
+class="btn btn-sm btn-outline-secondary"
+@click="loadDefaultAutomatedSettings"
+                    :disabled="loading">
+                    <i class="fas fa-redo me-1"></i>Load Default Settings
                   </button>
                 </div>
               </div>
@@ -553,13 +714,33 @@ export default {
     const jurySearchQuery = ref('')
     const jurySearchResults = ref([])
     let searchTimeout = null
-    const enableMultiParameterScoring = ref(false)
+    const scoringMode = ref('simple') // 'simple', 'multi_parameter', or 'automated'
     const maxScore = ref(10)
     const minScore = ref(0)
     const selectedOrganizers = ref([])
     const organizerSearchQuery = ref('')
     const organizerSearchResults = ref([])
     let organizerSearchTimeout = null
+
+    // Automated scoring settings
+    const automatedSettings = reactive({
+      enabled: true,
+      eligibility: {
+        min_edits: 100,
+        min_outgoing_links: 3
+      },
+      evaluation: {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
+    })
 
     // Default scoring parameters with weights
     const scoringParameters = ref([
@@ -605,11 +786,30 @@ export default {
       ]
     }
 
-    // Watch for scoring mode changes
-    watch(enableMultiParameterScoring, (newValue) => {
-      console.log(`[SCORING] Mode changed to: ${newValue ? 'Multi-Parameter' : 'Simple'}`)
+    // Reset to default automated settings
+    const loadDefaultAutomatedSettings = () => {
+      automatedSettings.eligibility = {
+        min_edits: 100,
+        min_outgoing_links: 3
+      }
+      automatedSettings.evaluation = {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
+    }
 
-      if (!newValue) {
+    // Watch for scoring mode changes
+    watch(scoringMode, (newValue) => {
+      console.log(`[SCORING] Mode changed to: ${newValue}`)
+
+      if (newValue === 'simple') {
         // Switching to simple - ensure simple scoring values are set
         if (!formData.marks_setting_accepted) {
           formData.marks_setting_accepted = 10
@@ -617,10 +817,15 @@ export default {
         if (!formData.marks_setting_rejected && formData.marks_setting_rejected !== 0) {
           formData.marks_setting_rejected = 0
         }
-      } else {
+      } else if (newValue === 'multi_parameter') {
         // Switching to multi - ensure parameters are initialized
         if (scoringParameters.value.length === 0) {
           loadDefaultParameters()
+        }
+      } else if (newValue === 'automated') {
+        // Switching to automated - ensure settings are initialized
+        if (!automatedSettings.eligibility || !automatedSettings.evaluation) {
+          loadDefaultAutomatedSettings()
         }
       }
     })
@@ -951,7 +1156,7 @@ export default {
       }
 
       // Scoring-specific validation
-      if (enableMultiParameterScoring.value) {
+      if (scoringMode.value === 'multi_parameter') {
         if (totalWeight.value !== 100) {
           showAlert(
             'Multi-Parameter Scoring requires weights to sum to 100%. ' +
@@ -967,13 +1172,14 @@ export default {
           showAlert('All scoring parameters must have names', 'warning')
           return
         }
-      } else {
+      } else if (scoringMode.value === 'simple') {
         // Simple scoring validation
         if (formData.marks_setting_accepted < 0) {
           showAlert('Points for accepted submissions must be non-negative', 'warning')
           return
         }
       }
+      // Automated mode validation - eligibility and evaluation values are optional with defaults
 
       // Set loading state to prevent multiple submissions
       loading.value = true
@@ -981,12 +1187,13 @@ export default {
       try {
         // Build scoring parameters payload
         let scoringParametersPayload = null
+        let automatedSettingsPayload = null
 
-        console.log('[CREATE] enableMultiParameterScoring:', enableMultiParameterScoring.value)
+        console.log('[CREATE] scoringMode:', scoringMode.value)
         console.log('[CREATE] scoringParameters:', scoringParameters.value)
         console.log('[CREATE] totalWeight:', totalWeight.value)
 
-        if (enableMultiParameterScoring.value) {
+        if (scoringMode.value === 'multi_parameter') {
           scoringParametersPayload = {
             enabled: true,
             max_score: Number(maxScore.value),
@@ -999,7 +1206,30 @@ export default {
           }
 
           console.log('[CREATE] Built scoring payload:', JSON.stringify(scoringParametersPayload, null, 2))
+        } else if (scoringMode.value === 'automated') {
+          // Build automated settings payload
+          automatedSettingsPayload = {
+            enabled: true,
+            eligibility: {
+              min_edits: Number(automatedSettings.eligibility.min_edits) || 0,
+              min_outgoing_links: Number(automatedSettings.eligibility.min_outgoing_links) || 0
+            },
+            evaluation: {
+              points_per_accepted: Number(automatedSettings.evaluation.points_per_accepted) || 0,
+              points_per_byte: Number(automatedSettings.evaluation.points_per_byte) || 0,
+              points_per_incoming_link: Number(automatedSettings.evaluation.points_per_incoming_link) || 0,
+              points_per_outgoing_link: Number(automatedSettings.evaluation.points_per_outgoing_link) || 0,
+              points_per_category: Number(automatedSettings.evaluation.points_per_category) || 0,
+              points_per_new_reference: Number(automatedSettings.evaluation.points_per_new_reference) || 0,
+              points_per_reused_reference: Number(automatedSettings.evaluation.points_per_reused_reference) || 0,
+              points_per_infobox: Number(automatedSettings.evaluation.points_per_infobox) || 0,
+              points_per_image: Number(automatedSettings.evaluation.points_per_image) || 0
+            }
+          }
+
+          console.log('[CREATE] Built automated settings payload:', JSON.stringify(automatedSettingsPayload, null, 2))
         } else {
+          // Simple scoring
           scoringParametersPayload = {
             enabled: false,
             max_score: Number(formData.marks_setting_accepted),
@@ -1041,6 +1271,8 @@ export default {
           // Outreach Dashboard URL (optional): trim or set to null if empty
           outreach_dashboard_url: outreachUrlValue,
           scoring_parameters: scoringParametersPayload,
+          // Automated settings (only for automated mode)
+          automated_settings: automatedSettingsPayload,
           min_reference_count: formData.min_reference_count || 0
         }
 
@@ -1102,10 +1334,11 @@ export default {
       nextWeek.setDate(nextWeek.getDate() + 7)
       formData.start_date = tomorrow.toISOString().split('T')[0]
       formData.end_date = nextWeek.toISOString().split('T')[0]
-      enableMultiParameterScoring.value = false
+      scoringMode.value = 'simple'
       maxScore.value = 10
       minScore.value = 0
       loadDefaultParameters()
+      loadDefaultAutomatedSettings()
     }
 
     return {
@@ -1129,7 +1362,7 @@ export default {
       removeCategory,
       handleSubmit,
       store,
-      enableMultiParameterScoring,
+      scoringMode,
       maxScore,
       minScore,
       scoringParameters,
@@ -1137,7 +1370,9 @@ export default {
       weightTotalClass,
       addParameter,
       removeParameter,
-      loadDefaultParameters
+      loadDefaultParameters,
+      automatedSettings,
+      loadDefaultAutomatedSettings
     }
   }
 }
@@ -1609,5 +1844,52 @@ input[type="date"].form-control {
 .badge.bg-secondary {
   background-color: #6c757d !important;
   color: white;
+}
+
+/* Automated Scoring Section Styles */
+.alert-info {
+  background-color: rgba(13, 202, 240, 0.15);
+  border-color: rgba(13, 202, 240, 0.3);
+  color: var(--wiki-text);
+}
+
+[data-theme="dark"] .alert-info {
+  background-color: rgba(13, 202, 240, 0.2);
+  border-color: rgba(13, 202, 240, 0.4);
+}
+
+/* Scoring mode radio button labels */
+.card-body label {
+  display: block;
+  padding: 1rem;
+  border: 2px solid var(--wiki-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.card-body label:hover {
+  border-color: var(--wiki-primary);
+  background-color: var(--wiki-hover-bg);
+}
+
+.card-body label.active {
+  border-color: var(--wiki-primary);
+  background-color: rgba(0, 102, 153, 0.1);
+}
+
+[data-theme="dark"] .card-body label.active {
+  background-color: rgba(93, 184, 230, 0.15);
+}
+
+.card-body label input[type="radio"] {
+  margin-bottom: 0.5rem;
+}
+
+.card-body label h6 {
+  margin: 0;
+  font-weight: 600;
+  color: var(--wiki-text);
 }
 </style>

@@ -169,6 +169,60 @@ class ContestMixin:
 
 
     # ------------------------------------------------------------------------
+    # AUTOMATED SETTINGS MANAGEMENT (JSON Dictionary Storage)
+    # ------------------------------------------------------------------------
+
+    def set_automated_settings(self, settings):
+        """
+        Set automated scoring settings configuration
+
+        Args:
+            settings: Dict or None containing automated scoring configuration
+                {
+                    "enabled": true,
+                    "eligibility": {
+                        "min_edits": 100,
+                        "min_outgoing_links": 3
+                    },
+                    "evaluation": {
+                        "points_per_accepted": 10,
+                        "points_per_byte": 0.001,
+                        "points_per_incoming_link": 2,
+                        "points_per_outgoing_link": 1,
+                        "points_per_category": 1,
+                        "points_per_new_reference": 3,
+                        "points_per_reused_reference": 1,
+                        "points_per_infobox": 5,
+                        "points_per_image": 2
+                    }
+                }
+        """
+        if settings is None:
+            self.automated_settings = None
+        elif isinstance(settings, dict):
+            # Store as JSON string
+            self.automated_settings = json.dumps(settings)
+        else:
+            self.automated_settings = None
+
+
+    def get_automated_settings(self):
+        """
+        Get automated scoring settings configuration
+
+        Returns:
+            dict or None: Automated scoring settings configuration
+        """
+        if not self.automated_settings:
+            return None
+        try:
+            # Parse JSON string back to dictionary
+            return json.loads(self.automated_settings)
+        except json.JSONDecodeError:
+            return None
+
+
+    # ------------------------------------------------------------------------
     # ORGANIZERS MANAGEMENT (Comma-Separated Storage)
     # ------------------------------------------------------------------------
 
