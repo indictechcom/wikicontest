@@ -607,6 +607,24 @@ def health_check():
     }), 200
 
 
+@app.route('/oauth/callback', methods=['GET'])
+def oauth_callback_redirect():
+    """
+    Redirect /oauth/callback to the blueprint handler at /api/user/oauth/callback.
+
+    The Toolforge OAuth consumer is registered with callback URL
+    https://wikicontest.toolforge.org/oauth/callback, but the actual handler
+    lives at /api/user/oauth/callback (the user_bp blueprint).
+    This route bridges the two by forwarding all query parameters.
+    """
+    from flask import redirect
+    query_string = request.query_string.decode('utf-8')
+    target = f'/api/user/oauth/callback'
+    if query_string:
+        target = f'{target}?{query_string}'
+    return redirect(target, code=302)
+
+
 @app.route('/api/oauth/config', methods=['GET'])
 def oauth_config_check():
     """
