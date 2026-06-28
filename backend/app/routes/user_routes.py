@@ -4,7 +4,6 @@ Handles user registration, login, logout, and dashboard functionality
 """
 
 import re
-import time
 
 from flask import Blueprint, request, jsonify, make_response, session, redirect, current_app
 from flask_jwt_extended import create_access_token, set_access_cookies, unset_jwt_cookies
@@ -13,15 +12,7 @@ import mwoauth
 from app.database import db
 from app.middleware.auth import require_auth, require_role, handle_errors, validate_json_data
 from app.models.user import User
-
-# ------------------------------------------------------------------------
-# OAUTH TOKEN CACHE
-# ------------------------------------------------------------------------
-# Temporary storage for OAuth tokens (in-memory cache)
-# This is used as a fallback when session cookies don't persist across redirects
-# When users are redirected to Wikimedia for OAuth, session cookies may not
-# persist properly, so we cache tokens here as a backup mechanism
-_oauth_token_cache = {}
+from app.models.oauth_token_cache import OAuthTokenCache
 
 # Create blueprint
 user_bp = Blueprint('user', __name__)
@@ -539,18 +530,18 @@ def oauth_login():
         session['request_token'] = request_token.key
         session['request_secret'] = request_token.secret
 
-        # Also store in temporary cache as backup (in case session cookies don't persist)
-        # This helps when redirecting to external sites where cookies might not work
-        _oauth_token_cache[request_token.key] = {
-            'secret': request_token.secret,
-            'timestamp': time.time()
-        }
+        # Also store in database-backed cache as backup (in case session cookies
+        # don't persist across the cross-site redirect to Wikimedia).
+        # Uses a DB table instead of in-memory dict so tokens survive across
+        # multiple Gunicorn workers (each worker has its own memory space).
+        OAuthTokenCache.store(request_token.key, request_token.secret)
 
-        # Clean up old cache entries (older than 10 minutes)
-        current_time = time.time()
-        expired_keys = [k for k, v in _oauth_token_cache.items() if current_time - v['timestamp'] > 600]
-        for key in expired_keys:
-            _oauth_token_cache.pop(key, None)
+        # Opportunistically clean up expired entries
+        try:
+            OAuthTokenCache.cleanup_expired()
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Cleanup failure should never block the login flow
+            pass
 
         # Explicitly save session before redirect to ensure it persists
         # This is critical for OAuth flow where we redirect to external site
@@ -608,18 +599,16 @@ def oauth_callback():
     request_token_key = session.get('request_token')
     request_secret = session.get('request_secret')
 
-    # --- Fallback to Cache if Session Failed ---
-    # If session doesn't have the token, try to get it from cache (fallback)
-    # This handles cases where session cookies don't persist across external redirects
+    # --- Fallback to DB Cache if Session Failed ---
+    # If session doesn't have the token, try to get it from database cache.
+    # This handles cases where session cookies don't persist across external redirects,
+    # or where the session was stored by a different Gunicorn worker.
     if not request_token_key or not request_secret:
-        if oauth_token in _oauth_token_cache:
-            cached_data = _oauth_token_cache.get(oauth_token)
-            if cached_data:
-                request_token_key = oauth_token
-                request_secret = cached_data['secret']
-                current_app.logger.info('Retrieved OAuth token from cache (session cookie failed)')
-                # Clean up cache entry after use
-                _oauth_token_cache.pop(oauth_token, None)
+        cached_secret = OAuthTokenCache.retrieve_and_delete(oauth_token)
+        if cached_secret:
+            request_token_key = oauth_token
+            request_secret = cached_secret
+            current_app.logger.info('Retrieved OAuth token from DB cache (session cookie failed)')
 
     # Log session data for debugging
     current_app.logger.info(
@@ -640,7 +629,6 @@ def oauth_callback():
         # Provide more detailed error message for debugging
         current_app.logger.error('OAuth session expired - session data missing')
         current_app.logger.error(f'Available session keys: {list(session.keys())}')
-        current_app.logger.error(f'Cache keys: {list(_oauth_token_cache.keys())}')
         return jsonify({
             'error': 'OAuth session expired. Please try again.',
             'details': (
