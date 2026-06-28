@@ -201,8 +201,13 @@ def create_app():
 
     # Auto-create the OAuth token cache table if it doesn't exist.
     # This is safe to call on every startup — create_all only creates missing tables.
+    # Wrapped in try/except so a DB outage doesn't prevent the app from starting.
     with flask_app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as db_err:  # pylint: disable=broad-exception-caught
+            print(f"WARNING: db.create_all() failed on startup: {db_err}")
+            print("The application will start but database operations may fail.")
 
     # Initialize JWT manager for token handling
     JWTManager(flask_app)
