@@ -18,6 +18,22 @@ const port = process.env.PORT || 8000;
 // Set via Toolforge Env, defaults to backend tool name
 const backendUrl = process.env.BACKEND_URL || 'https://wikicontest-backend.toolforge.org';
 
+// Proxy /oauth/callback to the backend (for Toolforge OAuth flow)
+// The OAuth consumer is registered with callback URL /oauth/callback,
+// so Wikimedia redirects here. We must forward it to the backend.
+app.use('/oauth', createProxyMiddleware({
+    target: backendUrl,
+    changeOrigin: true,
+    pathRewrite: { '^/oauth': '/oauth' },
+    followRedirects: false,
+    on: {
+        proxyReq: (proxyReq, req, res) => {
+            proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+            proxyReq.setHeader('x-forwarded-proto', 'https');
+        }
+    }
+}));
+
 // Proxy /api traffic to the Python backend Toolforge service
 // NOTE: Express strips the '/api' mount prefix before passing to the middleware,
 // so we use pathRewrite to re-add it (e.g. /api/user/login → /user/login → /api/user/login).
@@ -55,5 +71,5 @@ app.use((req, res) => {
 // Bind to 0.0.0.0
 app.listen(port, '0.0.0.0', () => {
     console.log(`Frontend Node.js server listening on port ${port}`);
-    console.log(`Proxying /api to -> ${backendUrl}`);
+    console.log(`Proxying /api and /oauth to -> ${backendUrl}`);
 });
