@@ -25,6 +25,9 @@ app.use('/api', createProxyMiddleware({
     target: backendUrl,
     changeOrigin: true,
     pathRewrite: { '^/': '/api/' },
+    // Follow backend redirects (e.g. Flask strict_slashes /api/contest → /api/contest/)
+    // so the browser never sees the backend domain directly (avoids CORS issues)
+    followRedirects: true,
     // Propagate cookie domain securely
     cookieDomainRewrite: 'wikicontest.toolforge.org',
     // Optional: add useful headers for backend logs

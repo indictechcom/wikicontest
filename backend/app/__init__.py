@@ -191,10 +191,13 @@ def create_app():
     if not allowed_origins or allowed_origins == ['']:
         # Development defaults
         allowed_origins = ['http://localhost:5173']
-    else:
-        # Add Toolforge domain if not present
-        if 'https://wikicontest.toolforge.org' not in allowed_origins:
-            allowed_origins.append('https://wikicontest.toolforge.org')
+
+    # Always ensure the frontend domain is allowed (prevents CORS issues
+    # when CORS_ORIGINS env var is not explicitly set on the backend tool).
+    # Uses FRONTEND_URL which is already configured for OAuth redirects.
+    frontend_url = flask_app.config.get('FRONTEND_URL', '').strip()
+    if frontend_url and frontend_url not in allowed_origins:
+        allowed_origins.append(frontend_url)
 
     CORS(flask_app, origins=allowed_origins, supports_credentials=True)
 
