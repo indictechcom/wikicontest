@@ -30,8 +30,8 @@ TOOL_DB_PASS=$(grep -Po '(?<=password = ).*' ~/replica.my.cnf | tr -d "'")
 toolforge envvars create TOOL_TOOLSDB_USER "$TOOL_DB_USER"
 toolforge envvars create TOOL_TOOLSDB_PASSWORD "$TOOL_DB_PASS"
 toolforge envvars create TOOL_TOOLSDB_DBNAME "wikicontest"
-# CORS: always allow frontend domain (also auto-added by code, but explicit is safer)
-toolforge envvars create CORS_ORIGINS "https://wikicontest.toolforge.org"
+# Frontend URL (used by OAuth redirects and CORS origin allowlisting)
+toolforge envvars create FRONTEND_URL "https://wikicontest.toolforge.org"
 
 # Build and start the backend
 toolforge build start https://github.com/Agamya-Samuel/wikicontest.git
