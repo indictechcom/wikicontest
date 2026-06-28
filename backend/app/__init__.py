@@ -41,6 +41,7 @@ from app.database import db
 from app.models.user import User  # pylint: disable=unused-import
 from app.models.contest import Contest  # pylint: disable=unused-import
 from app.models.submission import Submission  # pylint: disable=unused-import
+from app.models.oauth_token_cache import OAuthTokenCache  # pylint: disable=unused-import
 from app.routes.user_routes import user_bp
 from app.routes.contest_routes import contest_bp
 from app.routes.submission_routes import submission_bp
@@ -98,18 +99,34 @@ def create_app():
     # CRITICAL: Require environment variables - no insecure defaults
     secret_key = os.getenv('SECRET_KEY')
     jwt_secret_key = os.getenv('JWT_SECRET_KEY')
-    # For development only: generate temporary secrets if not set (with warning)
-    # In production, these MUST be set via environment variables
-    if not secret_key or not jwt_secret_key:
-        import secrets
+
+    is_production = os.getenv('FLASK_ENV', 'development') == 'production'
+    if is_production:
+        # In production with multiple Gunicorn workers, every worker MUST share
+        # the same secret keys — otherwise session cookies signed by one worker
+        # cannot be verified by another, breaking OAuth flows and JWT auth.
+        missing = []
         if not secret_key:
-            secret_key = secrets.token_urlsafe(48)
-            print("⚠️  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
-            print("   Set SECRET_KEY in environment for production!")
+            missing.append('SECRET_KEY')
         if not jwt_secret_key:
-            jwt_secret_key = secrets.token_urlsafe(48)
-            print("⚠️  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
-            print("   Set JWT_SECRET_KEY in environment for production!")
+            missing.append('JWT_SECRET_KEY')
+        if missing:
+            raise RuntimeError(
+                f"Missing required environment variable(s) in production: {', '.join(missing)}. "
+                f"Generate with: toolforge envvars create SECRET_KEY \"$(openssl rand -hex 32)\""
+            )
+    else:
+        # Development only: generate temporary secrets if not set (with warning)
+        if not secret_key or not jwt_secret_key:
+            import secrets
+            if not secret_key:
+                secret_key = secrets.token_urlsafe(48)
+                print("⚠️  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
+                print("   Set SECRET_KEY in environment for production!")
+            if not jwt_secret_key:
+                jwt_secret_key = secrets.token_urlsafe(48)
+                print("⚠️  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
+                print("   Set JWT_SECRET_KEY in environment for production!")
     flask_app.config['SECRET_KEY'] = secret_key
     flask_app.config['JWT_SECRET_KEY'] = jwt_secret_key
 
@@ -123,8 +140,6 @@ def create_app():
     # IMPORTANT: SameSite=None REQUIRES Secure=True — browsers reject it otherwise.
     flask_app.config['SESSION_COOKIE_SAMESITE'] = 'None'
     # With ProxyFix, request.scheme is now 'https' in production, so Secure=True is safe.
-    # Detect from env to keep localhost development working.
-    is_production = os.getenv('FLASK_ENV', 'development') == 'production'
     flask_app.config['SESSION_COOKIE_SECURE'] = is_production
     flask_app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask derive from request host
     flask_app.config['SESSION_COOKIE_PATH'] = '/'  # Available for all paths
@@ -180,6 +195,11 @@ def create_app():
 
     # Initialize database with the app
     db.init_app(flask_app)
+
+    # Auto-create the OAuth token cache table if it doesn't exist.
+    # This is safe to call on every startup — create_all only creates missing tables.
+    with flask_app.app_context():
+        db.create_all()
 
     # Initialize JWT manager for token handling
     JWTManager(flask_app)
