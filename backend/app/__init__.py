@@ -175,6 +175,9 @@ def create_app():
     flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').lower() == 'true'
     # Frontend URL for post-OAuth redirect (e.g. https://wikicontest.toolforge.org)
     flask_app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', '')
+    # Custom callback path for OAuth (e.g. /oauth/callback for Toolforge)
+    # When set, overrides the default blueprint path (/api/user/oauth/callback)
+    flask_app.config['OAUTH_CALLBACK_PATH'] = os.getenv('OAUTH_CALLBACK_PATH', None)
 
     # ------------------------------------------------------------------------
     # DATABASE CONFIGURATION
