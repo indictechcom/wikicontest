@@ -672,6 +672,8 @@ def oauth_config_check():
         'consumer_secret_set': bool(consumer_secret),
         'mw_uri': mw_uri,
         'use_oob': use_oob,
+        'debug_oob_raw_env': os.getenv('OAUTH_USE_OOB', 'NOT SET'),
+        'debug_oob_config': app.config.get('OAUTH_USE_OOB', 'NOT SET'),
         'callback_url': callback_url,
         'custom_callback_path': custom_callback_path,
         'instructions': {
