@@ -62,6 +62,12 @@ from app.utils import (
 # This allows for easy configuration management across different environments
 load_dotenv()
 
+# Strip trailing whitespace/newlines from all environment variables.
+# Toolforge `toolforge envvars create` may inject values with trailing newlines,
+# which causes string comparisons like `== 'true'` to silently fail.
+for _key in list(os.environ):
+    os.environ[_key] = os.environ[_key].strip()
+
 def create_app():
     """
     Application factory pattern for creating Flask app instances.
@@ -178,7 +184,7 @@ def create_app():
     flask_app.config['CONSUMER_SECRET'] = os.getenv('CONSUMER_SECRET', '')
     # Set to True if OAuth consumer was registered with "oob" (out-of-band) callback
     # Most web apps should use False and register with a proper callback URL
-    flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').lower() == 'true'
+    flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').strip().lower() == 'true'
     # Frontend URL for post-OAuth redirect (e.g. https://wikicontest.toolforge.org)
     flask_app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', '')
     # Custom callback path for OAuth (e.g. /oauth/callback for Toolforge)
@@ -672,8 +678,6 @@ def oauth_config_check():
         'consumer_secret_set': bool(consumer_secret),
         'mw_uri': mw_uri,
         'use_oob': use_oob,
-        'debug_oob_raw_env': os.getenv('OAUTH_USE_OOB', 'NOT SET'),
-        'debug_oob_config': app.config.get('OAUTH_USE_OOB', 'NOT SET'),
         'callback_url': callback_url,
         'custom_callback_path': custom_callback_path,
         'instructions': {
