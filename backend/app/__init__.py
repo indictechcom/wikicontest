@@ -575,7 +575,7 @@ def serve_static(filename):
     In development, serves from frontend directory (Vite dev server handles Vue.js).
     """
     # Skip API routes to avoid conflict with API endpoints
-    if filename.startswith('api/'):
+    if filename.startswith('api/') or filename.startswith('oauth/'):
         return jsonify({'error': 'Endpoint not found'}), 404
 
     # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
@@ -589,7 +589,7 @@ def serve_static(filename):
         except Exception:
             # If file not found in dist, serve index.html (for Vue Router)
             # This enables client-side routing in production
-            if not filename.startswith('api/'):
+            if not filename.startswith('api/') and not filename.startswith('oauth/'):
                 return send_from_directory(dist_path, 'index.html')
             raise
     # Development - serve from frontend directory

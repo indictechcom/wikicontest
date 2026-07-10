@@ -10,19 +10,15 @@ if [ -z "$TOOL_NAME" ]; then
     export TOOL_NAME
 fi
 
-# Toolforge sets $TOOL_NAME to the tool name (e.g. 'wikicontest' or 'wikicontest-backend')
-if [ "$TOOL_NAME" = "wikicontest-backend" ]; then
-    echo "Starting WikiContest backend service..."
+# Both wikicontest and wikicontest-backend run the same Flask/Gunicorn server.
+# Flask serves both the API (/api/*) and the Vue.js static files (frontend/dist/).
+# The Node.js proxy (server.cjs) is no longer needed -- Flask handles everything.
+if [ "$TOOL_NAME" = "wikicontest" ] || [ "$TOOL_NAME" = "wikicontest-backend" ]; then
+    echo "Starting WikiContest ($TOOL_NAME) -- Flask API + static frontend..."
     cd backend || exit 1
-    # Run the Gunicorn WGSI for Python
-    exec gunicorn --bind=0.0.0.0:$PORT --workers=4 --forwarded-allow-ips=* --access-logfile - --error-logfile - "wsgi:application"
-elif [ "$TOOL_NAME" = "wikicontest" ]; then
-    echo "Starting WikiContest frontend proxy server..."
-    cd frontend || exit 1
-    # Run the custom Node.js Express server
-    exec node server.cjs
+    exec gunicorn --bind=0.0.0.0:${PORT:-8000} --workers=4 --forwarded-allow-ips=* --access-logfile - --error-logfile - "wsgi:application"
 else
     echo "CRITICAL ERROR: TOOL_NAME evaluates to '$TOOL_NAME'."
-    echo "Please explicitly run: toolforge envvar create TOOL_NAME \"wikicontest-backend\" (or wikicontest if frontend)"
+    echo "Please explicitly run: toolforge envvars create TOOL_NAME \"wikicontest\" (or wikicontest-backend)"
     exit 1
 fi
