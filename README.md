@@ -413,64 +413,71 @@ pytest --cov=app tests/
 
 
 
-## Production Deployment
+## Production Deployment (Toolforge)
 
-### 1. Setup Production Environment
+WikiContest is deployed on [Wikimedia Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge) as a single tool.
+Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separate Node.js proxy needed.
 
-Configure production environment variables:
+**Live URL:** https://wikicontest.toolforge.org
+
+### Quick Deploy
 
 ```bash
-export FLASK_ENV=production
-export FLASK_DEBUG=False
-export DATABASE_URL=mysql+pymysql://user:pass@prod-host/wikicontest
-export SECRET_KEY=strong-random-production-key
-export JWT_SECRET_KEY=strong-random-jwt-key
+# SSH to Toolforge
+ssh login.toolforge.org
+
+# Become the tool account
+become wikicontest
+
+# Build from the ft/toolforge branch
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
+
+# Start the service
+toolforge webservice --mount none buildservice start
 ```
 
-### 2. Build Frontend
+### Environment Variables
+
+Set via `toolforge envvars create`:
 
 ```bash
-cd frontend
-npm install
-npm run build
+toolforge envvars create TOOL_NAME "wikicontest"
+toolforge envvars create FLASK_ENV "production"
+toolforge envvars create CONSUMER_KEY "..."
+toolforge envvars create CONSUMER_SECRET "..."
+toolforge envvars create OAUTH_USE_OOB "True"
+toolforge envvars create OAUTH_CALLBACK_PATH "/oauth/callback"
+toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create FRONTEND_URL "https://wikicontest.toolforge.org"
+toolforge envvars create TOOL_TOOLSDB_USER "..."
+toolforge envvars create TOOL_TOOLSDB_PASSWORD "..."
+toolforge envvars create TOOL_TOOLSDB_DBNAME "wikicontest"
 ```
 
-### 3. Apply Database Migrations
+### Full Guide
+
+See [`docs/TOOLFORGE_DEPLOYMENT.md`](docs/TOOLFORGE_DEPLOYMENT.md) for detailed instructions.
+
+### Generic Production (Non-Toolforge)
+
+For other hosting environments:
 
 ```bash
-cd backend
+# Build frontend
+cd frontend && npm install && npm run build
+
+# Install dependencies
+cd ../backend && pip install -r requirements.txt
+
+# Run migrations
 alembic upgrade head
+
+# Start Gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 "wsgi:application"
 ```
 
-### 4. Run with Production Server
-
-```bash
-# Install Gunicorn
-pip install gunicorn
-
-# Run with 4 worker processes
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
-```
-
-### 5. Use Reverse Proxy (Recommended)
-
-Set up Nginx or Apache as a reverse proxy:
-
-**Example Nginx configuration:**
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Flask will serve the API at `/api/*` and the Vue.js SPA from `frontend/dist/` for all other routes.
 
 
 
