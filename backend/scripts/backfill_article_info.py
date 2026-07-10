@@ -56,7 +56,7 @@ def fetch_article_info(article_link):
             'converttitles': 'true'
         }
         headers = {
-            'User-Agent': 'WikiContest/1.0 (https://wikicontest.toolforge.org; contact@wikicontest.org) Python/requests'
+            'User-Agent': 'WikiContest/1.0 (' + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + '; contact@wikicontest.org) Python/requests'
         }
         
         response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)

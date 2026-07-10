@@ -956,7 +956,7 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
         # MediaWiki API requires a User-Agent header to identify the application
         headers = {
             'User-Agent': (
-                'WikiContest/1.0 (https://wikicontest.toolforge.org; '
+                'WikiContest/1.0 (' + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + '; '
                 'contact@wikicontest.org) Python/requests'
             )
         }

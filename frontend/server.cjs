@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 8000;
 
 // Set via Toolforge Env, defaults to backend tool name
-const backendUrl = process.env.BACKEND_URL || 'https://wikicontest-backend.toolforge.org';
+const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
 
 /**
  * Rewrite Location header in redirect responses from the backend.
@@ -30,7 +30,7 @@ function rewriteLocation(req, location) {
     if (!location || location.startsWith('/')) return location; // relative URL — fine as-is
     try {
         const backendOrigin = new URL(backendUrl).origin;
-        const frontendHost = req.headers.host || 'wikicontest.toolforge.org';
+        const frontendHost = req.headers.host || (process.env.FRONTEND_DOMAIN || 'localhost');
         const frontendOrigin = `https://${frontendHost}`;
         if (location.startsWith(backendOrigin)) {
             return location.replace(backendOrigin, frontendOrigin);
@@ -58,7 +58,7 @@ app.use('/oauth', createProxyMiddleware({
             }
         },
         proxyReq: (proxyReq, req, res) => {
-            proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+            proxyReq.setHeader('x-forwarded-host', req.headers.host || (process.env.FRONTEND_DOMAIN || 'localhost'));
             proxyReq.setHeader('x-forwarded-proto', 'https');
         },
         proxyRes: (proxyRes, req, res) => {
@@ -82,7 +82,7 @@ app.use('/api', createProxyMiddleware({
     // point back to the frontend domain and let the browser follow the redirect.
     followRedirects: false,
     // Propagate cookie domain securely
-    cookieDomainRewrite: 'wikicontest.toolforge.org',
+    cookieDomainRewrite: process.env.FRONTEND_DOMAIN || 'localhost',
     // Optional: add useful headers for backend logs
     on: {
         error: (err, req, res) => {
@@ -93,8 +93,8 @@ app.use('/api', createProxyMiddleware({
             }
         },
         proxyReq: (proxyReq, req, res) => {
-            // Forward the original host so Flask's ProxyFix sees wikicontest.toolforge.org
-            proxyReq.setHeader('x-forwarded-host', req.headers.host || 'wikicontest.toolforge.org');
+            // Forward the original host so Flask's ProxyFix sees the frontend domain
+            proxyReq.setHeader('x-forwarded-host', req.headers.host || (process.env.FRONTEND_DOMAIN || 'localhost'));
             // Tell Flask the connection is HTTPS (the proxy terminates TLS)
             proxyReq.setHeader('x-forwarded-proto', 'https');
         },

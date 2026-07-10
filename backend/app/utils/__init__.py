@@ -203,7 +203,7 @@ def get_mediawiki_headers() -> Dict[str, str]:
     """
     return {
         "User-Agent": (
-            "WikiContest/1.0 (https://wikicontest.toolforge.org; "
+            "WikiContest/1.0 (" + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + "; "
             "contact@wikicontest.org) Python/requests"
         )
     }
