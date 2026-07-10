@@ -77,6 +77,12 @@ def create_app():
     # Initialize Flask application
     flask_app = Flask(__name__)
 
+    # Disable strict_slashes to prevent 308 redirects (e.g., /api/contest → /api/contest/).
+    # These redirects cause problems when the app is behind a reverse proxy because
+    # the Location header points to the backend domain instead of the frontend domain,
+    # and following them in the proxy can crash the Node.js process.
+    flask_app.url_map.strict_slashes = False
+
     # Wrap with ProxyFix so Flask reads X-Forwarded-Proto / X-Forwarded-Host
     # from the Node.js frontend proxy. This ensures request.scheme == 'https'
     # and request.host == 'wikicontest.toolforge.org', which is critical for:
