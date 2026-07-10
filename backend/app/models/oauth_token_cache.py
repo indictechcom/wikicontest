@@ -10,7 +10,7 @@ The table is auto-created at startup via db.create_all() — no Alembic migratio
 Entries are cleaned up on read and should not live longer than ~10 minutes.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.database import db
 from app.models.base_model import BaseModel
@@ -36,7 +36,7 @@ class OAuthTokenCache(BaseModel):
     token = db.Column(db.String(255), primary_key=True)
     secret = db.Column(db.String(255), nullable=False)
     created_at = db.Column(
-        db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+        db.DateTime, nullable=False, default=lambda: datetime.utcnow()
     )
 
     # Maximum age in seconds before an entry is considered stale
@@ -48,7 +48,7 @@ class OAuthTokenCache(BaseModel):
         entry = cls.query.get(token_key)
         if entry:
             entry.secret = token_secret
-            entry.created_at = datetime.now(timezone.utc)
+            entry.created_at = datetime.utcnow()
         else:
             entry = cls(token=token_key, secret=token_secret)
             db.session.add(entry)
@@ -66,7 +66,7 @@ class OAuthTokenCache(BaseModel):
             return None
 
         # Check expiry
-        age = (datetime.now(timezone.utc) - entry.created_at).total_seconds()
+        age = (datetime.utcnow() - entry.created_at).total_seconds()
         if age > cls.MAX_AGE_SECONDS:
             db.session.delete(entry)
             db.session.commit()
@@ -83,7 +83,7 @@ class OAuthTokenCache(BaseModel):
         from sqlalchemy import delete  # noqa: C812 — local import to keep module top clean
         from datetime import timedelta  # noqa: C812
 
-        cutoff = datetime.now(timezone.utc) - timedelta(seconds=cls.MAX_AGE_SECONDS)
+        cutoff = datetime.utcnow() - timedelta(seconds=cls.MAX_AGE_SECONDS)
         result = db.session.execute(
             delete(cls).where(cls.created_at < cutoff)
         )

@@ -470,7 +470,7 @@ class Submission(BaseModel):
         self.status = new_status
         self.score = final_score
         self.reviewed_by = reviewer.id if reviewer else None
-        self.reviewed_at = datetime.now(timezone.utc)
+        self.reviewed_at = datetime.utcnow()
         self.review_comment = comment
 
         # Update user's total score across all submissions
