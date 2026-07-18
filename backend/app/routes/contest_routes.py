@@ -43,6 +43,7 @@ from app.utils import (
     append_categories_to_article,
     get_article_reference_count,
     get_detailed_reference_counts,
+    get_mediawiki_user_edit_count,
     get_article_image_count,
     get_article_infobox_count,
     get_article_incoming_links,
@@ -50,6 +51,7 @@ from app.utils import (
     crawl_category_articles,
     MEDIAWIKI_API_TIMEOUT,
 )
+from app.utils.url_validation import validate_wiki_url
 from app.services.outreach_dashboard import (
     validate_outreach_url,
     fetch_course_data,
@@ -150,7 +152,10 @@ def get_all_contests():
         elif contest.is_past():
             past.append(contest_data)
 
-    return jsonify({"current": current, "upcoming": upcoming, "past": past}), 200
+    # Return categorized contests with caching headers
+    response = jsonify({"current": current, "upcoming": upcoming, "past": past})
+    response.headers['Cache-Control'] = 'public, max-age=60'  # Cache for 1 minute
+    return response, 200
 
 
 @contest_bp.route("/<int:contest_id>/outreach-data", methods=["GET"])
@@ -319,7 +324,9 @@ def get_contest_by_id(contest_id):
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
-    return jsonify(contest.to_dict()), 200
+    response = jsonify(contest.to_dict())
+    response.headers['Cache-Control'] = 'public, max-age=60'
+    return response, 200
 
 
 @contest_bp.route("/name/<name>", methods=["GET"])
@@ -364,7 +371,9 @@ def get_contest_by_name(name):
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
-    return jsonify(contest.to_dict()), 200
+    response = jsonify(contest.to_dict())
+    response.headers['Cache-Control'] = 'public, max-age=60'
+    return response, 200
 
 
 @contest_bp.route("/<int:contest_id>/leaderboard", methods=["GET"])
@@ -1486,8 +1495,9 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 
         if page_title:
             # Parse the article URL to extract base URL
-            url_obj = urlparse(article_link)
-            base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+            base_url, error = validate_wiki_url(article_link)
+            if error:
+                return error
 
             # Build MediaWiki API URL
             api_url = f"{base_url}/w/api.php"
