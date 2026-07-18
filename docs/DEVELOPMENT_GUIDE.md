@@ -110,10 +110,10 @@ cp .env.example .env
 DATABASE_URL=mysql+pymysql://user:password@localhost/wikicontest
 SECRET_KEY=your-secret-key
 JWT_SECRET_KEY=your-jwt-secret-key
-CONSUMER_KEY=your-oauth-consumer-key
-CONSUMER_SECRET=your-oauth-consumer-secret
-OAUTH_USE_OOB=False
 ```
+
+For OAuth configuration, see [OAUTH_LOCAL_SETUP.md](OAUTH_LOCAL_SETUP.md).
+
 
 #### Step 3: Initialize Database
 ```bash
@@ -636,6 +636,11 @@ gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 main:app
 - [ ] API endpoints return expected responses
 - [ ] Error logging is functional
 - [ ] SSL/HTTPS is working correctly
+
+
+## Deployment
+
+For production deployment to Wikimedia Toolforge, see [TOOLFORGE_DEPLOYMENT.md](TOOLFORGE_DEPLOYMENT.md).
 
 
 

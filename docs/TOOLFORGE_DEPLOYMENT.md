@@ -182,3 +182,37 @@ toolforge build logs
 
 ### Database connection errors
 Verify ToolsDB credentials match `~/replica.my.cnf` on the tool account.
+
+## Pre-Deployment Checklist
+
+- [ ] All functions have proper documentation
+- [ ] Error handling is comprehensive
+- [ ] Security measures are in place (input validation, authentication)
+- [ ] Database queries are optimized (no N+1 queries)
+- [ ] Frontend validation is complete
+- [ ] Unit tests pass successfully
+- [ ] Integration tests pass successfully
+- [ ] No sensitive data in code (secrets in environment variables)
+
+## Production Configuration
+
+Set production environment variables in `.env`:
+```env
+FLASK_ENV=production
+FLASK_DEBUG=False
+DATABASE_URL=mysql+pymysql://user:pass@host:port/db
+SECRET_KEY=<generate-secure-key>
+JWT_SECRET_KEY=<generate-secure-key>
+JWT_COOKIE_SECURE=True
+JWT_COOKIE_SAMESITE=None
+```
+
+## Post-Deployment Verification
+
+- [ ] Application loads successfully
+- [ ] Health check endpoint responds
+- [ ] User authentication works
+- [ ] Database connections are stable
+- [ ] API endpoints return expected responses
+- [ ] Error logging is functional
+- [ ] SSL/HTTPS is working correctly

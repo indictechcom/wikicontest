@@ -70,7 +70,7 @@ Verify that OAuth authentication is working correctly.
 1. **Start the Flask server:**
 ```bash
    cd backend
-   python app.py
+   python main.py
 ```
 
 2. **Open your browser and navigate to:**

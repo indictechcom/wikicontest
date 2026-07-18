@@ -46,33 +46,10 @@ Confirm it's serving on `http://localhost:5173`.
 
 Verify that Flask allows requests from the Vue.js dev server:
 
-- Open `backend/app.py`
+- Open `backend/app/__init__.py`
 - Confirm `'http://localhost:5173'` is included in the CORS origins list
 
-
-
-## OAuth Callback Not Working
-
-The OAuth callback URL is fixed at `http://localhost:5000/api/user/oauth/callback` and cannot be changed.
-
-### OAuth Authentication Flow
-
-1. User clicks **"Login with Wikimedia"** on the Vue.js app (`localhost:5173`)
-2. Request is sent to `http://localhost:5000/api/user/oauth/login`
-3. Flask redirects the user to **Wikimedia** for authentication
-4. After authentication, Wikimedia redirects back to `http://localhost:5000/api/user/oauth/callback`
-5. Flask processes the OAuth response and redirects to the Vue.js app with `?oauth_success=true`
-6. Vue.js detects the success parameter and updates the authentication state
-
-### Troubleshooting OAuth Failures
-
-If the OAuth redirect is not working:
-
-1. **Check Flask logs** for OAuth-related error messages
-2. **Verify OAuth consumer registration** on Wikimedia with the callback URL: `http://localhost:5000/api/user/oauth/callback`
-3. **Check browser console** for redirect errors or blocked requests
-4. **Verify cookies are being set** by checking the **Application** tab in DevTools (look under Cookies → `localhost`)
-
+For OAuth troubleshooting, see [OAUTH_LOCAL_SETUP.md](OAUTH_LOCAL_SETUP.md).
 
 
 ## API Requests Failing
