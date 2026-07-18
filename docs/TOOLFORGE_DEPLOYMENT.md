@@ -49,7 +49,6 @@ From the Toolforge bastion:
 become wikicontest
 
 # Tool identity
-toolforge envvars create TOOL_NAME "wikicontest"
 toolforge envvars create FLASK_ENV "production"
 
 # OAuth credentials (from Special:OAuthConsumerRegistration)
@@ -114,9 +113,11 @@ Expected response:
 
 ## How It Works
 
-Both `Procfile` and `start.sh` dispatch based on `$TOOL_NAME`:
+The `Procfile` runs Gunicorn directly:
 
-- `wikicontest` or `wikicontest-backend` → runs `gunicorn` (Flask serves API + static files)
+```
+web: cd backend && exec gunicorn --bind=0.0.0.0:${PORT:-8000} --workers=4 --forwarded-allow-ips=* --access-logfile - --error-logfile - "wsgi:application"
+```
 
 The Node.js buildpack runs during the **build phase** only (via `postinstall` in root `package.json`):
 1. Installs frontend dependencies (`cd frontend && npm install`)
@@ -145,7 +146,6 @@ toolforge webservice --mount none buildservice start
 
 | Variable | Required | Description |
 |---|---|---|
-| `TOOL_NAME` | Yes | Must be `wikicontest` |
 | `FLASK_ENV` | Yes | Set to `production` |
 | `CONSUMER_KEY` | Yes | OAuth consumer key from Meta-Wiki |
 | `CONSUMER_SECRET` | Yes | OAuth consumer secret |
@@ -160,9 +160,6 @@ toolforge webservice --mount none buildservice start
 | `DATABASE_URL` | No | Full MySQL URI (auto-constructed from ToolsDB vars if unset) |
 
 ## Troubleshooting
-
-### "CRITICAL ERROR: TOOL_NAME evaluates to ''"
-The `TOOL_NAME` env var is not set. Run `toolforge envvars create TOOL_NAME "wikicontest"`.
 
 ### OAuth redirect goes to localhost
 The `FRONTEND_URL` env var is missing or set to a development URL. Set it to `https://wikicontest.toolforge.org`.

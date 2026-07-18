@@ -344,7 +344,6 @@ toolforge webservice --mount none buildservice start
 Set via `toolforge envvars create`:
 
 ```bash
-toolforge envvars create TOOL_NAME "wikicontest"
 toolforge envvars create FLASK_ENV "production"
 toolforge envvars create CONSUMER_KEY "..."
 toolforge envvars create CONSUMER_SECRET "..."
