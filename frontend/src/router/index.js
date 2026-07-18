@@ -34,6 +34,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/contest/create',
+    name: 'CreateContest',
+    component: () => import('../views/CreateContest.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/contest/:name/edit',
+    name: 'EditContest',
+    component: () => import('../views/EditContest.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/contest/:name',
     name: 'ContestView',
     component: ContestView,
@@ -105,8 +117,14 @@ router.beforeEach(async (to, from, next) => {
         }
         return '/api'
       }
-      // Redirect to login if auth required but not authenticated
-      return next({ name: 'Login', query: { redirect: to.fullPath } })
+      // Preserve intended destination for post-login redirect
+      if (to.fullPath !== '/') {
+        sessionStorage.setItem('oauth_redirect', to.fullPath)
+      }
+      // Redirect to MediaWiki OAuth login (full page navigation)
+      window.location.href = `${getApiBaseUrl()}/user/oauth/login`
+      // Cancel the router navigation since we're doing a full page redirect
+      return next(false)
     }
     return next()
   }
@@ -143,8 +161,10 @@ router.beforeEach(async (to, from, next) => {
       sessionStorage.setItem('oauth_redirect', to.fullPath)
     }
 
-    // Redirect to MediaWiki OAuth login
+    // Redirect to MediaWiki OAuth login (full page navigation)
     window.location.href = `${getApiBaseUrl()}/user/oauth/login`
+    // Cancel the router navigation since we're doing a full page redirect
+    next(false)
   } else {
     // Allow navigation for authenticated users or public routes
     next()
