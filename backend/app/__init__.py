@@ -51,8 +51,9 @@ from app.utils import (
     get_mediawiki_headers,
     get_latest_revision_author,
     MEDIAWIKI_API_TIMEOUT,
-    get_article_reference_count
+    get_article_reference_count,
 )
+from app.utils.url_validation import validate_wiki_url
 
 # ---------------------------------------------------------------------------
 # CONFIGURATION SETUP
@@ -156,9 +157,9 @@ def create_app():
     flask_app.config['SESSION_COOKIE_DOMAIN'] = None  # Let Flask derive from request host
     flask_app.config['SESSION_COOKIE_PATH'] = '/'  # Available for all paths
 
-    # --- JWT Token Configuration ---
-    # JWT token expiration time (24 hours)
-    flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+    # JWT Token Configuration
+    # JWT token expiration time (4 hours for security)
+    flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=4)
 
     # JWT Cookie Configuration for secure token storage
     flask_app.config['JWT_TOKEN_LOCATION'] = ['cookies']  # Store tokens in HTTP-only cookies
@@ -167,7 +168,7 @@ def create_app():
     # Lax allows same-site cookies and top-level cross-site navigations
     flask_app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
     flask_app.config['JWT_COOKIE_DOMAIN'] = None  # Derived from request host via ProxyFix
-    flask_app.config['JWT_COOKIE_CSRF_PROTECT'] = True  # Enable CSRF protection
+    flask_app.config['JWT_COOKIE_CSRF_PROTECT'] = is_production  # CSRF only in production (SPA frontend can't read HTTP-only CSRF cookie)
     flask_app.config['JWT_CSRF_IN_COOKIES'] = True  # Include CSRF token in cookies
 
     # ------------------------------------------------------------------------
@@ -241,6 +242,13 @@ def create_app():
 
     CORS(flask_app, origins=allowed_origins, supports_credentials=True)
 
+    # ---------------------------------------------------------------------------
+    # BLUEPRINT REGISTRATION
+    # ---------------------------------------------------------------------------
+    flask_app.register_blueprint(user_bp, url_prefix='/api/user')
+    flask_app.register_blueprint(contest_bp, url_prefix='/api/contest')
+    flask_app.register_blueprint(submission_bp, url_prefix='/api/submission')
+
     return flask_app
 
 # Create the application instance
@@ -261,13 +269,6 @@ app = create_app()
 # Import route blueprints for modular organization
 # Each blueprint handles a specific domain of functionality
 # Blueprints are imported at top of file
-
-# Register blueprints with URL prefixes for API organization
-# This creates a clean RESTful API structure
-app.register_blueprint(user_bp, url_prefix='/api/user')  # User management endpoints
-app.register_blueprint(contest_bp, url_prefix='/api/contest')  # Contest endpoints
-app.register_blueprint(submission_bp, url_prefix='/api/submission')  # Submission endpoints
-
 
 # ---------------------------------------------------------------------------
 # AUTHENTICATION ENDPOINTS
@@ -295,23 +296,7 @@ def check_cookie():
         if not user_id:
             return jsonify({'error': 'Invalid token'}), 401
 
-        # IMPORTANT: Expire any cached SQLAlchemy session to ensure fresh data
-        # This ensures we get the latest role from the database, even if it was recently changed
-        db.session.expire_all()
-
-        # Log the user_id from JWT token for debugging
-        # CRITICAL: This shows which user the JWT token is for
-        try:
-            current_app.logger.info(
-                f'🔐 Cookie check - JWT user_id: {user_id} (type: {type(user_id)})'
-            )
-            # Also print to console for immediate visibility
-            print(f' [COOKIE CHECK] JWT user_id: {user_id}')
-        except Exception:  # pylint: disable=broad-exception-caught
-            # Logging failures should not crash the application
-            pass
-
-        # --- Query User from Database ---
+        # Query User from Database
         # CRITICAL: Query directly from database using raw SQL to bypass ALL ORM caching
         # This ensures we get the absolute latest role from the database
         # Include is_trusted_member and trusted_member_request_status to check if user can create contests
@@ -321,13 +306,6 @@ def check_cookie():
         ).fetchone()
 
         if not direct_query:
-            try:
-                error_msg = f'Cookie check - User not found in database for ID: {user_id}'
-                current_app.logger.error(error_msg)
-                print(f' [COOKIE CHECK] {error_msg}')
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Logging failures should not crash the application
-                pass
             return jsonify({'error': 'User not found'}), 401
 
         # Extract data from direct database query (most reliable - no ORM caching)
@@ -337,53 +315,6 @@ def check_cookie():
         db_role = direct_query[3]
         db_is_trusted_member = direct_query[4] if len(direct_query) > 4 else False
         db_trusted_member_request_status = direct_query[5] if len(direct_query) > 5 else None
-
-        # Log what we got from the database - CRITICAL DEBUG INFO
-        try:
-            log_msg = (
-                f'🔐 Cookie check - Direct DB Query Result - '
-                f'ID: {db_user_id}, Username: {db_username}, '
-                f'Role: {db_role}, Role type: {type(db_role)}'
-            )
-            current_app.logger.info(log_msg)
-            # Also print to console for immediate visibility
-            print(f'🔐 [COOKIE CHECK] {log_msg}')
-            # Special check: If username is Adityakumar0545, verify role is superadmin
-            if db_username == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] User Adityakumar0545 - Role from DB: {db_role}')
-                if db_role != 'superadmin':
-                    print(f'❌ [ERROR] Expected superadmin but got: {db_role}')
-                else:
-                    print(' [SUCCESS] Role is correct: superadmin')
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            # Logging failures should not crash the application
-            current_app.logger.error(f'Logging error: {str(error)}')
-            print(f' [ERROR] Logging failed: {str(error)}')
-
-        # --- Double-check by Username ---
-        # Also verify by username as a double-check (in case there's any ID mismatch)
-        username_verify = db.session.execute(
-            sql_text('SELECT id, username, email, role, is_trusted_member, trusted_member_request_status FROM users WHERE username = :username'),
-            {'username': db_username}
-        ).fetchone()
-
-        if username_verify:
-            verify_role = username_verify[3]
-            try:
-                current_app.logger.info(
-                    f'Cookie check - Username verification - Username: {username_verify[1]}, '
-                    f'Role from username query: {verify_role}'
-                )
-                # Use role from username query if it's different (more recent)
-                if verify_role and verify_role != db_role:
-                    current_app.logger.warning(
-                        f'Role mismatch! ID query returned: {db_role}, '
-                        f'Username query returned: {verify_role}. Using username query result.'
-                    )
-                    db_role = verify_role
-            except Exception:  # pylint: disable=broad-exception-caught
-                # Logging failures should not crash the application
-                pass
 
         # Normalize role: ensure it's a string, trimmed, and lowercase
         role_value = str(db_role).strip().lower() if db_role else 'user'
@@ -406,33 +337,7 @@ def check_cookie():
             'trusted_member_request_status': db_trusted_member_request_status
         }
 
-        # Log the final response being sent - CRITICAL DEBUG INFO
-        try:
-            log_msg = (
-                f'🔐 Cookie check FINAL RESPONSE - '
-                f'Username: {response_data.get("username")}, '
-                f'User ID: {response_data.get("userId")}, '
-                f'Role being sent to frontend: {response_data.get("role")}, '
-                f'is_trusted_member: {response_data.get("is_trusted_member")}'
-            )
-            current_app.logger.info(log_msg)
-            # Also print to console for immediate visibility
-            print(f'🔐 [FINAL RESPONSE] {log_msg}')
-            # Special check for Adityakumar0545
-            if response_data.get("username") == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role: {response_data.get("role")}, is_trusted_member: {response_data.get("is_trusted_member")}')
-                if response_data.get("role") != 'superadmin':
-                    print(f'❌ [ERROR] Role should be superadmin but is: {response_data.get("role")}')
-                elif not response_data.get("is_trusted_member"):
-                    print(f'❌ [ERROR] is_trusted_member should be True for superadmin')
-                else:
-                    print(' [SUCCESS] Role and is_trusted_member are correct')
-        except Exception as error:  # pylint: disable=broad-exception-caught
-            # Logging failures should not crash the application
-            current_app.logger.error(f'Logging error: {str(error)}')
-            print(f' [ERROR] Final logging failed: {str(error)}')
-
-        return jsonify(response_data), 200
+        return jsonify(response_data), 200, {'Cache-Control': 'public, max-age=60, stale-while-revalidate=30'}
 
     except (JWTDecodeError, NoAuthorizationError):
         # No token or invalid token - user is definitely not logged in
@@ -446,99 +351,6 @@ def check_cookie():
             # Logger might not be available or Flask context missing
             pass
         return jsonify({'error': 'You are not logged in'}), 401
-
-
-@app.route('/api/debug/user-role/<username>', methods=['GET'])
-@jwt_required()
-def debug_user_role(username):
-    """
-    Debug endpoint to check user role directly from database by username.
-    This helps verify what role is actually stored in the database.
-    SECURITY: Requires authentication and admin role to prevent information disclosure.
-    Only admins can access this debug endpoint.
-
-    Args:
-        username: Username to check
-
-    Returns:
-        JSON with user information including role from database
-    """
-    # Verify user is authenticated and is admin
-    try:
-        user_id = get_jwt_identity()
-        if not user_id:
-            return jsonify({'error': 'Authentication required'}), 401
-        # Query current user to check role
-        current_user = User.query.get(int(user_id))
-        if not current_user or not current_user.is_admin():
-            return jsonify({'error': 'Admin access required'}), 403
-    except (ValueError, AttributeError, SQLAlchemyError, TypeError):
-        # Catch specific exceptions that might occur during authentication
-        # Fail securely by returning authentication error
-        return jsonify({'error': 'Authentication required'}), 401
-    try:
-        print(f'🔍 [DEBUG] Checking role for username: {username}')
-        # Query directly from database using raw SQL
-        result = db.session.execute(
-            sql_text('SELECT id, username, email, role FROM users WHERE username = :username'),
-            {'username': username}
-        ).fetchone()
-
-        if not result:
-            print(f'❌ [DEBUG] User not found: {username}')
-            return jsonify({
-                'error': 'User not found',
-                'username': username
-            }), 404
-
-        # Build user data from query result
-        user_data = {
-            'id': result[0],
-            'username': result[1],
-            'email': result[2],
-            'role': result[3],
-            'role_type': type(result[3]).__name__,
-            'role_string': str(result[3]),
-            'role_lowercase': str(result[3]).lower() if result[3] else 'user'
-        }
-
-        print(
-            f'🔍 [DEBUG] Found user - ID: {user_data["id"]}, '
-            f'Username: {user_data["username"]}, Role: {user_data["role"]}'
-        )
-
-        # Also check by ID to compare
-        id_result = db.session.execute(
-            sql_text('SELECT id, username, email, role FROM users WHERE id = :user_id'),
-            {'user_id': result[0]}
-        ).fetchone()
-
-        if id_result:
-            user_data['by_id'] = {
-                'id': id_result[0],
-                'username': id_result[1],
-                'role': id_result[3]
-            }
-            print(f'🔍 [DEBUG] Verified by ID - Role: {id_result[3]}')
-
-        # Special check for Adityakumar0545
-        if username == 'Adityakumar0545':
-            if user_data['role'] != 'superadmin':
-                print(f'❌ [ERROR] Adityakumar0545 should have superadmin but has: {user_data["role"]}')
-            else:
-                print(' [SUCCESS] Adityakumar0545 has correct superadmin role')
-
-        return jsonify(user_data), 200
-
-    except Exception as error:  # pylint: disable=broad-exception-caught
-        # Catch all exceptions to prevent application crash
-        error_msg = f'Debug user role error: {str(error)}'
-        current_app.logger.error(error_msg)
-        print(f'❌ [ERROR] {error_msg}')
-        return jsonify({
-            'error': 'Failed to query user',
-            'details': str(error)
-        }), 500
 
 
 # ---------------------------------------------------------------------------
@@ -638,16 +450,22 @@ def oauth_callback_redirect():
 
 
 @app.route('/api/oauth/config', methods=['GET'])
+@jwt_required()
 def oauth_config_check():
     """
     Diagnostic endpoint to check OAuth configuration.
 
     This helps verify that OAuth is properly configured and shows
     what callback URL will be used. Useful for troubleshooting.
+    Admin access required.
 
     Returns:
         JSON: OAuth configuration details (without secrets)
     """
+    user_id = get_jwt_identity()
+    current_user = User.query.get(int(user_id))
+    if not current_user or not current_user.is_admin():
+        return jsonify({'error': 'Admin access required'}), 403
     consumer_key = app.config.get('CONSUMER_KEY', '')
     consumer_secret = app.config.get('CONSUMER_SECRET', '')
     mw_uri = app.config.get('OAUTH_MWURI', 'https://meta.wikimedia.org/w/index.php')
@@ -733,8 +551,9 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
             return jsonify({'error': 'Could not extract page title from URL'}), 400
 
         # Parse the article URL to extract base URL
-        url_obj = urlparse(article_url)
-        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        base_url, error = validate_wiki_url(article_url)
+        if error:
+            return error
 
         # Build MediaWiki API URL
         api_url = f"{base_url}/w/api.php"
@@ -916,7 +735,9 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
     try:
         # Parse the article URL to extract base URL and page title
         url_obj = urlparse(article_url)
-        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        base_url, error = validate_wiki_url(article_url)
+        if error:
+            return error
 
         # Extract page title from URL if not provided as parameter
         if not page_title:
@@ -1043,13 +864,15 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
         html_content = html_content.replace('src="/wiki/', f'src="{base_url}/wiki/')
         html_content = html_content.replace('src="/w/', f'src="{base_url}/w/')
 
-        # Return the parsed content
-        return jsonify({
+# Return the parsed content
+        response = jsonify({
             'htmlContent': html_content,
             'actualPageTitle': actual_page_title,
             'pageTitle': page_title,
             'baseUrl': base_url
-        }), 200
+        })
+        response.headers['Cache-Control'] = 'public, max-age=30'
+        return response, 200
 
     except requests.exceptions.Timeout:
         return jsonify({
