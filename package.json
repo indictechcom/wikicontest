@@ -6,8 +6,10 @@
     "postinstall": "cd frontend && npm install && npm run build",
     "build": "cd frontend && npm install && npm run build"
   },
-  "dependencies": {},
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
   }
 }
