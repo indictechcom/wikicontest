@@ -18,6 +18,7 @@ from app.middleware.auth import (
     require_submission_permission,
     validate_json_data,
 )
+from app.utils.url_validation import validate_wiki_url
 from app.models.contest import Contest
 from app.models.submission import Submission
 from app.utils import (
@@ -370,8 +371,9 @@ def refresh_metadata(contest_id):
                 return None
 
             # Parse the article URL to extract base URL
-            url_obj = urlparse(article_link)
-            base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+            base_url, error = validate_wiki_url(article_link)
+            if error:
+                return error
 
             # Build API request - get 2 revisions (newest and oldest)
             api_url = f"{base_url}/w/api.php"
@@ -837,7 +839,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (multi-parameter): {str(review_err)}")
+                current_app.logger.error(f"Review error (multi-parameter): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
@@ -854,7 +856,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (rejected, multi): {str(review_err)}")
+                current_app.logger.error(f"Review error (rejected, multi): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
     # --- Simple Scoring Mode ---
@@ -891,7 +893,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
             )
         except Exception as review_err:  # pylint: disable=broad-exception-caught
             db.session.rollback()
-            print(f"Review error (simple): {str(review_err)}")
+            current_app.logger.error(f"Review error (simple): {str(review_err)}")
             return jsonify({"error": "Internal server error"}), 500
 
     return (
