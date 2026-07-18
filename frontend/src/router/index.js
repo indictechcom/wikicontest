@@ -91,6 +91,26 @@ router.beforeEach(async (to, from, next) => {
   const { useStore } = storeModule
   const store = useStore()
 
+  // Auth caching: if we checked auth within last 30 seconds, use cached result
+  const NOW = Date.now()
+  const AUTH_CACHE_TTL = 30 * 1000 // 30 seconds in milliseconds
+  if (store.lastAuthCheck && (NOW - store.lastAuthCheck) < AUTH_CACHE_TTL) {
+    // Use cached auth state
+    const hasUserInStore = store.isAuthenticated && store.currentUser
+    if (to.meta.requiresAuth && !hasUserInStore) {
+      // Build API base URL based on environment
+      const getApiBaseUrl = () => {
+        if (import.meta.env.DEV) {
+          return 'http://localhost:5000/api'
+        }
+        return '/api'
+      }
+      // Redirect to login if auth required but not authenticated
+      return next({ name: 'Login', query: { redirect: to.fullPath } })
+    }
+    return next()
+  }
+
   // Check if user data exists in store from recent login
   const hasUserInStore = store.isAuthenticated && store.currentUser
 
