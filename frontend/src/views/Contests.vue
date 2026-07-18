@@ -159,11 +159,6 @@ class="organizer-avatar organizer-more"
       @submitted="handleArticleSubmitted"
     />
 
-    <CreateContestModal
-      ref="createContestModal"
-      @created="handleContestCreated"
-    />
-
     <RequestContestModal
       ref="requestContestModal"
       @requested="handleContestRequested"
@@ -183,7 +178,6 @@ import { useRouter } from 'vue-router'
 import { useStore } from '../store'
 import { showAlert } from '../utils/alerts'
 import { slugify } from '../utils/slugify'
-import CreateContestModal from '../components/CreateContestModal.vue'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import RequestContestModal from '../components/RequestContestModal.vue'
 import RequestTrustedMemberModal from '../components/RequestTrustedMemberModal.vue'
@@ -191,7 +185,6 @@ import RequestTrustedMemberModal from '../components/RequestTrustedMemberModal.v
 export default {
   name: 'Contests',
   components: {
-    CreateContestModal,
     SubmitArticleModal,
     RequestContestModal,
     RequestTrustedMemberModal
@@ -202,7 +195,6 @@ export default {
     const activeCategory = ref('current')
     const loading = ref(false)
     const submittingToContestId = ref(null)
-    const createContestModal = ref(null)
     const showRequestTrustedMemberForm = ref(false)
 
     // Get contests for currently selected category
@@ -436,11 +428,7 @@ export default {
         return
       }
 
-      const modalElement = document.getElementById('createContestModal')
-      if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement)
-        modal.show()
-      }
+      router.push({ name: 'CreateContest' })
     }
 
     // Open modal to request contest creation
@@ -552,7 +540,6 @@ export default {
       requestStatus,
       canRequest,
       submittingToContestId,
-      createContestModal,
       showRequestTrustedMemberForm,
       setActiveCategory,
       truncateText,
