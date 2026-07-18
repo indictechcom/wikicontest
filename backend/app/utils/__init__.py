@@ -16,6 +16,7 @@ They catch network / parsing errors and return `None` instead of crashing.
 
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
@@ -23,6 +24,8 @@ from urllib.parse import urlparse, unquote, parse_qs
 
 import requests
 from flask import jsonify
+
+from app.utils.url_validation import validate_wiki_url
 
 
 __all__ = [
@@ -332,8 +335,10 @@ def validate_template_link(template_url: str) -> Dict[str, Any]:  # pylint: disa
         return result
 
     # Verify page exists via MediaWiki API
-    url_obj = urlparse(template_url)
-    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    base_url, error = validate_wiki_url(template_url)
+    if error:
+        result['error'] = error[0].get_json()['error']
+        return result
     api_url = f"{base_url}/w/api.php"
 
     params = {
@@ -399,8 +404,9 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
     if not page_title:
         return None
 
-    url_obj = urlparse(article_url)
-    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    base_url, error = validate_wiki_url(article_url)
+    if error:
+        return None
     api_url = f"{base_url}/w/api.php"
 
     params = {
@@ -640,8 +646,9 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
         return None
 
     # Build API endpoint URL
-    url_obj = urlparse(article_url)
-    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    base_url, error = validate_wiki_url(article_url)
+    if error:
+        return None
     api_url = f"{base_url}/w/api.php"
 
     # ISO timestamp in the format expected by MediaWiki
@@ -848,7 +855,10 @@ def prepend_template_to_article(  # pylint: disable=too-many-return-statements
         return result
 
     url_obj = urlparse(article_url)
-    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    base_url, error = validate_wiki_url(article_url)
+    if error:
+        result['error'] = error[0].get_json()['error']
+        return result
     api_url = f"{base_url}/w/api.php"
 
     # Create OAuth1 auth object
@@ -1113,8 +1123,9 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
             return None
 
         # Parse URL to get base URL
-        url_obj = urlparse(article_url)
-        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        base_url, error = validate_wiki_url(article_url)
+        if error:
+            return None
         api_url = f"{base_url}/w/api.php"
         headers = get_mediawiki_headers()
 
@@ -1487,8 +1498,10 @@ def append_categories_to_article(  # pylint: disable=too-many-return-statements
         result['error'] = 'Could not extract page title from URL'
         return result
 
-    url_obj = urlparse(article_url)
-    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    base_url, error = validate_wiki_url(article_url)
+    if error:
+        result['error'] = error[0].get_json()['error']
+        return result
     api_url = f"{base_url}/w/api.php"
 
     # Check which categories already exist
@@ -1620,8 +1633,9 @@ def get_article_incoming_links(article_url: str) -> Optional[int]:
             return None
             
         # Parse the article URL to extract base URL
-        url_obj = urlparse(article_url)
-        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        base_url, error = validate_wiki_url(article_url)
+        if error:
+            return None
         api_url = f"{base_url}/w/api.php"
         
         # Build API parameters for backlinks query
@@ -1702,8 +1716,9 @@ def get_article_outgoing_links(article_url: str) -> Optional[int]:
             return None
             
         # Parse the article URL to extract base URL
-        url_obj = urlparse(article_url)
-        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        base_url, error = validate_wiki_url(article_url)
+        if error:
+            return None
         api_url = f"{base_url}/w/api.php"
         
         # Build API parameters for links query
