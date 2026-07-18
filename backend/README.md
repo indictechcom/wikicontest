@@ -608,6 +608,7 @@ This project is part of the WikiContest platform.
 
 ## Additional Resources
 
+- [OAuth 1.0a Registration Guide](../docs/OAUTH_1.0A_REGISTRATION_GUIDE.md) - Step-by-step OAuth consumer registration
 - [Alembic Usage Guide](docs/ALEMBIC_USAGE_GUIDE.md)
 - [Database Setup Guide](docs/SETUP_NEW_DATABASE.md)
 - [Model Compatibility Guide](docs/ALEMBIC_MODEL_COMPATIBILITY.md)

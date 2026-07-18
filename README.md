@@ -510,6 +510,7 @@ We welcome contributions to the WikiContest platform!
 
 - **Backend Documentation:** [`backend/README.md`](backend/README.md)
 - **Frontend Setup Guide:** [`docs/VUE_FRONTEND_SETUP.md`](docs/VUE_FRONTEND_SETUP.md)
+- **OAuth 1.0a Registration Guide:** [`docs/OAUTH_1.0A_REGISTRATION_GUIDE.md`](docs/OAUTH_1.0A_REGISTRATION_GUIDE.md)
 - **Database Migrations:** [`docs/ALEMBIC_USAGE_GUIDE.md`](docs/ALEMBIC_USAGE_GUIDE.md)
 - **API Documentation:** See backend README for complete endpoint list
 
