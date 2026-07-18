@@ -16,6 +16,8 @@ import api from '../services/api'
 const state = reactive({
   // Current authenticated user
   currentUser: null,
+  // Timestamp of last auth check (for caching)
+  lastAuthCheck: 0,
   // Contest data cache
   contests: {
     current: [],
@@ -67,18 +69,6 @@ export function useStore() {
         console.log(' Normalized role:', normalizedRole)
         console.log(' Role comparison - normalizedRole === "superadmin":', normalizedRole === 'superadmin')
 
-        // Special check for Adityakumar0545
-        if (response.username === 'Adityakumar0545') {
-          console.log('⚠️ [SPECIAL CHECK] User Adityakumar0545 detected')
-          console.log('  - Raw role from response:', roleFromResponse)
-          console.log('  - Normalized role:', normalizedRole)
-          if (normalizedRole !== 'superadmin') {
-            console.error(' [ERROR] Adityakumar0545 should have superadmin role but got:', normalizedRole)
-          } else {
-            console.log(' [SUCCESS] Adityakumar0545 has correct superadmin role')
-          }
-        }
-
         const newUser = {
           id: response.userId,
           username: response.username || response.email || 'User',
@@ -97,12 +87,15 @@ export function useStore() {
         console.log(' User role being stored:', newUser.role)
         state.currentUser = newUser
         console.log(' Current user set. State:', state.currentUser)
-        console.log(' State currentUser.role:', state.currentUser?.role)
+        // Update last auth check timestamp for caching
+        state.lastAuthCheck = Date.now()
         return true
       } else {
         // No valid user data - clear state
         console.log(' Invalid response, clearing user')
         state.currentUser = null
+        // Update last auth check timestamp for caching
+        state.lastAuthCheck = Date.now()
         return false
       }
     } catch (error) {
@@ -121,11 +114,13 @@ export function useStore() {
         state.currentUser = null
       }
 
-      // Only log if it's not a 401 (which is expected for logged out users)
-      if (error.status !== 401 && error.status !== undefined) {
-        console.log('Auth check error:', error.message)
-      }
-      return false
+// Update last auth check timestamp for caching
+       state.lastAuthCheck = Date.now()
+       // Only log if it's not a 401 (which is expected for logged out users)
+       if (error.status !== 401 && error.status !== undefined) {
+         console.log('Auth check error:', error.message)
+       }
+       return false
     }
   }
 
@@ -164,11 +159,13 @@ export function useStore() {
         console.error('Failed to set user state after login')
       }
 
-      // Wait a bit for the cookie to be set by the browser
-      // This ensures the cookie is available for subsequent requests
-      await new Promise(resolve => setTimeout(resolve, 200))
+// Wait a bit for the cookie to be set by the browser
+       // This ensures the cookie is available for subsequent requests
+       await new Promise(resolve => setTimeout(resolve, 200))
 
-      return { success: true, data: response }
+       // Update last auth check timestamp for caching
+       state.lastAuthCheck = Date.now()
+       return { success: true, data: response }
     } catch (error) {
       // Ensure state is cleared on login failure
       state.currentUser = null
