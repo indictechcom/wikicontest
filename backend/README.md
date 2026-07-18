@@ -71,12 +71,6 @@ backend/
 │   ├── init_db.py               # Database initialization
 │   ├── backfill_article_info.py # Backfill article metadata
 │   └── get_article_metadata.py  # Fetch article metadata
-├── toolforge/                   # Toolforge deployment files
-│   ├── toolforge_app.py
-│   ├── toolforge_config.toml
-│   ├── toolforge_index.html
-│   ├── toolforge_login.html
-│   └── toolforge_requirements.txt
 ├── tests/                       # Test files (pytest)
 ├── logs/                        # Application logs
 ├── docs/                        # Documentation
@@ -86,10 +80,8 @@ backend/
 │   └── SETUP_NEW_DATABASE.md
 ├── main.py                      # Application entry point
 ├── alembic.ini                  # Alembic configuration
-├── Makefile                     # Common commands
 ├── requirements.txt             # Python dependencies
 ├── setup.py                     # Setup script
-├── deploy_to_toolforge.sh       # Deployment script
 └── README.md                    # This file
 ```
 
@@ -187,20 +179,6 @@ For detailed setup instructions, see [`docs/SETUP_NEW_DATABASE.md`](docs/SETUP_N
 
 ## Running the Application
 
-### Using Makefile (Recommended)
-
-The Makefile provides convenient commands for common tasks:
-
-```bash
-# Run the development server
-make run
-# or
-make dev
-
-# View all available commands
-make help
-```
-
 ### Manual Running
 
 **Start the Flask development server:**
@@ -225,7 +203,7 @@ For production environments, use a WSGI server like Gunicorn:
 
 ```bash
 pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
+gunicorn -w 4 -b 0.0.0.0:5000 "main:app"
 ```
 
 ## API Documentation
@@ -491,7 +469,7 @@ Deploy with Gunicorn for production:
 pip install gunicorn
 
 # Run with 4 worker processes
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
+gunicorn -w 4 -b 0.0.0.0:5000 "main:app"
 ```
 
 ### Using Nginx Reverse Proxy
@@ -516,8 +494,7 @@ server {
 ### Toolforge Deployment
 
 For Wikimedia Toolforge deployment:
-- See the `toolforge/` directory for deployment files
-- Use the `deploy_to_toolforge.sh` script for automated deployment
+- See [`docs/TOOLFORGE_DEPLOYMENT.md`](../docs/TOOLFORGE_DEPLOYMENT.md) for deployment instructions
 
 ## Project Architecture
 
