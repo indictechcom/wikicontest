@@ -108,63 +108,8 @@ def require_role(roles):
 
 
 # ------------------------------------------------------------------------
-# CONTEST-SPECIFIC PERMISSION DECORATORS
+# SUBMISSION-SPECIFIC PERMISSION DECORATORS
 # ------------------------------------------------------------------------
-
-def require_contest_permission(permission_type):
-    """
-    Decorator to require specific contest permissions
-
-    Args:
-        permission_type: Type of permission ('creator', 'jury', 'participant')
-
-    Returns:
-        Decorator function
-    """
-    def decorator(f):
-        @wraps(f)
-        @jwt_required()
-        def decorated_function(*args, **kwargs):
-            # Authenticate user
-            user = get_current_user()
-            if not user:
-                return jsonify({'error': 'Invalid user'}), 401
-
-            # Extract contest_id from URL route parameters
-            contest_id = kwargs.get('id')
-            if not contest_id:
-                return jsonify({'error': 'Contest ID required'}), 400
-
-            # Fetch contest from database
-            from app.models.contest import Contest
-            contest = Contest.query.get(contest_id)
-            if not contest:
-                return jsonify({'error': 'Contest not found'}), 404
-
-            # Check permissions based on requested permission type
-            has_permission = False
-
-            if permission_type == 'creator':
-                # Only contest creator or admin can access
-                has_permission = user.is_contest_creator(contest) or user.is_admin()
-            elif permission_type == 'jury':
-                # Only jury members or admin can access
-                has_permission = user.is_jury_member(contest) or user.is_admin()
-            elif permission_type == 'participant':
-                # Any authenticated user can participate
-                has_permission = True
-
-            if not has_permission:
-                return jsonify({'error': 'Insufficient permissions for this contest'}), 403
-
-            # Attach both user and contest to request context for route handlers
-            request.current_user = user
-            request.current_contest = contest
-            return f(*args, **kwargs)
-
-        return decorated_function
-    return decorator
-
 
 def require_submission_permission(permission_type):
     """
@@ -186,7 +131,7 @@ def require_submission_permission(permission_type):
                 return jsonify({'error': 'Invalid user'}), 401
 
             # Extract submission_id from URL route parameters
-            submission_id = kwargs.get('id')
+            submission_id = kwargs.get('submission_id')
             if not submission_id:
                 return jsonify({'error': 'Submission ID required'}), 400
 
