@@ -752,6 +752,7 @@ def oauth_callback():
 # ------------------------------------------------------------------------
 
 @user_bp.route('/search', methods=['GET'])
+@require_auth
 @handle_errors
 def search_users():
     """
@@ -782,6 +783,7 @@ def search_users():
 
 
 @user_bp.route('/<int:user_id>/username', methods=['GET'])
+@require_auth
 @handle_errors
 def get_user_username(user_id):
     """
