@@ -65,7 +65,6 @@ frontend/
 │   ├── App.vue              # Root component
 │   ├── main.js              # Application entry point
 │   └── style.css            # Global styles
-├── public/                  # Static assets
 ├── index.html               # HTML template
 ├── package.json             # Dependencies and scripts
 ├── vite.config.js           # Vite configuration
