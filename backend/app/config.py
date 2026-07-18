@@ -56,7 +56,7 @@ class Config:
     # Detect Toolforge ToolsDB environment
     toolforge_db_user = os.getenv('TOOL_TOOLSDB_USER')
     toolforge_db_password = os.getenv('TOOL_TOOLSDB_PASSWORD')
-    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', os.getenv('TOOL_NAME', 'wikicontest'))
+    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', 'wikicontest')
 
     # Auto-configure for Toolforge if environment variables are present
     if toolforge_db_user and toolforge_db_password and not database_url:
