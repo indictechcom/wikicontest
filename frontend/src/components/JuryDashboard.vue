@@ -1,6 +1,6 @@
 <template>
-  <div class="container jury-dashboard mt-4">
-    <h2 class="page-header mb-4">Jury Dashboard</h2>
+  <div class="container py-5">
+    <h2 class="mb-4 page-header">Jury Dashboard</h2>
 
     <!-- Main card containing contest list table -->
     <div class="card">
@@ -193,11 +193,6 @@ export default {
 </script>
 
 <style scoped>
-.jury-dashboard {
-  padding-top: 2rem;
-  padding-bottom: 2rem;
-}
-
 h2.page-header {
   font-size: 2rem;
   font-weight: 600;
@@ -212,7 +207,7 @@ h2.page-header {
   color: #ffffff !important;
 }
 
-.jury-dashboard .card {
+.card {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
@@ -220,7 +215,7 @@ h2.page-header {
   border: 1px solid var(--border-color, #e9ecef);
 }
 
-.jury-dashboard .card-header {
+.card-header {
   background: var(--wiki-primary);
   color: #fff;
 }

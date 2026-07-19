@@ -1,6 +1,6 @@
 <template>
-  <div class="container trusted-members-container">
-    <h2 class="page-header">Manage Trusted Members</h2>
+  <div class="container py-5">
+    <h2 class="mb-4 page-header">Manage Trusted Members</h2>
 
     <!-- Tabs for different sections -->
     <ul class="nav nav-tabs mb-4" role="tablist">
@@ -373,12 +373,7 @@ export default {
 </script>
 
 <style scoped>
-.trusted-members-container {
-  padding-top: 2rem;
-  padding-bottom: 2rem;
-}
-
-.page-header {
+h2.page-header {
   font-size: 2rem;
   font-weight: 600;
   color: var(--wiki-dark);
@@ -388,7 +383,7 @@ export default {
   letter-spacing: -0.01em;
 }
 
-[data-theme="dark"] .page-header {
+[data-theme="dark"] h2.page-header {
   color: #ffffff !important;
 }
 

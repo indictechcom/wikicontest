@@ -2,7 +2,7 @@
   <div class="container py-5">
     <!-- Page Header with Create Button -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
-      <h2 class="mb-3 mb-sm-0">Contests</h2>
+      <h2 class="page-header mb-0">Contests</h2>
       <!-- Show Create Contest button for superadmin users (they can create contests directly) -->
       <button
         v-if="isAuthenticated && isSuperadmin"
@@ -620,7 +620,7 @@ export default {
 <style scoped>
 /* Contests Page Styling with Wikipedia Colors */
 
-/* Page Header */
+/* Page Title / Header */
 h2 {
   color: var(--wiki-dark);
   font-weight: 700;
@@ -629,6 +629,19 @@ h2 {
 }
 
 [data-theme="dark"] h2 {
+  color: #ffffff !important;
+}
+
+h2.page-header {
+  font-size: 2rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--wiki-primary);
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] h2.page-header {
   color: #ffffff !important;
 }
 
