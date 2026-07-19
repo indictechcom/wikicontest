@@ -1,5 +1,5 @@
 /**
- * Composable Store for WikiContest Application
+ * Composable Store for WikiEval Application
  *
  * This composable manages global application state including:
  * - User authentication
