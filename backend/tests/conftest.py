@@ -49,6 +49,16 @@ def db(app):
         _db.drop_all()
 
 
+@pytest.fixture(autouse=True)
+def _disable_rate_limiting(app):
+    """Disable flask-limiter for every test to avoid 429 interference."""
+    with app.app_context():
+        from app import limiter
+        limiter.enabled = False
+        yield
+        limiter.enabled = True
+
+
 # ---------------------------------------------------------------------------
 # HTTP client fixtures
 # ---------------------------------------------------------------------------

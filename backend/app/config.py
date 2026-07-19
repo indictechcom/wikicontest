@@ -170,6 +170,9 @@ class TestingConfig(Config):
     # Simplifies test setup without compromising production security
     JWT_COOKIE_CSRF_PROTECT = False
 
+    # Disable rate limiting in tests to avoid 429 errors
+    RATELIMIT_ENABLED = False
+
     # Minimal CORS for testing
     # Only allow necessary test client connections
     CORS_ORIGINS = ['http://localhost:3000']
