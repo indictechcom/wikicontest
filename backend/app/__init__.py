@@ -32,27 +32,30 @@ from flask_jwt_extended.exceptions import JWTDecodeError, NoAuthorizationError
 from dotenv import load_dotenv
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text as sql_text
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-_storage_uri = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=['60/minute'],
-    storage_uri=_storage_uri,
-)
 
 # Local imports
 from app.database import db
+from app.extensions import limiter
+
 # Import models to ensure they are registered with SQLAlchemy
 # This is required for database migrations and table creation
 from app.models.user import User  # pylint: disable=unused-import
 from app.models.contest import Contest  # pylint: disable=unused-import
 from app.models.submission import Submission  # pylint: disable=unused-import
 from app.models.oauth_token_cache import OAuthTokenCache  # pylint: disable=unused-import
-from app.routes.user_routes import user_bp
-from app.routes.contest_routes import contest_bp
-from app.routes.submission_routes import submission_bp
+from app.routes.auth_routes import auth_bp  # pylint: disable=unused-import
+from app.routes.oauth_routes import oauth_bp  # pylint: disable=unused-import
+from app.routes.profile_routes import profile_bp  # pylint: disable=unused-import
+from app.routes.trusted_member_routes import trusted_bp  # pylint: disable=unused-import
+from app.routes.contest_crud_routes import contest_crud_bp  # pylint: disable=unused-import
+from app.routes.contest_submission_routes import contest_sub_bp  # pylint: disable=unused-import
+from app.routes.contest_organizer_routes import contest_org_bp  # pylint: disable=unused-import
+from app.routes.contest_request_routes import contest_req_bp  # pylint: disable=unused-import
+from app.routes.contest_outreach_routes import contest_outreach_bp  # pylint: disable=unused-import
+from app.routes.contest_crawl_routes import contest_crawl_bp  # pylint: disable=unused-import
+from app.routes.submission_routes import submission_bp  # pylint: disable=unused-import
+from app.routes.system_routes import system_bp  # pylint: disable=unused-import
+from app.routes.mediawiki_proxy_routes import mediawiki_proxy_bp  # pylint: disable=unused-import
 from app.utils import (
     extract_page_title_from_url,
     build_mediawiki_revisions_api_params,
@@ -258,9 +261,19 @@ def create_app():
     # ---------------------------------------------------------------------------
     # BLUEPRINT REGISTRATION
     # ---------------------------------------------------------------------------
-    flask_app.register_blueprint(user_bp, url_prefix='/api/user')
-    flask_app.register_blueprint(contest_bp, url_prefix='/api/contest')
+    # All user blueprints share the /api/user prefix (same URL paths as before)
+    for bp in [auth_bp, oauth_bp, profile_bp, trusted_bp]:
+        flask_app.register_blueprint(bp, url_prefix='/api/user')
+    # All contest blueprints share the /api/contest prefix (same URL paths as before)
+    for bp in [contest_crud_bp, contest_sub_bp, contest_org_bp, contest_req_bp,
+               contest_outreach_bp, contest_crawl_bp]:
+        flask_app.register_blueprint(bp, url_prefix='/api/contest')
     flask_app.register_blueprint(submission_bp, url_prefix='/api/submission')
+    # System/auth/frontend endpoints and MediaWiki proxy endpoints were previously
+    # defined directly on the app; they now live in blueprints with no URL prefix
+    # so their endpoint paths and methods are unchanged.
+    flask_app.register_blueprint(system_bp)
+    flask_app.register_blueprint(mediawiki_proxy_bp)
 
     return flask_app
 
@@ -284,602 +297,8 @@ app = create_app()
 # Blueprints are imported at top of file
 
 # ---------------------------------------------------------------------------
-# AUTHENTICATION ENDPOINTS
-# ---------------------------------------------------------------------------
-
-@app.route('/api/cookie', methods=['GET'])
-def check_cookie():
-    """
-    Check if user is authenticated via JWT cookie.
-
-    This endpoint is used by the frontend to verify if a user is currently
-    logged in. It reads the JWT token from the HTTP-only cookie and returns
-    the user's basic information if the token is valid.
-
-    Returns:
-        JSON: User information if authenticated, error if not
-    """
-    try:
-        # Verify the JWT token from the cookie
-        # Use optional=False to ensure token MUST be present and valid
-        verify_jwt_in_request(optional=False)
-        user_id = get_jwt_identity()
-
-        # Validate user_id exists and is valid
-        if not user_id:
-            return jsonify({'error': 'Invalid token'}), 401
-
-        # Query User from Database
-        # CRITICAL: Query directly from database using raw SQL to bypass ALL ORM caching
-        # This ensures we get the absolute latest role from the database
-        # Include is_trusted_member and trusted_member_request_status to check if user can create contests
-        direct_query = db.session.execute(
-            sql_text('SELECT id, username, email, role, is_trusted_member, trusted_member_request_status FROM users WHERE id = :user_id'),
-            {'user_id': int(user_id)}
-        ).fetchone()
-
-        if not direct_query:
-            return jsonify({'error': 'User not found'}), 401
-
-        # Extract data from direct database query (most reliable - no ORM caching)
-        db_user_id = direct_query[0]
-        db_username = direct_query[1]
-        db_email = direct_query[2]
-        db_role = direct_query[3]
-        db_is_trusted_member = direct_query[4] if len(direct_query) > 4 else False
-        db_trusted_member_request_status = direct_query[5] if len(direct_query) > 5 else None
-
-        # Normalize role: ensure it's a string, trimmed, and lowercase
-        role_value = str(db_role).strip().lower() if db_role else 'user'
-
-        # Build response using data directly from database (no ORM objects)
-        # Include trusted member status for frontend permission checks
-        # Superadmins are automatically trusted, so check both role and is_trusted_member
-        is_trusted = bool(db_is_trusted_member) or role_value == 'superadmin'
-
-        response_data = {
-            'userId': db_user_id,
-            'username': db_username,
-            'email': db_email,
-            # Use role directly from database query - most reliable source
-            'role': role_value,
-            # Include trusted member status so frontend can check if user can create contests
-            'is_trusted_member': is_trusted,
-            # Include trusted member request status for pending/rejected state tracking
-            'trusted_member_request': db_trusted_member_request_status is not None,
-            'trusted_member_request_status': db_trusted_member_request_status
-        }
-
-        return jsonify(response_data), 200, {'Cache-Control': 'private, no-store'}
-
-    except (JWTDecodeError, NoAuthorizationError):
-        # No token or invalid token - user is definitely not logged in
-        return jsonify({'error': 'You are not logged in'}), 401
-    except (SQLAlchemyError, RuntimeError, AttributeError, ValueError) as error:
-        # Catch database errors, Flask context errors, or other specific errors
-        # Log for debugging but don't expose error to client
-        try:
-            current_app.logger.debug(f'Cookie check failed: {str(error)}')
-        except (AttributeError, RuntimeError):
-            # Logger might not be available or Flask context missing
-            pass
-        return jsonify({'error': 'You are not logged in'}), 401
-
-
-# ---------------------------------------------------------------------------
-# FRONTEND SERVING ROUTES
-# ---------------------------------------------------------------------------
-
-@app.route('/')
-def index():
-    """
-    Serve the main frontend page.
-
-    Serves the Vue.js application.
-    In production, serves from frontend/dist directory (built Vue.js app).
-    """
-    # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
-    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    dist_path = os.path.join(workspace_root, 'frontend', 'dist')
-
-    if os.path.exists(dist_path):
-        # Production - serve built Vue.js files
-        return send_from_directory(dist_path, 'index.html')
-
-    # Fallback - development mode
-    frontend_path = os.path.join(workspace_root, 'frontend')
-    return send_from_directory(frontend_path, 'index.html')
-
-
-@app.route('/<path:filename>')
-def serve_static(filename):
-    """
-    Serve static files from frontend directory.
-
-    In production, serves from frontend/dist directory (built Vue.js app).
-    In development, serves from frontend directory (Vite dev server handles Vue.js).
-    """
-    # Skip API routes to avoid conflict with API endpoints
-    if filename.startswith('api/') or filename.startswith('oauth/'):
-        return jsonify({'error': 'Endpoint not found'}), 404
-
-    # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
-    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-    dist_path = os.path.join(workspace_root, 'frontend', 'dist')
-
-    if os.path.exists(dist_path):
-        # Production - serve from dist
-        try:
-            return send_from_directory(dist_path, filename)
-        except Exception:
-            # If file not found in dist, serve index.html (for Vue Router)
-            # This enables client-side routing in production
-            if not filename.startswith('api/') and not filename.startswith('oauth/'):
-                return send_from_directory(dist_path, 'index.html')
-            raise
-    # Development - serve from frontend directory
-    frontend_path = os.path.join(workspace_root, 'frontend')
-    return send_from_directory(frontend_path, filename)
-
-
-# ---------------------------------------------------------------------------
-# SYSTEM ENDPOINTS
-# ---------------------------------------------------------------------------
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """
-    Health check endpoint for monitoring and load balancers.
-
-    This endpoint can be used by monitoring systems to check if the
-    application is running and responding to requests.
-
-    Returns:
-        JSON: Application status information
-    """
-    try:
-        db.session.execute(sql_text('SELECT 1'))
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected',
-            'message': 'WikiContest API is running',
-            'version': '1.0.0'
-        }), 200
-    except Exception:
-        return jsonify({
-            'status': 'unhealthy',
-            'database': 'disconnected',
-            'message': 'WikiContest API is running',
-            'version': '1.0.0'
-        }), 503
-
-
-@app.route('/oauth/callback', methods=['GET'])
-def oauth_callback_redirect():
-    """
-    Redirect /oauth/callback to the blueprint handler at /api/user/oauth/callback.
-
-    The Toolforge OAuth consumer is registered with callback URL
-    https://wikicontest.toolforge.org/oauth/callback, but the actual handler
-    lives at /api/user/oauth/callback (the user_bp blueprint).
-    This route bridges the two by forwarding all query parameters.
-    """
-    from flask import redirect
-    query_string = request.query_string.decode('utf-8')
-    target = f'/api/user/oauth/callback'
-    if query_string:
-        target = f'{target}?{query_string}'
-    return redirect(target, code=302)
-
-
-@app.route('/api/oauth/config', methods=['GET'])
-@jwt_required()
-def oauth_config_check():
-    """
-    Diagnostic endpoint to check OAuth configuration.
-
-    This helps verify that OAuth is properly configured and shows
-    what callback URL will be used. Useful for troubleshooting.
-    Admin access required.
-
-    Returns:
-        JSON: OAuth configuration details (without secrets)
-    """
-    user_id = get_jwt_identity()
-    current_user = User.query.get(int(user_id))
-    if not current_user or not current_user.is_admin():
-        return jsonify({'error': 'Admin access required'}), 403
-    consumer_key = app.config.get('CONSUMER_KEY', '')
-    consumer_secret = app.config.get('CONSUMER_SECRET', '')
-    mw_uri = app.config.get('OAUTH_MWURI', 'https://meta.wikimedia.org/w/index.php')
-    use_oob = app.config.get('OAUTH_USE_OOB', False)
-    custom_callback_path = app.config.get('OAUTH_CALLBACK_PATH', None)
-
-    # Build callback URL based on environment
-    # For local development: http://localhost:5000/api/user/oauth/callback
-    # For Toolforge: https://wikicontest.toolforge.org/oauth/callback
-    # (if OAUTH_CALLBACK_PATH is set)
-    scheme = request.scheme
-    host = request.host
-    if custom_callback_path:
-        callback_url = f"{scheme}://{host}{custom_callback_path}"
-    else:
-        # Default callback URL for local development
-        callback_url = f"{scheme}://{host}/api/user/oauth/callback"
-
-    # Build instruction message for callback URL registration
-    callback_instruction = (
-        f'Your OAuth consumer must be registered with this exact '
-        f'callback URL: {callback_url}'
-    )
-
-    return jsonify({
-        'oauth_configured': bool(consumer_key and consumer_secret),
-        'consumer_key': consumer_key[:10] + '...' if consumer_key else 'NOT SET',
-        'consumer_secret_set': bool(consumer_secret),
-        'mw_uri': mw_uri,
-        'use_oob': use_oob,
-        'callback_url': callback_url,
-        'custom_callback_path': custom_callback_path,
-        'instructions': {
-            'if_use_oob_true': 'Your OAuth consumer must be registered with "oob" (out-of-band)',
-            'if_use_oob_false': callback_instruction,
-            'check_registration': (
-                'Go to https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration '
-                'to verify your consumer settings'
-            )
-        }
-    }), 200
-
-
-# ---------------------------------------------------------------------------
-# MEDIAWIKI API PROXY ENDPOINTS
-# ---------------------------------------------------------------------------
-
-@app.route('/api/mediawiki/article-info', methods=['GET'])
-def mediawiki_article_info():  # pylint: disable=too-many-return-statements
-    """
-    Fetch comprehensive article information from MediaWiki API.
-
-    This endpoint fetches detailed information about a MediaWiki article including:
-    - Article title
-    - Author (creator) of the article
-    - Creation date
-    - Last revision date
-    - Page ID
-    - Word count
-    - And other metadata useful for judging
-
-    Query Parameters:
-        url (str): The full MediaWiki article URL
-
-    Returns:
-        JSON: Article information including title, author, dates, etc.
-
-    Example:
-        GET /api/mediawiki/article-info?url=https://en.wikipedia.org/wiki/Article_Title
-    """
-    # Get the article URL from query parameters
-    article_url = request.args.get('url', '')
-
-    if not article_url:
-        return jsonify({'error': 'Article URL is required'}), 400
-
-    try:
-        # Extract page title from URL using shared utility function
-        # This ensures consistency with the submission route
-        page_title = extract_page_title_from_url(article_url)
-
-        if not page_title:
-            return jsonify({'error': 'Could not extract page title from URL'}), 400
-
-        # Parse the article URL to extract base URL
-        base_url, error = validate_wiki_url(article_url)
-        if error:
-            return error
-
-        # Build MediaWiki API URL
-        api_url = f"{base_url}/w/api.php"
-
-        # Build API parameters using shared utility function
-        # This ensures we use the same logic as the submission route
-        # With rvdir='older', we get the newest revision first, then oldest
-        # This matches how the submission route fetches byte count
-        api_params = build_mediawiki_revisions_api_params(page_title)
-        # Add additional parameters for this endpoint
-        api_params['inprop'] = 'url|displaytitle'
-
-        # Make request to MediaWiki API using the centralized client
-        client = MediaWikiClient()
-        data = client.get(api_url, params=api_params)
-
-        if data is None:
-            return jsonify({
-                'error': 'Failed to fetch article information from MediaWiki API',
-                'api_url': api_url,
-                'page_title': page_title
-            }), 502
-
-        # Check for API errors
-        if 'error' in data:
-            error_info = data['error'].get('info', 'Unknown MediaWiki API error')
-            error_code = data['error'].get('code', 'unknown')
-            return jsonify({
-                'error': error_info,
-                'code': error_code
-            }), 400
-
-        # Get page data
-        # With formatversion=2, pages is an array; otherwise it's an object
-        pages = data.get('query', {}).get('pages', [])
-        if not pages:
-            return jsonify({'error': 'No page data found in API response'}), 404
-
-        # Handle formatversion=2 (array) or formatversion=1 (object)
-        if isinstance(pages, list):
-            # formatversion=2: pages is an array
-            if len(pages) == 0:
-                return jsonify({'error': 'Article not found'}), 404
-            page_data = pages[0]
-            page_id = str(page_data.get('pageid', ''))
-        else:
-            # formatversion=1: pages is an object with page IDs as keys
-            page_id = list(pages.keys())[0]
-            page_data = pages[page_id]
-
-        # Check if page exists
-        # In formatversion=2, missing pages have 'missing': True
-        # In formatversion=1, missing pages have pageid: -1
-        is_missing = page_data.get('missing', False) if page_data else True
-        has_valid_pageid = page_id and page_id != '-1' and page_id != ''
-
-        if not has_valid_pageid or is_missing:
-            return jsonify({'error': 'Article not found'}), 404
-
-        # Extract article information
-        article_title = page_data.get('title', page_title)
-        display_title = page_data.get('displaytitle', article_title)
-        page_url = page_data.get('fullurl', article_url)
-
-        # Get revision information
-        # With rvdir='older' and rvlimit=2, we get:
-        # - revisions[0] = newest (latest) revision - use for byte count
-        # - revisions[-1] = oldest (first) revision - use for creation date/author
-        revisions = page_data.get('revisions', [])
-        author = None
-        article_created_at = None
-        last_revision_date = None
-        word_count = None
-
-        if revisions and len(revisions) > 0:
-            # Get latest revision (newest) for byte count
-            # This matches the submission route logic - we validate against current size
-            # With rvdir='older', the first revision is the newest (latest)
-            latest_revision = revisions[0]
-            word_count = latest_revision.get('size', 0)
-
-            # Get latest revision author using shared utility function
-            # This gets the author who made the most recent edit
-            author = get_latest_revision_author(revisions)
-            if not author:
-                author = 'Unknown'
-
-            # Get oldest revision for creation date
-            # If we have multiple revisions, the last one is the oldest
-            # If we only have one revision, it's both the newest and oldest
-            if len(revisions) > 1:
-                oldest_revision = revisions[-1]
-            else:
-                oldest_revision = revisions[0]
-
-            article_created_at = oldest_revision.get('timestamp', '')
-            last_revision_date = latest_revision.get('timestamp', '')
-        else:
-            # Page exists but has no revisions - this is unusual but possible
-            # Set defaults and log a warning
-            word_count = 0
-            author = 'Unknown'
-            article_created_at = None
-            last_revision_date = None
-
-        # Fetch reference count using shared utility function
-        # This counts both footnotes (<ref> tags) and external links (URLs)
-        # Uses the latest revision to ensure accuracy
-        reference_count = get_article_reference_count(article_url)
-
-        # Return comprehensive article information
-        return jsonify({
-            'article_title': article_title,
-            'display_title': display_title,
-            'article_url': page_url,
-            'author': author,
-            'article_created_at': article_created_at,
-            'last_revision_date': last_revision_date,
-            'word_count': word_count,
-            'reference_count': reference_count,  # Total references: footnotes + external links
-            'page_id': page_id,
-            'base_url': base_url
-        }), 200
-
-    except ValueError as error:
-        # JSON parsing or data conversion error
-        return jsonify({
-            'error': f'Invalid response from MediaWiki API: {str(error)}'
-        }), 502
-    except (KeyError, TypeError, AttributeError) as error:
-        # Catch data structure errors (missing keys, wrong types, missing attributes)
-        return jsonify({
-            'error': f'Unexpected error while fetching article information: {str(error)}'
-        }), 500
-
-
-@app.route('/api/mediawiki/preview', methods=['GET'])
-def mediawiki_preview():  # pylint: disable=too-many-return-statements
-    """
-    Proxy endpoint for MediaWiki API article preview requests.
-
-    This endpoint acts as a proxy to fetch MediaWiki article content
-    from external MediaWiki sites. It solves CORS issues by making
-    the request from the backend server instead of the browser.
-
-    Query Parameters:
-        url (str): The full MediaWiki article URL to fetch preview for
-        page (str, optional): The page title (if URL parsing fails)
-
-    Returns:
-        JSON: MediaWiki API response with parsed article content
-
-    Example:
-        GET /api/mediawiki/preview?url=https://en.wikipedia.org/wiki/Userpage
-    """
-    # Get the article URL from query parameters
-    article_url = request.args.get('url', '')
-    page_title = request.args.get('page', '')
-
-    if not article_url:
-        return jsonify({'error': 'Article URL is required'}), 400
-
-    try:
-        # Parse the article URL to extract base URL and page title
-        url_obj = urlparse(article_url)
-        base_url, error = validate_wiki_url(article_url)
-        if error:
-            return error
-
-        # Extract page title from URL if not provided as parameter
-        if not page_title:
-            if '/wiki/' in url_obj.path:
-                # Standard MediaWiki URL format: /wiki/Page_Title
-                # Decode URL-encoded characters (e.g., %20 -> space, %2F -> /)
-                page_title = unquote(url_obj.path.split('/wiki/')[1])
-            elif 'title=' in url_obj.query:
-                # Old-style URL: /w/index.php?title=Page_Title
-                query_params = parse_qs(url_obj.query)
-                page_title = unquote(query_params.get('title', [''])[0])
-            else:
-                # Try to extract from pathname
-                parts = url_obj.path.split('/')
-                page_title = unquote(parts[-1]) if parts else ''
-
-        if not page_title:
-            return jsonify({'error': 'Could not extract page title from URL'}), 400
-
-        # Build MediaWiki API URL
-        # Use action=parse to get rendered HTML content
-        api_url = f"{base_url}/w/api.php"
-
-        # MediaWiki API request with formatversion=2 for better JSON structure
-        # This matches the recommended API format
-        api_params = {
-            'action': 'parse',
-            'page': page_title,  # MediaWiki API handles URL encoding internally
-            'format': 'json',
-            'formatversion': '2',  # Use formatversion=2 for cleaner JSON structure
-            'prop': 'text|displaytitle',
-            'redirects': 'true'  # Follow redirects
-        }
-
-        # Make request to MediaWiki API with timeout
-        # Backend-to-backend requests don't have CORS restrictions
-        # MediaWiki API requires a User-Agent header to identify the application
-        headers = {
-            'User-Agent': (
-                'WikiContest/1.0 (' + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + '; '
-                'contact@wikicontest.org) Python/requests'
-            )
-        }
-
-        client = MediaWikiClient()
-        data = client.get(api_url, params=api_params)
-
-        if data is None:
-            return jsonify({
-                'error': 'Failed to fetch article content from MediaWiki API',
-                'api_url': api_url,
-                'page_title': page_title
-            }), 502
-
-        # Check for API errors
-        if 'error' in data:
-            error_info = data['error'].get('info', 'Unknown MediaWiki API error')
-            error_code = data['error'].get('code', 'unknown')
-            return jsonify({
-                'error': error_info,
-                'code': error_code,
-                'page_title': page_title
-            }), 400
-
-        # Check if we have parsed content
-        if 'parse' not in data:
-            return jsonify({
-                'error': 'No parse data found in MediaWiki API response',
-                'page_title': page_title,
-                'response_keys': (
-                    list(data.keys()) if isinstance(data, dict) else 'not a dict'
-                )
-            }), 404
-
-        # Check if text field exists (can be dict or string depending on formatversion)
-        parse_data = data.get('parse', {})
-        if 'text' not in parse_data:
-            return jsonify({
-                'error': 'No text content found in MediaWiki API response',
-                'page_title': page_title,
-                'parse_keys': (
-                    list(parse_data.keys()) if isinstance(parse_data, dict) else 'not a dict'
-                )
-            }), 404
-
-        # Get the HTML content
-        # Handle both formatversion=1 (dict with '*') and formatversion=2
-        # MediaWiki API parse action returns text as a dict with '*' key
-        text_data = parse_data.get('text', {})
-
-        if isinstance(text_data, dict):
-            # Standard format: text is a dict with '*' key containing the HTML
-            html_content = text_data.get('*', '')
-        elif isinstance(text_data, str):
-            # Fallback: if text is directly a string (shouldn't happen but handle it)
-            html_content = text_data
-        else:
-            # No text data available
-            html_content = ''
-
-        # Get the actual page title (may differ from URL due to redirects)
-        # Use safe access to avoid errors
-        actual_page_title = parse_data.get('displaytitle') or parse_data.get('title', page_title)
-
-        # Make links absolute (convert relative links to absolute)
-        # This ensures images and links work correctly in the preview
-        html_content = html_content.replace('href="/wiki/', f'href="{base_url}/wiki/')
-        html_content = html_content.replace('href="/w/', f'href="{base_url}/w/')
-        html_content = html_content.replace('src="/wiki/', f'src="{base_url}/wiki/')
-        html_content = html_content.replace('src="/w/', f'src="{base_url}/w/')
-
-# Return the parsed content
-        response = jsonify({
-            'htmlContent': html_content,
-            'actualPageTitle': actual_page_title,
-            'pageTitle': page_title,
-            'baseUrl': base_url
-        })
-        response.headers['Cache-Control'] = 'public, max-age=30'
-        return response, 200
-
-    except ValueError as error:
-        # JSON parsing error
-        return jsonify({
-            'error': f'Invalid response from MediaWiki API: {str(error)}'
-        }), 502
-    except (KeyError, TypeError, AttributeError) as error:
-        # Catch data structure errors (missing keys, wrong types, missing attributes)
-        return jsonify({
-            'error': f'Unexpected error while fetching article preview: {str(error)}'
-        }), 500
-
-# ------------------------------------------------------------------------=
 # ERROR HANDLERS
-# ------------------------------------------------------------------------=
+# ---------------------------------------------------------------------------
 
 @app.errorhandler(404)
 def not_found(_error):
@@ -916,9 +335,9 @@ def ratelimit_handler(exc):
     """
     return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
 
-# ------------------------------------------------------------------------=
+# ---------------------------------------------------------------------------
 # APPLICATION STARTUP
-# ------------------------------------------------------------------------=
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # This file can be run directly, but main.py is the recommended entry point.

@@ -53,7 +53,7 @@ def db(app):
 def _disable_rate_limiting(app):
     """Disable flask-limiter for every test to avoid 429 interference."""
     with app.app_context():
-        from app import limiter
+        from app.extensions import limiter
         limiter.enabled = False
         yield
         limiter.enabled = True

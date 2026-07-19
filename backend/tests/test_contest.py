@@ -376,7 +376,7 @@ class TestCrawlCategory:
         }
 
         import app.utils as app_utils
-        import app.routes.contest_routes as contest_routes
+        import app.routes.contest_crawl_routes as contest_routes
 
         monkeypatch.setattr(
             app_utils, "crawl_category_articles", lambda *a, **kw: fake_crawl_result
@@ -449,7 +449,7 @@ class TestCrawlCategory:
         }
 
         import app.utils as app_utils
-        import app.routes.contest_routes as contest_routes
+        import app.routes.contest_crawl_routes as contest_routes
 
         monkeypatch.setattr(
             app_utils, "crawl_category_articles", lambda *a, **kw: fake_crawl_result
