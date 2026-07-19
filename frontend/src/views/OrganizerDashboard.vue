@@ -34,19 +34,19 @@
           <button class="nav-link"
             :class="{ active: activeCategory === 'current' }"
             @click="setActiveCategory('current')">
-            Current
+            Current <span class="tab-count">({{ currentCount }})</span>
           </button>
         </li>
         <li class="nav-item">
           <button class="nav-link"
             :class="{ active: activeCategory === 'upcoming' }"
             @click="setActiveCategory('upcoming')">
-            Upcoming
+            Upcoming <span class="tab-count">({{ upcomingCount }})</span>
           </button>
         </li>
         <li class="nav-item">
           <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
-            Past
+            Past <span class="tab-count">({{ pastCount }})</span>
           </button>
         </li>
       </ul>
@@ -168,6 +168,16 @@ export default {
     const organizedContests = computed(() => {
       return dashboardData.value?.organized_contests || []
     })
+
+    const currentCount = computed(() =>
+      organizedContests.value.filter(c => c.status === 'current').length
+    )
+    const upcomingCount = computed(() =>
+      organizedContests.value.filter(c => c.status === 'upcoming').length
+    )
+    const pastCount = computed(() =>
+      organizedContests.value.filter(c => c.status === 'past').length
+    )
 
     // Get contests for currently selected category
     const filteredContests = computed(() => {
@@ -361,6 +371,9 @@ export default {
       error,
       organizedContests,
       filteredContests,
+      currentCount,
+      upcomingCount,
+      pastCount,
       activeCategory,
       canCreateContests,
       viewContest,
@@ -727,6 +740,18 @@ h2.page-header {
   border-bottom: 1px solid var(--wiki-border);
   margin-bottom: 2rem;
   transition: border-color 0.3s ease;
+}
+
+.tab-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--wiki-text-muted);
+  margin-left: 0.35rem;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .tab-count {
+  color: #aaa;
 }
 
 .nav-tabs .nav-link {

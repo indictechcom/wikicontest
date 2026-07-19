@@ -58,23 +58,23 @@
     <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
-        <button class="nav-link"
+          <button class="nav-link"
 :class="{ active: activeCategory === 'current' }"
-          @click="setActiveCategory('current')">
-          Current
-        </button>
+            @click="setActiveCategory('current')">
+            Current <span class="tab-count">({{ currentCount }})</span>
+          </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link"
+          <button class="nav-link"
 :class="{ active: activeCategory === 'upcoming' }"
-          @click="setActiveCategory('upcoming')">
-          Upcoming
-        </button>
+            @click="setActiveCategory('upcoming')">
+            Upcoming <span class="tab-count">({{ upcomingCount }})</span>
+          </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
-          Past
-        </button>
+          <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
+            Past <span class="tab-count">({{ pastCount }})</span>
+          </button>
       </li>
     </ul>
 
@@ -228,6 +228,16 @@ export default {
     const currentContests = computed(() => {
       return store.getContestsByCategory(activeCategory.value)
     })
+
+    const currentCount = computed(() =>
+      store.contests.value.current?.length || 0
+    )
+    const upcomingCount = computed(() =>
+      store.contests.value.upcoming?.length || 0
+    )
+    const pastCount = computed(() =>
+      store.contests.value.past?.length || 0
+    )
 
     const isAuthenticated = computed(() => store.isAuthenticated)
 
@@ -584,6 +594,9 @@ export default {
     return {
       activeCategory,
       currentContests,
+      currentCount,
+      upcomingCount,
+      pastCount,
       loading,
       isAuthenticated,
       loginUrl,
@@ -694,6 +707,18 @@ h2.page-header {
   border-bottom: 1px solid var(--wiki-border);
   margin-bottom: 2rem;
   transition: border-color 0.3s ease;
+}
+
+.tab-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--wiki-text-muted);
+  margin-left: 0.35rem;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .tab-count {
+  color: #aaa;
 }
 
 .nav-tabs .nav-link {
