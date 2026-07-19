@@ -1,5 +1,5 @@
 """
-Contest category-crawl routes for WikiContest Application.
+Contest category-crawl routes for WikiEval Application.
 
 Handles importing articles from a MediaWiki category into a contest as pending
 submissions. Extracted from the original monolithic contest_routes.py.

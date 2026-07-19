@@ -1,5 +1,5 @@
 """
-Contest CRUD routes for WikiContest Application.
+Contest CRUD routes for WikiEval Application.
 """
 
 import traceback

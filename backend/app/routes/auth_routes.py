@@ -1,5 +1,5 @@
 """
-Authentication routes for WikiContest Application.
+Authentication routes for WikiEval Application.
 
 Handles user registration, login, and logout. Extracted from the original
 monolithic user_routes.py. Registered at /api/user along with the other

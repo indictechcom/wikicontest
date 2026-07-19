@@ -1,5 +1,5 @@
 """
-Contest organizer routes for WikiContest Application.
+Contest organizer routes for WikiEval Application.
 """
 
 from datetime import datetime, timezone
