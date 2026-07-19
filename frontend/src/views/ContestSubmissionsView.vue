@@ -140,7 +140,10 @@
                 <tr v-for="submission in filteredSubmissions" :key="submission.id">
                   <!-- Article Title with Metadata -->
                   <td>
-                    <a href="#" @click.prevent="showArticlePreview(submission)" class="text-decoration-none article-title-link" :title="submission.article_link">
+                    <a href="#"
+@click.prevent="showArticlePreview(submission)"
+class="text-decoration-none article-title-link"
+:title="submission.article_link">
                       {{ submission.article_title }}
                     </a>
                     <!-- Expansion bytes (can be negative for content removal) -->
@@ -165,7 +168,10 @@
                   </td>
                   <td>{{ submission.username || 'Unknown' }}</td>
                   <td>
-                    <span :class="`badge bg-${getStatusColor(submission.status)}`" :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''" @click="showEvaluationDetails(submission)" :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                    <span :class="`badge bg-${getStatusColor(submission.status)}`"
+:style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+@click="showEvaluationDetails(submission)"
+:title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
                       {{ submission.status }}
                     </span>
                     <div v-if="submission.already_reviewed" class="text-muted small mt-1"><i class="fas fa-check-circle me-1"></i>Reviewed</div>
@@ -177,7 +183,11 @@
                   </td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
-                    <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)" class="btn btn-sm btn-outline-danger" title="Delete Submission" :disabled="deletingSubmissionId === submission.id">
+                    <button v-if="canViewSubmissions"
+@click="handleDeleteSubmission(submission)"
+class="btn btn-sm btn-outline-danger"
+title="Delete Submission"
+:disabled="deletingSubmissionId === submission.id">
                       <span v-if="deletingSubmissionId === submission.id" class="spinner-border spinner-border-sm"></span>
                       <i v-else class="fas fa-trash"></i>
                     </button>
