@@ -1101,9 +1101,9 @@ export default {
       error.value = null
 
       try {
-        const contestName = route.params.name
-        if (!contestName) throw new Error('Contest name is required')
-        const data = await api.get(`/contest/name/${contestName}`)
+        const contestId = route.params.contestId
+        if (!contestId) throw new Error('Contest ID is required')
+        const data = await api.get(`/contest/${contestId}`)
 
         contest.value = {
           ...data,
@@ -1305,7 +1305,7 @@ export default {
         await api.put(`/contest/${contest.value.id}`, payload)
 
         showAlert('Contest updated successfully', 'success')
-        router.push({ name: 'ContestView', params: { name: route.params.name } })
+        router.push({ name: 'ContestView', params: { contestId: route.params.contestId } })
       } catch (error) {
         console.error('[SAVE] Error:', error)
         showAlert(
@@ -1319,7 +1319,7 @@ export default {
 
     // Navigation helper
     const goBack = () => {
-      router.push({ name: 'ContestView', params: { name: route.params.name } })
+      router.push({ name: 'ContestView', params: { contestId: route.params.contestId } })
     }
 
     onMounted(() => {

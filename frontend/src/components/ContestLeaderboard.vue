@@ -178,9 +178,10 @@ export default {
     )
 
     const getContestId = async () => {
-      const contestName = route.params.name
-      const contestData = await api.get(`/contest/name/${contestName}`)
-      return contestData.id
+      const contestId = route.params.contestId
+      if (contestId) return Number(contestId)
+      
+      throw new Error('Contest ID is required')
     }
 
     const loadLeaderboard = async (showLoading = true) => {
@@ -242,7 +243,7 @@ export default {
     }
 
     const goBack = () => {
-      router.push({ name: 'ContestView', params: { name: route.params.name } })
+      router.push({ name: 'ContestView', params: { contestId: route.params.contestId } })
     }
 
     onMounted(() => loadLeaderboard())

@@ -1807,12 +1807,11 @@ export default {
 
       try {
         let data
-        if (id) {
-          data = await api.get(`/contest/${id}`)
+        const contestId = route.params.contestId
+        if (contestId) {
+          data = await api.get(`/contest/${contestId}`)
         } else {
-          const contestName = route.params.name
-          if (!contestName) throw new Error('Contest name is required')
-          data = await api.get(`/contest/name/${contestName}`)
+          throw new Error('Contest ID is required')
         }
 
         // Ensure scoring parameters are initialized
@@ -2562,7 +2561,7 @@ export default {
 
       router.push({
         name: 'ContestLeaderboard',
-        params: { name: route.params.name }
+        params: { contestId: route.params.contestId }
       })
     }
 
@@ -2572,14 +2571,14 @@ export default {
 
       router.push({
         name: 'EditContest',
-        params: { name: route.params.name }
+        params: { contestId: route.params.contestId }
       })
     }
 
     // Navigate to contest submissions page
     const viewSubmissions = () => {
       if (!contest.value) return
-      router.push({ name: 'ContestSubmissions', params: { id: contest.value.id } })
+      router.push({ name: 'ContestSubmissions', params: { contestId: contest.value.id } })
     }
 
     return {
