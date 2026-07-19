@@ -3,7 +3,7 @@
     <!-- Page header with Wikipedia primary color -->
     <div class="page-header py-2">
       <div class="container-fluid d-flex justify-content-between align-items-center">
-        <div class="text-white">WikiContest Tool</div>
+        <div class="text-white">WikiEval Tool</div>
         <button type="button"
 class="btn btn-secondary btn-sm"
 @click="goBack"
