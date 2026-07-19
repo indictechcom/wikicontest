@@ -123,6 +123,23 @@
                   {{ formatDateRange(contest.start_date, contest.end_date) }}
                 </span>
               </div>
+
+              <!-- Action Buttons -->
+              <div class="d-flex gap-2 mt-3" v-if="canEditOrDelete(contest)">
+                <button
+                  class="btn btn-primary btn-sm"
+                  @click.stop="goToEditPage(contest)">
+                  <i class="fas fa-edit me-1"></i>Edit Contest
+                </button>
+                <button
+                  class="btn btn-danger btn-sm"
+                  @click.stop="handleDeleteContest(contest)"
+                  :disabled="deletingContest">
+                  <span v-if="deletingContest" class="spinner-border spinner-border-sm me-1"></span>
+                  <i v-else class="fas fa-trash me-1"></i>
+                  {{ deletingContest ? 'Deleting...' : 'Delete' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -149,6 +166,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const activeCategory = ref('current')
+    const deletingContest = ref(false)
 
     // Restore the active subsection from the URL query parameter (?tab=...)
     const getCategoryFromUrl = () => {
@@ -191,6 +209,53 @@ export default {
       const role = String(user.role || '').toLowerCase().trim()
       return role === 'superadmin' || user.is_trusted_member === true
     })
+
+    // Check if current user can edit or delete a given contest (creator or admin/superadmin)
+    const canEditOrDelete = (contest) => {
+      const user = store.currentUser.value
+      if (!user || !contest) return false
+
+      const username = (user.username || '').trim().toLowerCase()
+      const role = (user.role || '').trim().toLowerCase()
+      const creator = (contest.created_by || '').trim().toLowerCase()
+
+      if (!username || !creator) return false
+
+      if (username === creator) return true
+      if (role === 'admin' || role === 'superadmin') return true
+
+      return false
+    }
+
+    // Navigate to contest edit page
+    const goToEditPage = (contest) => {
+      if (!contest) return
+      router.push({ name: 'EditContest', params: { name: contest.slug || contest.name } })
+    }
+
+    // Delete contest with confirmation
+    const handleDeleteContest = async (contest) => {
+      if (!contest) return
+
+      const confirmed = confirm(
+        `Are you sure you want to delete the contest "${contest.name}"?\n\n` +
+        'This action cannot be undone and will delete all associated submissions.'
+      )
+
+      if (!confirmed) return
+
+      deletingContest.value = true
+      try {
+        await api.delete(`/contest/${contest.id}`)
+        showAlert('Contest deleted successfully', 'success')
+        await loadDashboard()
+      } catch (error) {
+        console.error('Failed to delete contest:', error)
+        showAlert('Failed to delete contest: ' + error.message, 'danger')
+      } finally {
+        deletingContest.value = false
+      }
+    }
 
     // Load dashboard data
     const loadDashboard = async () => {
@@ -376,8 +441,12 @@ export default {
       pastCount,
       activeCategory,
       canCreateContests,
+      canEditOrDelete,
+      deletingContest,
       viewContest,
       showCreateContestModal,
+      goToEditPage,
+      handleDeleteContest,
       setActiveCategory,
       formatDate,
       formatDateRange,
@@ -423,6 +492,12 @@ h2.page-header {
   background-color: var(--wiki-primary-hover);
   border-color: var(--wiki-primary-hover);
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
+}
+
+/* Contest Card Action Buttons */
+.contest-card .btn-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
 }
 
 /* Empty State Alert */

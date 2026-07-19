@@ -3,9 +3,6 @@
     <!-- Page Header -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
       <h2 class="page-header mb-0">Jury Dashboard</h2>
-      <span v-if="juryContests.length" class="badge bg-light text-dark px-3 py-2 mt-2 mt-sm-0">
-        {{ juryContests.length }} contests
-      </span>
     </div>
 
     <!-- Loading State -->
@@ -129,7 +126,7 @@
                   v-if="contest.status !== 'past'"
                   class="btn btn-primary btn-sm"
                   @click.stop="goToContest(contest)">
-                  <i class="fas fa-gavel me-1"></i>Review
+                  <i class="fas fa-gavel me-1"></i>Review Submissions
                 </button>
                 <button
                   v-else
