@@ -235,7 +235,7 @@ export default {
     const deletingSubmissionId = ref(null)
 
     // Get contest ID from route params
-    const contestId = Number(route.params.id)
+    const contestId = Number(route.params.contestId)
 
     // Check if user can view submissions (organizer, jury, or admin)
     const canViewSubmissions = computed(() => {
@@ -391,7 +391,7 @@ export default {
     // Navigate to contest edit page
     const goToEditPage = () => {
       if (!contest.value) return
-      router.push({ name: 'EditContest', params: { name: contest.value.slug || contest.value.name } })
+      router.push({ name: 'EditContest', params: { contestId: contest.value.id } })
     }
 
     // Navigate back to contest view
@@ -400,7 +400,7 @@ export default {
         router.push({ name: 'Contests' })
         return
       }
-      router.push({ name: 'ContestView', params: { name: contest.value.slug || contest.value.name } })
+      router.push({ name: 'ContestView', params: { contestId: contest.value.id } })
     }
 
     // Show article preview modal
@@ -520,9 +520,9 @@ export default {
 
     // Refetch data if contest ID changes
     watch(
-      () => route.params.id,
+      () => route.params.contestId,
       (newId) => {
-        if (newId !== route.params.id) return
+        if (newId !== route.params.contestId) return
         loadContestAndSubmissions()
       }
     )
