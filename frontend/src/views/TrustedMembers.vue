@@ -190,10 +190,10 @@ export default {
       return VALID_TABS.includes(tab) ? tab : 'requests'
     }
 
-    // Reflect the active subsection in the URL without adding history entries
+    // Reflect the active subsection in the URL and push into browser history.
     const syncUrlWithTab = (tab) => {
       if (route.query.tab !== tab) {
-        router.replace({ query: { ...route.query, tab } })
+        router.push({ name: route.name, query: { ...route.query, tab } })
       }
     }
 

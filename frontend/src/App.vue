@@ -24,9 +24,6 @@ data-bs-target="#navbarNav">
             <li class="nav-item">
               <router-link class="nav-link" to="/contests">Contests</router-link>
             </li>
-            <li class="nav-item" v-if="isAuthenticated">
-              <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
-            </li>
             <li class="nav-item" v-if="dashboardAccess?.organizer">
               <router-link class="nav-link" to="/organizer/dashboard">Organizer</router-link>
             </li>
@@ -35,6 +32,9 @@ data-bs-target="#navbarNav">
             </li>
             <li class="nav-item" v-if="isSuperadmin">
               <router-link class="nav-link" to="/manage-trusted-members">Manage Trusted Members</router-link>
+            </li>
+            <li class="nav-item" v-if="isAuthenticated">
+              <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
             </li>
           </ul>
 

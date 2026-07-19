@@ -213,11 +213,11 @@ export default {
       return VALID_CATEGORIES.includes(tab) ? tab : 'current'
     }
 
-    // Reflect the active subsection in the URL without adding history entries.
+    // Reflect the active subsection in the URL and push into browser history.
     // The URL always shows the current tab, including the default "current".
     const syncUrlWithCategory = (category) => {
       if (route.query.tab !== category) {
-        router.replace({ query: { ...route.query, tab: category } })
+        router.push({ name: route.name, query: { ...route.query, tab: category } })
       }
     }
     const loading = ref(false)
