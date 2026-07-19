@@ -134,6 +134,24 @@ export default {
     // Direct profile data state (bypasses store cache)
     const directProfileData = ref(null)
 
+    // Safely serialize a value to JSON, tolerating circular references
+    // (Vue reactive proxies/computed refs contain circular structures that
+    //  plain JSON.stringify would throw on).
+    const safeStringify = (value) => {
+      const seen = new WeakSet()
+      try {
+        return JSON.stringify(value, (key, val) => {
+          if (typeof val === 'object' && val !== null) {
+            if (seen.has(val)) return '[Circular]'
+            seen.add(val)
+          }
+          return val
+        }, 2)
+      } catch (e) {
+        return String(value)
+      }
+    }
+
     // Refresh user data from backend to get latest role information
     const refreshUserData = async () => {
       console.log('🔄 Refreshing user data...')
@@ -165,7 +183,7 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 300))
 
         // Log refreshed data for debugging
-        console.log('🔄 After refresh - currentUser:', JSON.stringify(currentUser.value, null, 2))
+        console.log('🔄 After refresh - currentUser:', safeStringify(currentUser.value))
         console.log('🔄 After refresh - role:', currentUser.value?.role)
         console.log('🔄 After refresh - is_trusted_member:', currentUser.value?.is_trusted_member)
       } catch (error) {
@@ -176,17 +194,16 @@ export default {
     // Refresh user data when profile page loads
     onMounted(async () => {
       console.log('📄 Profile page mounted')
-      console.log('📄 Current user before refresh:', JSON.stringify(currentUser.value, null, 2))
-      console.log('📄 Current user role before refresh:', currentUser.value?.role)
+      console.log('📄 Current user before refresh:', safeStringify(currentUser.value))
 
       // Refresh to ensure latest role data
       await refreshUserData()
 
       // Debug logging to verify role is loaded correctly
-      console.log('📄 Profile mounted - currentUser after refresh:', JSON.stringify(currentUser.value, null, 2))
+      console.log('📄 Profile mounted - currentUser after refresh:', safeStringify(currentUser.value))
       console.log('📄 Profile mounted - currentUser.role after refresh:', currentUser.value?.role)
-      console.log('📄 Store currentUser:', JSON.stringify(store.currentUser, null, 2))
-      console.log('📄 Store state.currentUser:', JSON.stringify(store.state?.currentUser, null, 2))
+      console.log('📄 Store currentUser:', safeStringify(store.currentUser))
+      console.log('📄 Store state.currentUser:', safeStringify(store.state?.currentUser))
 
       // Final verification of role value
       if (currentUser.value) {

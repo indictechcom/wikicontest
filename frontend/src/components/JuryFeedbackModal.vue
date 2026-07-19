@@ -120,7 +120,8 @@ export default {
   props: {
     submission: {
       type: Object,
-      required: true
+      required: false,
+      default: null
     },
     reviewerName: {
       type: String,
