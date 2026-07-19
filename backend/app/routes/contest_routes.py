@@ -122,13 +122,10 @@ def parse_date_or_none(date_str):
 
 
 @contest_bp.route("/", methods=["GET"])
-@require_auth
 @handle_errors
 def get_all_contests():
     """
     Get all contests categorized by status (current, upcoming, past)
-
-    Requires authentication - users must be logged in to view contests.
 
     Returns:
         JSON response with contests categorized by status

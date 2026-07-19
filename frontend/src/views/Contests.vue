@@ -44,6 +44,17 @@
       </button>
     </div>
 
+    <!-- Login CTA for unauthenticated visitors -->
+    <div v-if="!isAuthenticated" class="alert alert-info d-flex align-items-center justify-content-between mb-4">
+      <span>
+        <i class="fas fa-info-circle me-2"></i>
+        Log in with Wikimedia to participate in contests and track your progress.
+      </span>
+      <a :href="loginUrl" class="btn btn-sm btn-primary ms-3" style="white-space: nowrap;">
+        <i class="fab fa-wikipedia-w me-1"></i>Log in
+      </a>
+    </div>
+
     <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
@@ -173,8 +184,8 @@ class="organizer-avatar organizer-more"
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useStore } from '../store'
 import { showAlert } from '../utils/alerts'
 import { slugify } from '../utils/slugify'
@@ -203,6 +214,13 @@ export default {
     })
 
     const isAuthenticated = computed(() => store.isAuthenticated)
+
+    const loginUrl = computed(() => {
+      if (import.meta.env.DEV) {
+        return 'http://localhost:5000/api/user/oauth/login'
+      }
+      return '/api/user/oauth/login'
+    })
 
     // Check if user is superadmin (explicit check for button visibility)
     // Access currentUser.value since it's a computed property
@@ -535,6 +553,7 @@ export default {
       currentContests,
       loading,
       isAuthenticated,
+      loginUrl,
       isSuperadmin,
       canCreateContests,
       requestStatus,
