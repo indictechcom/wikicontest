@@ -3,7 +3,6 @@ Contest submission routes for WikiContest Application.
 """
 
 from datetime import datetime, timezone
-import os
 import traceback
 
 from flask import Blueprint, request, jsonify, current_app
@@ -22,7 +21,6 @@ from app.utils import (
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
     get_mediawiki_headers,
-    validate_template_link,
     extract_template_name_from_url,
     check_article_has_template,
     prepend_template_to_article,
@@ -30,14 +28,6 @@ from app.utils import (
     check_article_has_category,
     append_categories_to_article,
     fetch_article_metrics,
-    get_article_reference_count,
-    get_detailed_reference_counts,
-    get_mediawiki_user_edit_count,
-    get_article_image_count,
-    get_article_infobox_count,
-    get_article_incoming_links,
-    get_article_outgoing_links,
-    crawl_category_articles,
     MEDIAWIKI_API_TIMEOUT,
 )
 from app.utils.url_validation import validate_wiki_url
