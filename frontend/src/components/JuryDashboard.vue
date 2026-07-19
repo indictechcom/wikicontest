@@ -154,6 +154,11 @@ export default {
           const order = { current: 1, upcoming: 2, past: 3 }
           return (order[a.status] || 4) - (order[b.status] || 4)
         })
+
+        // Redirect to participant dashboard if no jury assignments
+        if (juryContests.value.length === 0) {
+          router.replace('/dashboard')
+        }
       } catch (error) {
         console.error('Failed to load jury contests', error)
         juryContests.value = []
