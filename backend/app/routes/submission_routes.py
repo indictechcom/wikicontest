@@ -719,10 +719,7 @@ def delete_submission(submission_id):
     user = request.current_user
 
     # Load submission with related data for permission check and score update
-    submission = Submission.query.options(
-        joinedload(Submission.submitter),
-        joinedload(Submission.contest),
-    ).get(submission_id)
+    submission = db.session.get(Submission, submission_id)
 
     if not submission:
         return jsonify({"error": "Submission not found"}), 404
