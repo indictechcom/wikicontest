@@ -1,5 +1,5 @@
 """
-Database configuration for WikiContest Application
+Database configuration for WikiEval Application
 Separate module to avoid circular imports
 """
 

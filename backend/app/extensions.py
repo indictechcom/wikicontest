@@ -1,5 +1,5 @@
 """
-Shared Flask extension instances for WikiContest.
+Shared Flask extension instances for WikiEval.
 
 Extensions that need to be accessed from blueprints or other modules
 are instantiated here to avoid circular import issues.
