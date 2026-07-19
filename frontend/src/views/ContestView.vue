@@ -1,28 +1,34 @@
 <template>
   <div class="container py-5">
-    <!-- Navigation and Action Buttons -->
+<!-- Navigation and Action Buttons -->
     <div class="mb-4 d-flex justify-content-between align-items-center">
       <button class="btn btn-outline-secondary" @click="goBack">
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
         <button v-if="contest && contestScoringMode !== 'automated'"
-class="btn btn-primary text-white"
+          class="btn btn-primary text-white"
           @click="goToLeaderboard"
-title="View Contest Leaderboard">
+          title="View Contest Leaderboard">
           <i class="fas fa-trophy me-2"></i>Leaderboard
+        </button>
+        <!-- View Submissions button for organizers and jury -->
+        <button v-if="canViewSubmissions"
+          class="btn btn-success btn-sm"
+          @click="viewSubmissions">
+          <i class="fas fa-list me-1"></i>View Submissions
         </button>
         <!-- Only contest creators and admins can delete -->
         <button v-if="canDeleteContest"
-class="btn btn-danger"
-@click="handleDeleteContest"
-:disabled="deletingContest">
+          class="btn btn-danger"
+          @click="handleDeleteContest"
+          :disabled="deletingContest">
           <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
           <i v-else class="fas fa-trash me-2"></i>
           {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
         </button>
 
-<button v-if="canDeleteContest" class="btn btn-primary" @click="goToEditPage">
+        <button v-if="canDeleteContest" class="btn btn-primary" @click="goToEditPage">
             <i class="fas fa-edit me-2"></i>Edit Contest
           </button>
       </div>
@@ -2570,6 +2576,12 @@ export default {
       })
     }
 
+    // Navigate to contest submissions page
+    const viewSubmissions = () => {
+      if (!contest.value) return
+      router.push({ name: 'ContestSubmissions', params: { id: contest.value.id } })
+    }
+
     return {
       contest,
       loading,
@@ -2617,6 +2629,7 @@ export default {
       goBack,
       goToLeaderboard,
       goToEditPage,
+      viewSubmissions,
       showArticlePreview,
       handleSubmissionReviewed,
       handleSubmissionDeleted,
