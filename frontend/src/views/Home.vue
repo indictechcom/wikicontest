@@ -86,15 +86,15 @@ export default {
   },
   methods: {
     // Handle "Get Started" button click
-    // If user is logged in, navigate to dashboard
+    // If user is logged in, navigate to organizer dashboard
     // Otherwise, redirect to OAuth login
     async handleGetStarted() {
       // Check if user is authenticated
       const isAuthenticated = this.store.isAuthenticated
 
       if (isAuthenticated) {
-        // User is logged in - navigate to dashboard
-        this.router.push('/dashboard')
+        // User is logged in - navigate to organizer dashboard
+        this.router.push('/organizer/dashboard')
       } else {
         // User is not logged in - redirect to OAuth login
         window.location.href = this.getOAuthUrl()
