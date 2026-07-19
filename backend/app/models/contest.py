@@ -1,5 +1,5 @@
 """
-Contest Model for WikiContest Application
+Contest Model for WikiEval Application
 Defines the Contest table and related functionality
 """
 
@@ -17,7 +17,7 @@ from app.models.contest_mixin import ContestMixin
 
 class Contest(BaseModel, ContestMixin):
     """
-    Contest model representing contests in the WikiContest platform
+    Contest model representing contests in the WikiEval platform
 
     Attributes:
         id: Primary key, auto-incrementing integer
