@@ -237,14 +237,14 @@ export default {
     const goToContest = (contest) => {
       router.push({
         name: 'ContestView',
-        params: { name: contest.slug || contest.name }
+        params: { contestId: contest.id }
       })
     }
 
     // Navigate to contest submissions page
     const viewSubmissions = (contest) => {
       if (!contest) return
-      router.push({ name: 'ContestSubmissions', params: { id: contest.id } })
+      router.push({ name: 'ContestSubmissions', params: { contestId: contest.id } })
     }
 
     // Switch between current, upcoming, and past contests

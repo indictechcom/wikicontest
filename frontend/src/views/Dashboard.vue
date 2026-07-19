@@ -428,13 +428,13 @@ export default {
         contestData = dashboardData.value.jury_contests.find(c => c.id === contestId)
       }
 
-      if (contestData?.name) {
-        router.push({ name: 'ContestView', params: { name: slugify(contestData.name) } })
+      if (contestData?.id) {
+        router.push({ name: 'ContestView', params: { contestId: contestData.id } })
       } else {
         api.get(`/contest/${contestId}`)
           .then(contest => {
-            if (contest?.name) {
-              router.push({ name: 'ContestView', params: { name: slugify(contest.name) } })
+            if (contest?.id) {
+              router.push({ name: 'ContestView', params: { contestId: contest.id } })
             } else {
               showAlert('Contest not found', 'danger')
             }

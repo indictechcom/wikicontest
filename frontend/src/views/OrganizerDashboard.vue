@@ -235,13 +235,13 @@ export default {
     // Navigate to contest edit page
     const goToEditPage = (contest) => {
       if (!contest) return
-      router.push({ name: 'EditContest', params: { name: contest.slug || contest.name } })
+      router.push({ name: 'EditContest', params: { contestId: contest.id } })
     }
 
     // Navigate to contest submissions page
     const viewSubmissions = (contest) => {
       if (!contest) return
-      router.push({ name: 'ContestSubmissions', params: { id: contest.id } })
+      router.push({ name: 'ContestSubmissions', params: { contestId: contest.id } })
     }
 
     // Delete contest with confirmation
@@ -285,7 +285,7 @@ export default {
 
     // Navigate to contest detail page using slugified name
     const viewContest = (contest) => {
-      router.push({ name: 'ContestView', params: { name: contest.slug || contest.name } })
+      router.push({ name: 'ContestView', params: { contestId: contest.id } })
     }
 
     // Navigate to contest creation page

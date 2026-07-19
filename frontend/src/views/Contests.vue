@@ -457,13 +457,12 @@ export default {
         contestData = currentContests.value.find(c => c.id === parseInt(contest))
       }
 
-      if (!contestData || !contestData.name) {
+      if (!contestData || !contestData.id) {
         showAlert('Contest not found', 'danger')
         return
       }
 
-      const contestSlug = slugify(contestData.name)
-      router.push({ name: 'ContestView', params: { name: contestSlug } })
+      router.push({ name: 'ContestView', params: { contestId: contestData.id } })
     }
 
     // Open modal to create new contest
