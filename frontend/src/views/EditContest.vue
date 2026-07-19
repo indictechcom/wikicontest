@@ -845,7 +845,7 @@ id="editOutreachDashboardUrl"
 </template>
 
 <script>
-import { computed, ref, watch, onMounted, reactive } from 'vue'
+import { computed, ref, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useStore } from '../store'
 import api from '../services/api'
@@ -1165,15 +1165,33 @@ export default {
               min_outgoing_links: Number(contest.value.automated_settings.eligibility?.min_outgoing_links ?? 3)
             }
             automatedSettings.evaluation = {
-              points_per_accepted: Number(contest.value.automated_settings.evaluation?.points_per_accepted ?? 10),
-              points_per_byte: Number(contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001),
-              points_per_incoming_link: Number(contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2),
-              points_per_outgoing_link: Number(contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1),
-              points_per_category: Number(contest.value.automated_settings.evaluation?.points_per_category ?? 1),
-              points_per_new_reference: Number(contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3),
-              points_per_reused_reference: Number(contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1),
-              points_per_infobox: Number(contest.value.automated_settings.evaluation?.points_per_infobox ?? 5),
-              points_per_image: Number(contest.value.automated_settings.evaluation?.points_per_image ?? 2)
+              points_per_accepted: Number(
+                contest.value.automated_settings.evaluation?.points_per_accepted ?? 10
+              ),
+              points_per_byte: Number(
+                contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001
+              ),
+              points_per_incoming_link: Number(
+                contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2
+              ),
+              points_per_outgoing_link: Number(
+                contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1
+              ),
+              points_per_category: Number(
+                contest.value.automated_settings.evaluation?.points_per_category ?? 1
+              ),
+              points_per_new_reference: Number(
+                contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3
+              ),
+              points_per_reused_reference: Number(
+                contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1
+              ),
+              points_per_infobox: Number(
+                contest.value.automated_settings.evaluation?.points_per_infobox ?? 5
+              ),
+              points_per_image: Number(
+                contest.value.automated_settings.evaluation?.points_per_image ?? 2
+              )
             }
           } else {
             loadDefaultAutomatedSettings()

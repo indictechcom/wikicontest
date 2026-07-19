@@ -61,7 +61,11 @@
             <div class="card-body p-0">
               <div v-if="dashboardData.submissions_by_contest?.length > 0" class="scroll-area">
                 <div class="scroll-inner">
-                  <div v-for="contest in dashboardData.submissions_by_contest" :key="contest.contest_id" class="contest-group">
+                  <div
+                    v-for="contest in dashboardData.submissions_by_contest"
+                    :key="contest.contest_id"
+                    class="contest-group"
+                  >
                     <h6 class="contest-group-title">{{ contest.contest_name }}</h6>
                     <div v-for="submission in contest.submissions"
 :key="submission.id"
@@ -205,7 +209,6 @@ import { useRouter } from 'vue-router'
 import { useStore } from '../store'
 import api from '../services/api'
 import { showAlert } from '../utils/alerts'
-import { slugify } from '../utils/slugify'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import JuryFeedbackModal from '../components/JuryFeedbackModal.vue'
 

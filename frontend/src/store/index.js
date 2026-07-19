@@ -220,7 +220,14 @@ export function useStore() {
       // Backend returns { contests: { current, upcoming, past }, total, ... }
       // Store only the categorized object so getContestsByCategory can read
       // state.contests[category] without the extra envelope keys.
-      state.contests = (response && response.contests) ? response.contests : (response || { current: [], upcoming: [], past: [] })
+      const contestsData = (response && response.contests)
+        ? response.contests
+        : {
+          current: [],
+          upcoming: [],
+          past: []
+        }
+      state.contests = contestsData
       return { success: true, data: response }
     } catch (error) {
       return { success: false, error: error.message }
