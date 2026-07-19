@@ -96,7 +96,10 @@
                 :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'"
                 @click="submissionFilter = 'accepted'"
               >
-                Accepted <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'accepted').length }}</span>
+                Accepted
+                <span class="badge bg-light text-dark ms-1">
+                  {{ submissions.filter(s => s.status === 'accepted').length }}
+                </span>
               </button>
               <button
                 type="button"
@@ -104,7 +107,10 @@
                 :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
                 @click="submissionFilter = 'rejected'"
               >
-                Rejected <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'rejected').length }}</span>
+                Rejected
+                <span class="badge bg-light text-dark ms-1">
+                  {{ submissions.filter(s => s.status === 'rejected').length }}
+                </span>
               </button>
               <button
                 type="button"
@@ -112,7 +118,10 @@
                 :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'"
                 @click="submissionFilter = 'pending'"
               >
-                Pending <span class="badge bg-light text-dark ms-1">{{ submissions.filter(s => s.status === 'pending').length }}</span>
+                Pending
+                <span class="badge bg-light text-dark ms-1">
+                  {{ submissions.filter(s => s.status === 'pending').length }}
+                </span>
               </button>
             </div>
           </div>
@@ -147,48 +156,127 @@ class="text-decoration-none article-title-link"
                       {{ submission.article_title }}
                     </a>
                     <!-- Expansion bytes (can be negative for content removal) -->
-                    <div v-if="submission.article_expansion_bytes !== null && submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
-                      <i class="me-1" :class="submission.article_expansion_bytes > 0 ? 'fas fa-arrow-up' : submission.article_expansion_bytes < 0 ? 'fas fa-arrow-down' : 'fas fa-arrows-left-right'"></i>
+                    <div
+                      v-if="
+                        submission.article_expansion_bytes !== null &&
+                        submission.article_expansion_bytes !== undefined
+                      "
+                      class="text-muted small mt-1"
+                    >
+                      <i
+                        class="me-1"
+                        :class="
+                          submission.article_expansion_bytes > 0
+                            ? 'fas fa-arrow-up'
+                            : submission.article_expansion_bytes < 0
+                            ? 'fas fa-arrow-down'
+                            : 'fas fa-arrows-left-right'
+                        "
+                      ></i>
                       Expansion bytes:
-                      <span :class="submission.article_expansion_bytes > 0 ? 'text-success' : submission.article_expansion_bytes < 0 ? 'text-danger' : 'text-muted'">
-                        {{ submission.article_expansion_bytes > 0 ? '+' : submission.article_expansion_bytes < 0 ? '-' : '' }}{{ formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
+                      <span
+                        :class="
+                          submission.article_expansion_bytes > 0
+                            ? 'text-success'
+                            : submission.article_expansion_bytes < 0
+                            ? 'text-danger'
+                            : 'text-muted'
+                        "
+                      >
+                        {{
+                          submission.article_expansion_bytes > 0
+                            ? '+'
+                            : submission.article_expansion_bytes < 0
+                            ? '-'
+                            : ''
+                        }}{{ formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
                       </span>
                     </div>
                   </td>
                   <!-- Author Information with Latest Revision -->
                   <td>
-                    <div v-if="submission.article_author"><i class="fas fa-user me-1"></i>{{ submission.article_author }}</div>
+                    <div v-if="submission.article_author">
+                      <i class="fas fa-user me-1"></i>{{ submission.article_author }}
+                    </div>
                     <div v-else class="text-muted small">Unknown</div>
-                    <div v-if="submission.article_created_at" class="text-muted small mt-1"><i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}</div>
+                    <div v-if="submission.article_created_at" class="text-muted small mt-1">
+                      <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
+                    </div>
                     <!-- Latest revision author may differ from original -->
-                    <div v-if="submission.latest_revision_author" class="mt-2 pt-2" style="border-top: 1px solid #dee2e6;">
-                      <div><i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}<span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span></div>
-                      <div v-if="submission.latest_revision_timestamp" class="text-muted small mt-1"><i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.latest_revision_timestamp) }}</div>
+                    <div
+                      v-if="submission.latest_revision_author"
+                      class="mt-2 pt-2"
+                      style="border-top: 1px solid #dee2e6;"
+                    >
+                      <div>
+                        <i class="fas fa-user me-1"></i
+                        >{{ submission.latest_revision_author }}
+                        <span class="badge bg-info ms-1" style="font-size: 0.7em;">Latest</span>
+                      </div>
+                      <div
+                        v-if="submission.latest_revision_timestamp"
+                        class="text-muted small mt-1"
+                      >
+                        <i class="fas fa-calendar me-1"></i
+                        >{{ formatDateShort(submission.latest_revision_timestamp) }}
+                      </div>
                     </div>
                   </td>
                   <td>{{ submission.username || 'Unknown' }}</td>
                   <td>
-                    <span :class="`badge bg-${getStatusColor(submission.status)}`"
-:style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
-@click="showEvaluationDetails(submission)"
-:title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                    <span
+                      :class="`badge bg-${getStatusColor(submission.status)}`"
+                      :style="
+                        (submission.evaluation_reason && contestScoringMode === 'automated')
+                          ? 'cursor: pointer;'
+                          : ''
+                      "
+                      @click="showEvaluationDetails(submission)"
+                      :title="
+                        (submission.evaluation_reason && contestScoringMode === 'automated')
+                          ? 'Click to see details'
+                          : ''
+                      "
+                    >
                       {{ submission.status }}
                     </span>
-                    <div v-if="submission.already_reviewed" class="text-muted small mt-1"><i class="fas fa-check-circle me-1"></i>Reviewed</div>
+                    <div
+                      v-if="submission.already_reviewed"
+                      class="text-muted small mt-1"
+                    >
+                      <i class="fas fa-check-circle me-1"></i>Reviewed
+                    </div>
                   </td>
                   <td>
-                    <span :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''" @click="showEvaluationDetails(submission)" :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                    <span
+                      :style="
+                        (submission.evaluation_reason && contestScoringMode === 'automated')
+                          ? 'cursor: pointer; text-decoration: underline;'
+                          : ''
+                      "
+                      @click="showEvaluationDetails(submission)"
+                      :title="
+                        (submission.evaluation_reason && contestScoringMode === 'automated')
+                          ? 'Click to see score breakdown'
+                          : ''
+                      "
+                    >
                       {{ submission.score || 0 }}
                     </span>
                   </td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
-                    <button v-if="canViewSubmissions"
-@click="handleDeleteSubmission(submission)"
-class="btn btn-sm btn-outline-danger"
-title="Delete Submission"
-:disabled="deletingSubmissionId === submission.id">
-                      <span v-if="deletingSubmissionId === submission.id" class="spinner-border spinner-border-sm"></span>
+                    <button
+                      v-if="canViewSubmissions"
+                      @click="handleDeleteSubmission(submission)"
+                      class="btn btn-sm btn-outline-danger"
+                      title="Delete Submission"
+                      :disabled="deletingSubmissionId === submission.id"
+                    >
+                      <span
+                        v-if="deletingSubmissionId === submission.id"
+                        class="spinner-border spinner-border-sm"
+                      ></span>
                       <i v-else class="fas fa-trash"></i>
                     </button>
                   </td>

@@ -180,7 +180,7 @@ export default {
     const getContestId = async () => {
       const contestId = route.params.contestId
       if (contestId) return Number(contestId)
-      
+
       throw new Error('Contest ID is required')
     }
 
