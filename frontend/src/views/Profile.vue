@@ -409,7 +409,7 @@ export default {
 }
 
 /* Page Title */
-.page-header {
+h2.page-header {
   font-size: 2rem;
   font-weight: 600;
   color: var(--wiki-dark);
@@ -417,9 +417,10 @@ export default {
   padding-bottom: 0.5rem;
   margin-bottom: 2rem;
   letter-spacing: -0.01em;
+  width: fit-content;
 }
 
-[data-theme="dark"] .page-header {
+[data-theme="dark"] h2.page-header {
   color: #ffffff !important;
 }
 

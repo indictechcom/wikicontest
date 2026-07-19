@@ -511,6 +511,7 @@ h2.page-header {
   padding-bottom: 0.5rem;
   margin-bottom: 2rem;
   letter-spacing: -0.01em;
+  width: fit-content;
 }
 
 [data-theme="dark"] h2.page-header {
