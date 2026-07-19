@@ -1,5 +1,5 @@
 """
-Wiki category utilities for WikiContest Application.
+Wiki category utilities for WikiEval Application.
 
 Provides helpers for validating, checking, and extracting wiki category names,
 plus category crawling functionality for automated scoring contests.

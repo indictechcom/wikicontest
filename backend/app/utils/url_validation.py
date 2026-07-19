@@ -1,5 +1,5 @@
 """
-URL validation for WikiContest Application.
+URL validation for WikiEval Application.
 
 Provides SSRF protection for all outbound MediaWiki API requests.
 All functions that accept a user-supplied URL MUST call validate_wiki_url()

@@ -1,5 +1,5 @@
 """
-Article metrics functions for WikiContest Application.
+Article metrics functions for WikiEval Application.
 
 Provides helpers for counting references, images, infoboxes, and links
 in MediaWiki articles, plus parallel metric fetching for submissions.

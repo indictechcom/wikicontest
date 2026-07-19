@@ -1,4 +1,4 @@
-"""Shared error-handling utilities for WikiContest routes.
+"""Shared error-handling utilities for WikiEval routes.
 
 Provides a single helper for returning sanitized JSON error responses
 while logging full exception details server-side. This prevents accidental
