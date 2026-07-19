@@ -1,5 +1,5 @@
 """
-Contest submission routes for WikiContest Application.
+Contest submission routes for WikiEval Application.
 """
 
 from datetime import datetime, timezone
@@ -603,7 +603,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                 oauth_token_secret=user.oauth_token_secret,
                                 consumer_key=consumer_key,
                                 consumer_secret=consumer_secret,
-                                edit_summary=f"Adding {{{{{template_name}}}}} contest template (via WikiContest submission)",
+                                edit_summary=f"Adding {{{{{template_name}}}}} contest template (via WikiEval submission)",
                             )
 
                             if edit_result.get("success"):
@@ -774,7 +774,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                 oauth_token_secret=user.oauth_token_secret,
                                 consumer_key=consumer_key,
                                 consumer_secret=consumer_secret,
-                                edit_summary=f"Adding contest categories (via WikiContest submission)",
+                                edit_summary=f"Adding contest categories (via WikiEval submission)",
                             )
 
                             if edit_result.get("success"):

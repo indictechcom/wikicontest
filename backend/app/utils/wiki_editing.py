@@ -1,5 +1,5 @@
 """
-Wiki editing utilities for WikiContest Application.
+Wiki editing utilities for WikiEval Application.
 
 Provides helpers for MediaWiki OAuth-based editing operations:
 fetching CSRF tokens, prepending templates, and appending categories.
@@ -137,7 +137,7 @@ def prepend_template_to_article(
     template_text = f"{{{{{template_name}}}}}\n\n"
 
     if not edit_summary:
-        edit_summary = f"Adding {{{{{template_name}}}}} contest template (via WikiContest)"
+        edit_summary = f"Adding {{{{{template_name}}}}} contest template (via WikiEval)"
 
     edit_params = {
         "action": "edit",
@@ -261,10 +261,10 @@ def append_categories_to_article(
 
     if not edit_summary:
         if len(categories_to_add) == 1:
-            edit_summary = f"Adding [[Category:{categories_to_add[0]}]] contest category (via WikiContest submission)"
+            edit_summary = f"Adding [[Category:{categories_to_add[0]}]] contest category (via WikiEval submission)"
         else:
             category_list = ", ".join([f"[[Category:{name}]]" for name in categories_to_add])
-            edit_summary = f"Adding contest categories: {category_list} (via WikiContest submission)"
+            edit_summary = f"Adding contest categories: {category_list} (via WikiEval submission)"
 
     edit_params = {
         "action": "edit",
