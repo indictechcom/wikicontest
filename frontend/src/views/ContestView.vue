@@ -42,7 +42,7 @@ class="btn btn-danger"
     </div>
 
     <!-- Contest Details -->
-    <div v-else-if="contest" class="contest-view">
+    <div v-else-if="contest">
       <!-- Header Section -->
       <div class="contest-header-section mb-4">
         <h1 class="contest-title">{{ contest.name }}</h1>
@@ -2668,11 +2668,6 @@ export default {
 /* --------------------------------------------------------------------------
    Main Container & Layout
    -------------------------------------------------------------------------- */
-.contest-view {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
 /* --------------------------------------------------------------------------
    Header Section
    -------------------------------------------------------------------------- */
