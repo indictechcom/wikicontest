@@ -11,11 +11,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Contests from '../views/Contests.vue'
 import ContestView from '../views/ContestView.vue'
-import Dashboard from '../views/Dashboard.vue'
 import Profile from '../views/Profile.vue'
 import TrustedMembers from '../views/TrustedMembers.vue'
 import JuryDashboard from '../components/JuryDashboard.vue'
 import ContestLeaderboard from '../components/ContestLeaderboard.vue'
+
+// Lazy-loaded views
+const Dashboard = () => import('../views/Dashboard.vue')
+const OrganizerDashboard = () => import('../views/OrganizerDashboard.vue')
 
 // Store module reference for lazy loading to prevent circular dependencies
 let storeModule = null
@@ -30,8 +33,7 @@ const routes = [
   {
     path: '/contests',
     name: 'Contests',
-    component: Contests,
-    meta: { requiresAuth: true }
+    component: Contests
   },
   {
     path: '/contest/create',
@@ -53,15 +55,29 @@ const routes = [
   },
   {
     path: '/jurydashboard',
-    name: 'JuryDashboard',
-    component: JuryDashboard,
-    meta: { requiresAuth: true }
+    redirect: '/jury/dashboard'
+  },
+  {
+    path: '/my-contests',
+    redirect: '/dashboard'
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/organizer/dashboard',
+    name: 'OrganizerDashboard',
+    component: OrganizerDashboard,
+    meta: { requiresAuth: true, requiredRole: 'organizer' }
+  },
+  {
+    path: '/jury/dashboard',
+    name: 'JuryDashboard',
+    component: JuryDashboard,
+    meta: { requiresAuth: true, requiredRole: 'jury' }
   },
   {
     path: '/profile',
@@ -165,6 +181,28 @@ router.beforeEach(async (to, from, next) => {
     window.location.href = `${getApiBaseUrl()}/user/oauth/login`
     // Cancel the router navigation since we're doing a full page redirect
     next(false)
+  } else if (to.meta.requiredRole && isAuthenticated) {
+    // Load dashboard access permissions if not already loaded
+    if (!store.state.dashboardAccessLoaded) {
+      await store.loadDashboardAccess()
+    }
+
+    // Enforce role-based dashboard access
+    const access = store.dashboardAccess.value
+    const requiredRole = to.meta.requiredRole
+    let hasAccess = false
+
+    if (requiredRole === 'organizer') {
+      hasAccess = access?.organizer === true
+    } else if (requiredRole === 'jury') {
+      hasAccess = access?.jury === true
+    }
+
+    if (!hasAccess) {
+      next({ path: '/dashboard', replace: true })
+    } else {
+      next()
+    }
   } else {
     // Allow navigation for authenticated users or public routes
     next()
