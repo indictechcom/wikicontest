@@ -129,3 +129,12 @@ class TestAuthMiddleware:
         client.post("/api/user/login", json={"email": "admin2@example.com", "password": "Pass123!"})
         resp = client.get("/api/user/all")
         assert resp.status_code == 200
+
+
+class TestHealthCheck:
+    def test_health_check_returns_healthy(self, client):
+        resp = client.get("/api/health")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["status"] == "healthy"
+        assert data["database"] == "connected"
