@@ -95,9 +95,17 @@ def require_role(roles):
             else:
                 allowed_roles = roles
 
-            # Check if user has required role or is admin (admins bypass all role checks)
-            if user.role not in allowed_roles and not user.is_admin():
-                return jsonify({'error': 'Insufficient permissions'}), 403
+            # Check if user has required role
+            # Superadmin role is strictly enforced - only superadmins can access superadmin-only endpoints
+            # Admins can bypass other role checks (like 'admin' role) but NOT superadmin
+            if user.role not in allowed_roles:
+                # Special case: if 'superadmin' is required, only superadmins can access
+                # Admins do NOT bypass superadmin requirement
+                if 'superadmin' in allowed_roles:
+                    return jsonify({'error': 'Insufficient permissions'}), 403
+                # For other roles (like 'admin'), admins can bypass
+                if not user.is_admin():
+                    return jsonify({'error': 'Insufficient permissions'}), 403
 
             # Attach user to request context
             request.current_user = user

@@ -41,6 +41,7 @@ from app.utils import (
     extract_category_name_from_url,
     check_article_has_category,
     append_categories_to_article,
+    fetch_article_metrics,
     get_article_reference_count,
     get_detailed_reference_counts,
     get_mediawiki_user_edit_count,
@@ -127,11 +128,22 @@ def get_all_contests():
     """
     Get all contests categorized by status (current, upcoming, past)
 
+    Query params:
+        page (int): Page number, default 1
+        per_page (int): Items per page, default 20, max 100
+
     Returns:
         JSON response with contests categorized by status
     """
-    # Fetch all contests, newest first
-    contests = Contest.query.order_by(Contest.created_at.desc()).all()
+    page = request.args.get("page", 1, type=int)
+    per_page = min(request.args.get("per_page", 20, type=int), 100)
+
+    # Fetch paginated contests, newest first
+    pagination = Contest.query.order_by(Contest.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    contests = pagination.items
 
     # Categorize contests by status
     current = []
@@ -149,9 +161,15 @@ def get_all_contests():
         elif contest.is_past():
             past.append(contest_data)
 
-    # Return categorized contests with caching headers
-    response = jsonify({"current": current, "upcoming": upcoming, "past": past})
-    response.headers['Cache-Control'] = 'public, max-age=60'  # Cache for 1 minute
+    # Return categorized contests with pagination metadata and caching headers
+    response = jsonify({
+        "contests": {"current": current, "upcoming": upcoming, "past": past},
+        "total": pagination.total,
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total_pages": pagination.pages,
+    })
+    response.headers['Cache-Control'] = 'public, max-age=60'
     return response, 200
 
 
@@ -1851,99 +1869,15 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                 pass
             article_expansion_bytes = None
 
-    # --- Fetch Reference Count ---
-    # Fetch reference count (footnotes + external links) using shared utility
-    # This counts both <ref> tags and external URLs from the latest revision
-    # This is done after fetching article info but before validation
-    try:
-        article_reference_count = get_article_reference_count(article_link)
-    except Exception as ref_error:  # pylint: disable=broad-exception-caught
-        # If reference count fetch fails, log but don't fail submission
-        # Validation will handle None case
-        try:
-            current_app.logger.warning(
-                f"Failed to fetch reference count: {str(ref_error)}"
-            )
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-        article_reference_count = None
-
-    # --- Fetch Detailed Metrics (Automated Scoring Only) ---
-    # These extra API calls are only needed for automated scoring evaluation.
-    # Skipping them for regular contests avoids MediaWiki API rate-limiting
-    # which was causing CSRF token failures during template/category enforcement.
-    incoming_links = None
-    outgoing_links = None
-
-    is_automated_contest = False
-    try:
-        is_automated_contest = contest.get_scoring_mode() == "automated"
-    except Exception:  # pylint: disable=broad-exception-caught
-        pass
-
-    if is_automated_contest:
-        # Fetch detailed reference counts
-        try:
-            ref_counts = get_detailed_reference_counts(article_link)
-            ref_new_count = int(ref_counts.get("new", 0) or 0)
-            ref_reused_count = int(ref_counts.get("reused", 0) or 0)
-        except Exception as ref_detail_error:  # pylint: disable=broad-exception-caught
-            try:
-                current_app.logger.warning(
-                    "Failed to fetch detailed reference counts: %s", str(ref_detail_error)
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            ref_new_count = 0
-            ref_reused_count = 0
-
-        # Fetch image count
-        try:
-            image_count = get_article_image_count(article_link)
-        except Exception as img_error:  # pylint: disable=broad-exception-caught
-            try:
-                current_app.logger.warning(
-                    "Failed to fetch image count: %s", str(img_error)
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            image_count = None
-
-        # Fetch infobox count
-        try:
-            infobox_count = get_article_infobox_count(article_link)
-        except Exception as ibx_error:  # pylint: disable=broad-exception-caught
-            try:
-                current_app.logger.warning(
-                    "Failed to fetch infobox count: %s", str(ibx_error)
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            infobox_count = None
-
-        # Fetch incoming links count
-        try:
-            incoming_links = get_article_incoming_links(article_link)
-        except Exception as incoming_error:  # pylint: disable=broad-exception-caught
-            try:
-                current_app.logger.warning(
-                    "Failed to fetch incoming links count: %s", str(incoming_error)
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            incoming_links = None
-
-        # Fetch outgoing links count
-        try:
-            outgoing_links = get_article_outgoing_links(article_link)
-        except Exception as outgoing_error:  # pylint: disable=broad-exception-caught
-            try:
-                current_app.logger.warning(
-                    "Failed to fetch outgoing links count: %s", str(outgoing_error)
-                )
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            outgoing_links = None
+    # --- Fetch Supplementary Metrics (Parallel) ---
+    metrics = fetch_article_metrics(article_link, contest_start_date=contest.start_date if contest.start_date else None)
+    article_reference_count = metrics.get("reference_count")
+    ref_new_count = metrics.get("new_ref_count", 0) or 0
+    ref_reused_count = metrics.get("reused_ref_count", 0) or 0
+    image_count = metrics.get("image_count")
+    infobox_count = metrics.get("infobox_count")
+    incoming_links = metrics.get("incoming_links")
+    outgoing_links = metrics.get("outgoing_links")
 
     # --- Validate Article Requirements ---
     # Validate article byte count against contest requirements
@@ -2368,39 +2302,17 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                 ),
                 400,
             )
-        # Return detailed error for debugging
-        return (
-            jsonify(
-                {
-                    "error": "Failed to create submission: duplicate entry or constraint violation",
-                    "details": full_error,
-                    "traceback": traceback.format_exc() if current_app.debug else None,
-                }
-            ),
-            400,
-        )
+        # Log details server-side; return only generic message to client
+        return jsonify({"error": "Failed to create submission"}), 400
     except Exception as e:  # pylint: disable=broad-exception-caught
         # Handle any other unexpected errors
         # Rollback the session on any error
         db.session.rollback()
-        # Log error for debugging
-        error_str = str(e)
-        error_type = type(e).__name__
-        full_error = f"{error_type}: {error_str}"
-        current_app.logger.error(f"Error creating submission: {full_error}")
-        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
-        # Return detailed error for debugging
-        return (
-            jsonify(
-                {
-                    "error": "Failed to create submission",
-                    "details": full_error,
-                    "error_type": error_type,
-                    "traceback": traceback.format_exc() if current_app.debug else None,
-                }
-            ),
-            500,
-        )
+        # Log error for debugging (server-side only)
+        current_app.logger.error(f"Error creating submission: {type(e).__name__}: {e}")
+        current_app.logger.error(traceback.format_exc())
+        # Return generic error to client — no internal details
+        return jsonify({"error": "Failed to create submission"}), 500
 
 
 # ------------------------------------------------------------------------
@@ -3079,7 +2991,10 @@ def crawl_category_for_contest(contest_id):
 
         # Get existing article links for this contest to avoid duplicates
         existing_links = set(
-            s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
+            row[0]
+            for row in db.session.query(Submission.article_link)
+            .filter_by(contest_id=contest_id)
+            .all()
         )
 
         # Create submissions for each article
@@ -3129,4 +3044,4 @@ def crawl_category_for_contest(contest_id):
 
     except Exception as e:
         current_app.logger.error(f"crawl_category_for_contest error: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({"error": "Internal server error"}), 500
