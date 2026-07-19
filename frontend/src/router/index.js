@@ -25,7 +25,7 @@ const OrganizerDashboard = () => import('../views/OrganizerDashboard.vue')
 let storeModule = null
 
 // Helper to build the OAuth login URL
-function getLoginUrl () {
+function getLoginUrl() {
   const base = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api'
   return `${base}/user/oauth/login`
 }
@@ -96,29 +96,29 @@ const routes = [
     path: '/trusted-members',
     redirect: '/manage-trusted-members'
   },
-{
-      path: '/manage-trusted-members',
-      name: 'TrustedMembers',
-      component: TrustedMembers,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/contest/:id/submissions',
-      name: 'ContestSubmissions',
-      component: ContestSubmissionsView,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/contest/:name/leaderboard',
-      name: 'ContestLeaderboard',
-      component: ContestLeaderboard,
-      meta: { requiresAuth: true }
-    },
-    {
-      // Redirect unknown routes to home page
-      path: '/:pathMatch(.*)*',
-      redirect: '/'
-    }
+  {
+    path: '/manage-trusted-members',
+    name: 'TrustedMembers',
+    component: TrustedMembers,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/contest/:id/submissions',
+    name: 'ContestSubmissions',
+    component: ContestSubmissionsView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/contest/:name/leaderboard',
+    name: 'ContestLeaderboard',
+    component: ContestLeaderboard,
+    meta: { requiresAuth: true }
+  },
+  {
+    // Redirect unknown routes to home page
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
+  }
 ]
 
 // Initialize router with HTML5 history mode
