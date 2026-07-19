@@ -86,7 +86,10 @@
                 <!-- Submission Count Badge -->
                 <span class="contest-tag submissions-tag">
                   <i class="fas fa-file-alt"></i>
-                  {{ contest.submission_count || 0 }} {{ contest.submission_count === 1 ? 'submission' : 'submissions' }}
+                  {{ contest.submission_count || 0 }}
+                  {{
+                    contest.submission_count === 1 ? 'submission' : 'submissions'
+                  }}
                 </span>
 
                 <!-- Organizers with Avatar Bubbles -->
