@@ -1,5 +1,5 @@
 """
-MediaWiki API proxy routes for WikiContest Application.
+MediaWiki API proxy routes for WikiEval Application.
 
 Backend-side proxies to the MediaWiki API that solve browser CORS issues by
 making requests from the server. Moved here from the direct routes previously

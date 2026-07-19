@@ -1,5 +1,5 @@
 """
-Contest outreach-dashboard routes for WikiContest Application.
+Contest outreach-dashboard routes for WikiEval Application.
 """
 
 from datetime import datetime, timezone

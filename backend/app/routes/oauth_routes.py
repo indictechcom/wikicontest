@@ -1,5 +1,5 @@
 """
-OAuth routes for WikiContest Application.
+OAuth routes for WikiEval Application.
 
 Handles Wikimedia OAuth 1.0a login initiation and callback. Extracted from
 the original monolithic user_routes.py. Registered at /api/user along with
