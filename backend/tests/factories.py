@@ -1,5 +1,5 @@
 """
-Factory helpers for creating test data in WikiContest tests.
+Factory helpers for creating test data in WikiEval tests.
 
 Usage in a test:
     def test_something(db, factories):

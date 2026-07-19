@@ -1,5 +1,5 @@
 """
-Wiki template utilities for WikiContest Application.
+Wiki template utilities for WikiEval Application.
 
 Provides helpers for validating, checking, and extracting wiki template names.
 """

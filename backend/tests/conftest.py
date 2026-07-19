@@ -1,5 +1,5 @@
 """
-Pytest configuration and shared fixtures for WikiContest backend tests.
+Pytest configuration and shared fixtures for WikiEval backend tests.
 
 Run with: cd backend && pytest
 """
