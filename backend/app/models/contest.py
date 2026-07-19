@@ -179,6 +179,9 @@ class Contest(BaseModel, ContestMixin):
         # Set organizers (creator is automatically added by set_organizers)
         self.set_organizers(kwargs.get("organizers", []), creator_username=created_by)
 
+        # Initialize scoring mode cache (per-instance, request-scoped)
+        self._scoring_mode_cache = None
+
     # Note: set_rules, get_rules, set_jury_members, get_jury_members,
     # set_categories, and get_categories are inherited from ContestMixin
 
@@ -389,6 +392,8 @@ class Contest(BaseModel, ContestMixin):
                     ]
                 }
         """
+        # Invalidate scoring mode cache
+        self._scoring_mode_cache = None
         if params is None:
             self.scoring_parameters = None
         elif isinstance(params, dict):
@@ -406,6 +411,11 @@ class Contest(BaseModel, ContestMixin):
             self.scoring_parameters = None
 
     # Note: get_scoring_parameters is inherited from ContestMixin
+
+    def set_automated_settings(self, settings):
+        """Override to invalidate scoring mode cache when automated settings change."""
+        self._scoring_mode_cache = None
+        super().set_automated_settings(settings)
 
     def is_multi_parameter_scoring_enabled(self):
         """
@@ -565,6 +575,9 @@ class Contest(BaseModel, ContestMixin):
 
         return True, None
 
+    # Internal cache for get_scoring_mode (per-instance, request-scoped)
+    _scoring_mode_cache = None
+
     def get_scoring_mode(self):
         """
         Get the current scoring mode for this contest.
@@ -572,14 +585,19 @@ class Contest(BaseModel, ContestMixin):
         Returns:
             str: 'simple', 'multi_parameter', or 'automated'
         """
+        if self._scoring_mode_cache is not None:
+            return self._scoring_mode_cache
         # Check for automated scoring mode first
         automated = self.get_automated_settings()
         if automated and automated.get("enabled") is True:
+            self._scoring_mode_cache = "automated"
             return "automated"
         # Then check for multi-parameter scoring
         params = self.get_scoring_parameters()
         if params and params.get("enabled") is True:
+            self._scoring_mode_cache = "multi_parameter"
             return "multi_parameter"
+        self._scoring_mode_cache = "simple"
         return "simple"
 
     # ------------------------------------------------------------------------

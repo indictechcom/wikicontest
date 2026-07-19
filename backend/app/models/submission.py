@@ -411,6 +411,7 @@ class Submission(BaseModel):
         comment=None,
         contest=None,
         parameter_scores=None,
+        commit=True,
     ):
         """
         Update submission status and calculate score
@@ -486,7 +487,8 @@ class Submission(BaseModel):
             self.submitter.update_score(score_difference)
 
         # Persist all changes to database
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return True
 
 
