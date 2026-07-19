@@ -318,3 +318,4 @@ $RECYCLE.BIN/
 .env*
 
 !project.toml
+.kilo/
