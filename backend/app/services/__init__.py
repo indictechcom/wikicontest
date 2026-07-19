@@ -1,5 +1,5 @@
 """
-Services package for WikiContest Application
+Services package for WikiEval Application
 """
 
 from .outreach_dashboard import (

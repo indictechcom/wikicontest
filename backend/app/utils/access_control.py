@@ -1,5 +1,5 @@
 """
-Access control utilities for WikiContest Application.
+Access control utilities for WikiEval Application.
 
 Provides shared permission checking functions used by multiple route handlers.
 """

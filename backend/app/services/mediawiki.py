@@ -1,5 +1,5 @@
 """
-MediaWiki API Client for WikiContest Application.
+MediaWiki API Client for WikiEval Application.
 
 Provides a centralized interface for all MediaWiki API interactions,
 handling authentication, headers, timeouts, and error parsing consistently.
