@@ -21,8 +21,8 @@ Register an OAuth consumer for local development on Wikimedia Meta.
    
    | Field                       | Value                                                  |
    |-----------------------------|--------------------------------------------------------|
-   | **Application name**        | WikiContest Local Development (or your preferred name) |
-   | **Application description** | Local development instance of WikiContest              |
+   | **Application name**        | WikiEval Local Development (or your preferred name) |
+   | **Application description** | Local development instance of WikiEval              |
    | **OAuth "callback" URL**    | `http://localhost:5000/api/user/oauth/callback`        |
    | **Contact email**           | Your email address                                     |
    | **Grant settings**          | Request authorization for "Basic rights" (or required permissions) |
@@ -155,7 +155,7 @@ You should maintain separate OAuth consumers for different environments:
 | Environment | Callback URL |
 |-------------|-------------|
 | **Local Development** | `http://localhost:5000/api/user/oauth/callback` |
-| **Production/Toolforge** | `https://wikicontest.toolforge.org/oauth/callback` |
+| **Production/Toolforge** | `https://WikiEval.toolforge.org/oauth/callback` |
 
 This separation ensures:
 - Local testing doesn't affect production authentication
@@ -212,7 +212,7 @@ http://localhost:3000/api/user/oauth/callback
 | `http://localhost:5000/oauth/callback`             | Missing `/api/user` prefix                 |
 | `http://localhost/api/user/oauth/callback`         | Missing port number (`:5000`)              |
 | `http://localhost:5000/api/user/oauth/callback/`   | Extra trailing slash                       |
-| `https://wikicontest.toolforge.org/oauth/callback` | Using production URL for local development |
+| `https://WikiEval.toolforge.org/oauth/callback` | Using production URL for local development |
 
 ### Correct URL
 ```
@@ -256,7 +256,7 @@ When completing the OAuth consumer registration form on Wikimedia Meta:
 
 #### Application Name
 ```
-WikiContest Local Development
+WikiEval Local Development
 ```
 **Note:** Use a different name from your Toolforge consumer to distinguish between environments.
 
@@ -267,7 +267,7 @@ OAuth 1.0a
 
 #### Application Description
 ```
-Local development instance of WikiContest for testing and development purposes
+Local development instance of WikiEval for testing and development purposes
 ```
 
 #### OAuth "callback" URL
@@ -312,8 +312,8 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 
 | Environment                                           | Consumer | Callback URL       |
 |--|-|--|
-| **Local Development**                                 | WikiContest Local Development | `http://localhost:5000/api/user/oauth/callback` |
-| **Production (Toolforge)**                            | WikiContest                   | `https://wikicontest.toolforge.org/oauth/callback` |
+| **Local Development**                                 | WikiEval Local Development | `http://localhost:5000/api/user/oauth/callback` |
+| **Production (Toolforge)**                            | WikiEval                   | `https://WikiEval.toolforge.org/oauth/callback` |
 
 **Benefits of separation:**
 - Test OAuth flows safely without affecting production
