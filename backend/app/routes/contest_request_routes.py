@@ -199,7 +199,7 @@ def create_contest_request():
                 try:
                     weight = int(param["weight"])
                     if weight < 0 or weight > 100:
-                        return jsonify({"error": f"Weight must be 0-100"}), 400
+                        return jsonify({"error": "Weight must be 0-100"}), 400
                     total_weight += weight
                 except (ValueError, TypeError):
                     return jsonify({"error": "Weight must be a valid integer"}), 400

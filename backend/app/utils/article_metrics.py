@@ -215,6 +215,10 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
             extlinks = page_data.get("extlinks", [])
             external_links_count += len(extlinks)
 
+            # Safety cap: stop pagination if we reach 10,000 items
+            if external_links_count >= 10000:
+                break
+
             continue_info = api_data.get("continue", {})
             elcontinue = continue_info.get("elcontinue")
 

@@ -67,7 +67,10 @@ def crawl_category_for_contest(contest_id):
 
         if scoring_mode != "automated":
             return jsonify({
-                "error": f"Category crawling is only available for automated scoring contests. Current mode: {scoring_mode}"
+                "error": (
+                    f"Category crawling is only available for automated scoring contests. "
+                    f"Current mode: {scoring_mode}"
+                )
             }), 400
 
         # Permission check: jury member or superadmin only

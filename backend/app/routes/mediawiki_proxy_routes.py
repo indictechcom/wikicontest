@@ -272,13 +272,6 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
         # Make request to MediaWiki API with timeout
         # Backend-to-backend requests don't have CORS restrictions
         # MediaWiki API requires a User-Agent header to identify the application
-        headers = {
-            'User-Agent': (
-                'WikiContest/1.0 (' + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + '; '
-                'contact@wikicontest.org) Python/requests'
-            )
-        }
-
         client = MediaWikiClient()
         data = client.get(api_url, params=api_params)
 

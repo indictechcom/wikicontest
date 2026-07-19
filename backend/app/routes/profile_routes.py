@@ -66,10 +66,15 @@ def get_dashboard():
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
     # Organized contests (created by user OR listed as additional organizer)
+    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
+    escaped_username = user.username.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     organized_candidates = Contest.query.filter(
         db.or_(
             Contest.created_by == user.username,
-            Contest.organizers.ilike(f'%{user.username}%')
+            Contest.organizers == escaped_username,  # Exact match (only organizer)
+            Contest.organizers.ilike(f'{escaped_username},%', escape='\\'),  # First in list
+            Contest.organizers.ilike(f'%,{escaped_username},%', escape='\\'),  # Middle of list
+            Contest.organizers.ilike(f'%,{escaped_username}', escape='\\')  # Last in list
         )
     ).order_by(Contest.created_at.desc()).all()
     organized_contests_data = []
@@ -79,8 +84,14 @@ def get_dashboard():
         organized_contests_data.append(contest_data)
 
     # Jury contests
+    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
     jury_contests = Contest.query.filter(
-        Contest.jury_members.like(f'%{user.username}%')
+        db.or_(
+            Contest.jury_members == escaped_username,  # Exact match (only jury member)
+            Contest.jury_members.ilike(f'{escaped_username},%', escape='\\'),  # First in list
+            Contest.jury_members.ilike(f'%,{escaped_username},%', escape='\\'),  # Middle of list
+            Contest.jury_members.ilike(f'%,{escaped_username}', escape='\\')  # Last in list
+        )
     ).all()
     jury_contests_data = []
     for contest in jury_contests:
@@ -139,17 +150,28 @@ def get_dashboard_access():
 
     from app.models.contest import Contest
 
+    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
+    escaped_username = user.username.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
     # Check if user is organizer of any contest
     is_organizer = Contest.query.filter(
         db.or_(
             Contest.created_by == user.username,
-            Contest.organizers.ilike(f'%{user.username}%')
+            Contest.organizers == escaped_username,
+            Contest.organizers.ilike(f'{escaped_username},%', escape='\\'),
+            Contest.organizers.ilike(f'%,{escaped_username},%', escape='\\'),
+            Contest.organizers.ilike(f'%,{escaped_username}', escape='\\')
         )
     ).first() is not None
 
     # Check if user is jury of any contest
     is_jury = Contest.query.filter(
-        Contest.jury_members.like(f'%{user.username}%')
+        db.or_(
+            Contest.jury_members == escaped_username,
+            Contest.jury_members.ilike(f'{escaped_username},%', escape='\\'),
+            Contest.jury_members.ilike(f'%,{escaped_username},%', escape='\\'),
+            Contest.jury_members.ilike(f'%,{escaped_username}', escape='\\')
+        )
     ).first() is not None
 
     # Trusted members and superadmins always have access to the organizer dashboard

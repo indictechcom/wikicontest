@@ -213,7 +213,7 @@ def oauth_callback_redirect():
     """
     from flask import redirect
     query_string = request.query_string.decode('utf-8')
-    target = f'/api/user/oauth/callback'
+    target = '/api/user/oauth/callback'
     if query_string:
         target = f'{target}?{query_string}'
     return redirect(target, code=302)

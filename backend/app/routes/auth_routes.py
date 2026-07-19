@@ -9,9 +9,8 @@ user blueprints.
 from flask import Blueprint, request, jsonify, make_response, session, current_app
 from flask_jwt_extended import create_access_token, set_access_cookies, unset_jwt_cookies
 
-from app.database import db
 from app.extensions import limiter
-from app.middleware.auth import require_auth, handle_errors, validate_json_data
+from app.middleware.auth import handle_errors, validate_json_data
 from app.models.user import User
 from app.routes._user_helpers import validate_email, validate_username
 

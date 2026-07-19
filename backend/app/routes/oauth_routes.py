@@ -163,8 +163,7 @@ def oauth_login():
         # OAuth can fail in many ways, so we catch all exceptions
         current_app.logger.error(f'OAuth initiation error: {str(error)}')
         return jsonify({
-            'error': 'Failed to initiate OAuth login',
-            'details': str(error)
+            'error': 'Failed to initiate OAuth login'
         }), 500
 
 
@@ -351,6 +350,5 @@ def oauth_callback():
         # OAuth can fail in many ways, so we catch all exceptions
         current_app.logger.error(f'OAuth callback error: {str(error)}')
         return jsonify({
-            'error': 'OAuth authentication failed',
-            'details': str(error)
+            'error': 'OAuth authentication failed'
         }), 500

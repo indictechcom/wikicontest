@@ -103,8 +103,6 @@ def add_contest_organizer(contest_id):
         return jsonify({"error": "Username is required"}), 400
 
     # Validate user exists in the system
-    from app.models.user import User
-
     organizer_user = User.query.filter_by(username=username_to_add).first()
     if not organizer_user:
         return jsonify({"error": f'User "{username_to_add}" not found'}), 404

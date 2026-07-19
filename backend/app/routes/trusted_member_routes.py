@@ -67,7 +67,10 @@ def request_trusted_member():
     # Only MediaWiki OAuth users can request creator accounts
     if not user.oauth_token or not user.oauth_token_secret:
         return jsonify({
-            'error': 'Only users who logged in via MediaWiki can request creator accounts. Please log in using MediaWiki OAuth.'
+            'error': (
+                'Only users who logged in via MediaWiki can request creator accounts. '
+                'Please log in using MediaWiki OAuth.'
+            )
         }), 400
 
     # Get MediaWiki URI from config
@@ -85,7 +88,10 @@ def request_trusted_member():
 
         if not reason:
             return jsonify({
-                'error': 'Could not verify your edit count. Please provide a reason for requesting creator account status.',
+                'error': (
+                    'Could not verify your edit count. '
+                    'Please provide a reason for requesting creator account status.'
+                ),
                 'requires_reason': True
             }), 400
 
@@ -123,7 +129,10 @@ def request_trusted_member():
 
     if not reason:
         return jsonify({
-            'error': f'You have {edit_count} edits, which is below the minimum of {MIN_EDIT_COUNT} edits for automatic approval. Please provide a reason for requesting creator account status.',
+            'error': (
+                f'You have {edit_count} edits, which is below the minimum of {MIN_EDIT_COUNT} edits '
+                f'for automatic approval. Please provide a reason for requesting creator account status.'
+            ),
             'requires_reason': True,
             'edit_count': edit_count,
             'min_edit_count': MIN_EDIT_COUNT
@@ -136,7 +145,10 @@ def request_trusted_member():
     user.save()
 
     return jsonify({
-        'message': f'Your creator account request has been submitted for review. You have {edit_count} edits (minimum {MIN_EDIT_COUNT} for automatic approval). A superadmin will review your request.',
+        'message': (
+            f'Your creator account request has been submitted for review. You have {edit_count} edits '
+            f'(minimum {MIN_EDIT_COUNT} for automatic approval). A superadmin will review your request.'
+        ),
         'auto_approved': False,
         'edit_count': edit_count
     }), 200

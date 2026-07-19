@@ -94,15 +94,14 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if _is_automated_contest:
         contest_categories = contest.get_categories()
         if contest_categories:
-            from urllib.parse import urlparse as _urlparse
             allowed_domains = set()
             for cat_url in contest_categories:
-                parsed = _urlparse(cat_url)
+                parsed = urlparse(cat_url)
                 if parsed.netloc:
                     allowed_domains.add(parsed.netloc.lower())
 
             if allowed_domains:
-                article_domain = _urlparse(article_link).netloc.lower()
+                article_domain = urlparse(article_link).netloc.lower()
                 if article_domain not in allowed_domains:
                     return jsonify({
                         "error": (
@@ -591,8 +590,6 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 
                         if consumer_key and consumer_secret:
                             # Log the target wiki for debugging OAuth issues
-                            from urllib.parse import urlparse
-
                             article_domain = urlparse(article_link).netloc
                             current_app.logger.info(
                                 f"Attempting OAuth edit on wiki: {article_domain}"
@@ -763,8 +760,6 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 
                         if consumer_key and consumer_secret:
                             # Log the target wiki for debugging OAuth issues
-                            from urllib.parse import urlparse
-
                             article_domain = urlparse(article_link).netloc
                             current_app.logger.info(
                                 f"Attempting OAuth edit on wiki: {article_domain} for categories"

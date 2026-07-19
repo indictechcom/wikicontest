@@ -2,22 +2,18 @@
 Contest CRUD routes for WikiContest Application.
 """
 
-from datetime import datetime, timezone
 import traceback
 
 from flask import Blueprint, request, jsonify, current_app
-from sqlalchemy.exc import IntegrityError
 
 from app.database import db
-from app.middleware.auth import require_auth, require_role, handle_errors, validate_json_data
+from app.middleware.auth import require_auth, handle_errors, validate_json_data
 from app.models.contest import Contest
 from app.models.submission import Submission
 from app.models.user import User
-from app.models.contest_request import ContestRequest
 from app.utils import (
     validate_template_link,
 )
-from app.utils.url_validation import validate_wiki_url
 from app.services.outreach_dashboard import (
     validate_outreach_url,
 )
@@ -486,7 +482,7 @@ def create_contest():
 
         # Validate multi-parameter scoring structure
         if scoring_parameters.get("enabled"):
-            current_app.logger.info(f"[SCORING CREATE] Multi-parameter enabled")
+            current_app.logger.info("[SCORING CREATE] Multi-parameter enabled")
 
             if "parameters" not in scoring_parameters:
                 return (
@@ -518,7 +514,7 @@ def create_contest():
                 try:
                     weight = int(param["weight"])
                     if weight < 0 or weight > 100:
-                        return jsonify({"error": f"Weight must be 0-100"}), 400
+                        return jsonify({"error": "Weight must be 0-100"}), 400
                     total_weight += weight
                 except (ValueError, TypeError):
                     return jsonify({"error": "Weight must be a valid integer"}), 400
@@ -544,7 +540,7 @@ def create_contest():
 
         # Validate automated scoring structure if enabled
         if automated_settings.get("enabled"):
-            current_app.logger.info(f"[AUTOMATED CREATE] Automated scoring enabled")
+            current_app.logger.info("[AUTOMATED CREATE] Automated scoring enabled")
 
             # Validate eligibility section
             eligibility = automated_settings.get("eligibility", {})
