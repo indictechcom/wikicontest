@@ -7,7 +7,6 @@ import json
 from urllib.parse import urlparse
 from datetime import datetime
 
-import requests
 from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy.orm import joinedload
 
@@ -26,10 +25,9 @@ from app.utils import (
     extract_page_title_from_url,
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
-    get_mediawiki_headers,
     get_detailed_reference_counts,
-    MEDIAWIKI_API_TIMEOUT,
 )
+from app.services.mediawiki import MediaWikiClient
 
 # Create blueprint
 submission_bp = Blueprint("submission", __name__)
@@ -331,15 +329,29 @@ def refresh_metadata(contest_id):
             .all()
         )
     else:
-        # Non-automated: fetch ALL submissions at once (original behaviour)
-        offset = 0
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+        except (ValueError, TypeError):
+            offset = 0
+
+        try:
+            batch_size = min(
+                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+                _MAX_BATCH_SIZE,
+            )
+        except (ValueError, TypeError):
+            batch_size = _DEFAULT_BATCH_SIZE
+
+        total_count = Submission.query.filter_by(contest_id=contest_id).count()
+
         submissions = (
             Submission.query
             .filter_by(contest_id=contest_id)
             .order_by(Submission.id)
+            .offset(offset)
+            .limit(batch_size)
             .all()
         )
-        total_count = len(submissions)
 
     if not submissions:
         return (
@@ -379,15 +391,11 @@ def refresh_metadata(contest_id):
             api_url = f"{base_url}/w/api.php"
             # Build API parameters using shared utility function
             api_params = build_mediawiki_revisions_api_params(page_title)
-            # Get headers using shared utility function
-            headers = get_mediawiki_headers()
 
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-
-            if response.status_code != 200:
+            client = MediaWikiClient()
+            data = client.get(api_url, params=api_params)
+            if data is None:
                 return None
-
-            data = response.json()
 
             if "error" in data:
                 return None
