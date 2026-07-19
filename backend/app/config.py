@@ -1,5 +1,5 @@
 """
-Configuration Management for WikiContest Application
+Configuration Management for WikiEval Application
 
 This module provides centralized configuration management for different
 environments (development, testing, production). It uses environment variables
@@ -31,8 +31,8 @@ class Config:
 
     # Secret keys for session management and JWT signing
     # WARNING: These defaults should NEVER be used in production
-    SECRET_KEY = os.getenv('SECRET_KEY', 'wikicontest-dev-secret-key')
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'wikicontest-jwt-secret-key')
+    SECRET_KEY = os.getenv('SECRET_KEY', 'wikieval-dev-secret-key')
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'wikieval-jwt-secret-key')
 
     # JWT token configuration
     # 24-hour token validity provides balance between security and UX
@@ -56,7 +56,7 @@ class Config:
     # Detect Toolforge ToolsDB environment
     toolforge_db_user = os.getenv('TOOL_TOOLSDB_USER')
     toolforge_db_password = os.getenv('TOOL_TOOLSDB_PASSWORD')
-    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', 'wikicontest')
+    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', 'wikieval')
 
     # Auto-configure for Toolforge if environment variables are present
     if toolforge_db_user and toolforge_db_password and not database_url:
@@ -68,7 +68,7 @@ class Config:
 
     if not database_url:
         # Development fallback: use SQLite (no password, easier setup)
-        database_url = 'sqlite:///wikicontest_dev.db'
+        database_url = 'sqlite:///wikieval_dev.db'
         print("WARNING: DATABASE_URL not set. Using SQLite for development.")
         print("Set DATABASE_URL in environment for production!")
     SQLALCHEMY_DATABASE_URI = database_url
@@ -101,7 +101,7 @@ class Config:
     # -------------------------------------------------------------------------
 
     # Application metadata
-    APP_NAME = 'WikiContest'
+    APP_NAME = 'WikiEval'
     APP_VERSION = '1.0.0'
     APP_DESCRIPTION = 'A platform for hosting and participating in collaborative online competitions'
 
