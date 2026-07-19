@@ -1,6 +1,6 @@
-# WikiContest Development Guide
+# WikiEval Development Guide
 
-Comprehensive technical guide for developers working on the WikiContest platform, covering architecture, coding standards, best practices, and development workflows.
+Comprehensive technical guide for developers working on the WikiEval platform, covering architecture, coding standards, best practices, and development workflows.
 
 
 
@@ -87,7 +87,7 @@ const contests = await api.get('/contest')
 #### Step 1: Clone and Setup Backend
 ```bash
 git clone <repository-url>
-cd wikicontest
+cd WikiEval
 
 # Backend setup
 cd backend
@@ -107,7 +107,7 @@ cp .env.example .env
 
 **Required environment variables:**
 ```env
-DATABASE_URL=mysql+pymysql://user:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://user:password@localhost/WikiEval
 SECRET_KEY=your-secret-key
 JWT_SECRET_KEY=your-jwt-secret-key
 ```
@@ -857,4 +857,4 @@ debugger; // Pause execution here
 - No sensitive data in commits
 - Commits are well-organized with clear messages
 
-This development guide provides the foundation for contributing to the WikiContest platform. For specific questions, refer to inline code comments or create an issue in the repository.
+This development guide provides the foundation for contributing to the WikiEval platform. For specific questions, refer to inline code comments or create an issue in the repository.
