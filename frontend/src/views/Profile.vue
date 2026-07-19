@@ -1,7 +1,7 @@
 <template>
-  <div class="profile-container">
+  <div class="container profile-container">
 
-    <h2 class="page-title">Your Profile</h2>
+    <h2 class="page-header">Your Profile</h2>
 
     <transition name="fade-scale">
 
@@ -387,21 +387,23 @@ export default {
 
 /* Main Container */
 .profile-container {
-  max-width: 700px;
-  margin: auto;
-  padding: 3rem 1rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
 }
 
 /* Page Title */
-.page-title {
-  text-align: center;
+.page-header {
   font-size: 2rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: 2rem;
   color: var(--wiki-dark);
   border-bottom: 2px solid var(--wiki-primary);
   padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .page-header {
+  color: #ffffff !important;
 }
 
 /* Profile Card Container */

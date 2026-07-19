@@ -1,6 +1,6 @@
 <template>
   <div class="container trusted-members-container">
-    <h2 class="page-title">Manage Trusted Members</h2>
+    <h2 class="page-header">Manage Trusted Members</h2>
 
     <!-- Tabs for different sections -->
     <ul class="nav nav-tabs mb-4" role="tablist">
@@ -378,12 +378,18 @@ export default {
   padding-bottom: 2rem;
 }
 
-.page-title {
-  text-align: center;
+.page-header {
   font-size: 2rem;
   font-weight: 600;
-  margin-bottom: 2rem;
   color: var(--wiki-dark);
+  border-bottom: 2px solid var(--wiki-primary);
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .page-header {
+  color: #ffffff !important;
 }
 
 .nav-tabs {

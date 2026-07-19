@@ -1,26 +1,9 @@
 <template>
-  <div class="jury-dashboard mt-4">
+  <div class="container jury-dashboard mt-4">
+    <h2 class="page-header mb-4">Jury Dashboard</h2>
 
     <!-- Main card containing contest list table -->
     <div class="card">
-      <!-- Header with title and contest count badge -->
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <div>
-          <h5 class="mb-0 d-flex align-items-center">
-            <i class="fas fa-gavel me-2"></i>
-            Jury Dashboard
-          </h5>
-          <small class="opacity-75">
-            Contests assigned for review
-          </small>
-        </div>
-
-        <!-- Display total number of assigned contests -->
-        <span v-if="juryContests.length" class="badge bg-light text-dark px-3 py-2">
-          {{ juryContests.length }} contests
-        </span>
-      </div>
-
       <div class="card-body">
 
         <!-- Loading state with spinner -->
@@ -40,6 +23,13 @@
           <small>
             You'll see contests here once you are added as a jury member.
           </small>
+        </div>
+
+        <!-- Display total number of assigned contests -->
+        <div v-if="juryContests.length" class="mb-3">
+          <span class="badge bg-light text-dark px-3 py-2">
+            {{ juryContests.length }} contests
+          </span>
         </div>
 
         <!-- Contest list table with details and actions -->
@@ -203,6 +193,24 @@ export default {
 </script>
 
 <style scoped>
+.jury-dashboard {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+h2.page-header {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--wiki-dark);
+  border-bottom: 2px solid var(--wiki-primary);
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] h2.page-header {
+  color: #ffffff !important;
+}
 
 .jury-dashboard .card {
   border-radius: 12px;
