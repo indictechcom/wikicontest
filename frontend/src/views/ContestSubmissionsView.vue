@@ -7,14 +7,14 @@
       </button>
       <div class="d-flex gap-2">
         <button
-          v-if="canViewSubmissions && canEditOrDelete(contest)"
+          v-if="canViewSubmissions && canEditOrDelete"
           class="btn btn-primary"
           @click="goToEditPage"
         >
           <i class="fas fa-edit me-2"></i>Edit Contest
         </button>
         <button
-          v-if="canViewSubmissions && canDeleteContest(contest)"
+          v-if="canViewSubmissions && canDeleteContest"
           class="btn btn-danger"
           @click="handleDeleteContest"
           :disabled="deletingContest"
