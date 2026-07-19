@@ -217,7 +217,10 @@ export function useStore() {
     state.loading.contests = true
     try {
       const response = await api.get('/contest')
-      state.contests = response
+      // Backend returns { contests: { current, upcoming, past }, total, ... }
+      // Store only the categorized object so getContestsByCategory can read
+      // state.contests[category] without the extra envelope keys.
+      state.contests = (response && response.contests) ? response.contests : (response || { current: [], upcoming: [], past: [] })
       return { success: true, data: response }
     } catch (error) {
       return { success: false, error: error.message }
