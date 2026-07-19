@@ -1,6 +1,6 @@
 <template>
-  <div class="trusted-members-container">
-    <h2 class="page-title">Trusted Members Management</h2>
+  <div class="container trusted-members-container">
+    <h2 class="page-title">Manage Trusted Members</h2>
 
     <!-- Tabs for different sections -->
     <ul class="nav nav-tabs mb-4" role="tablist">
@@ -8,7 +8,7 @@
         <button
           class="nav-link"
           :class="{ active: activeTab === 'requests' }"
-          @click="activeTab = 'requests'"
+          @click="setActiveTab('requests')"
           type="button"
         >
           <i class="fas fa-inbox me-2"></i>Pending Requests
@@ -19,7 +19,7 @@
         <button
           class="nav-link"
           :class="{ active: activeTab === 'members' }"
-          @click="activeTab = 'members'"
+          @click="setActiveTab('members')"
           type="button"
         >
           <i class="fas fa-users me-2"></i>Trusted Members
@@ -29,7 +29,7 @@
         <button
           class="nav-link"
           :class="{ active: activeTab === 'add' }"
-          @click="activeTab = 'add'"
+          @click="setActiveTab('add')"
           type="button"
         >
           <i class="fas fa-user-plus me-2"></i>Add Member
@@ -166,19 +166,47 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
 import { showAlert } from '../utils/alerts'
 
 export default {
   name: 'TrustedMembers',
   setup() {
+    const router = useRouter()
+    const route = useRoute()
+    const VALID_TABS = ['requests', 'members', 'add']
     const activeTab = ref('requests')
     const requests = ref([])
     const trustedMembers = ref([])
     const loading = ref(false)
     const processing = ref(false)
     const usernameToAdd = ref('')
+
+    // Restore the active subsection from the URL query parameter (?tab=...)
+    const getTabFromUrl = () => {
+      const tab = route.query.tab
+      return VALID_TABS.includes(tab) ? tab : 'requests'
+    }
+
+    // Reflect the active subsection in the URL without adding history entries
+    const syncUrlWithTab = (tab) => {
+      if (route.query.tab !== tab) {
+        router.replace({ query: { ...route.query, tab } })
+      }
+    }
+
+    // Switch between subsections and sync the URL
+    const setActiveTab = (tab) => {
+      activeTab.value = tab
+      syncUrlWithTab(tab)
+      if (tab === 'requests') {
+        loadRequests()
+      } else if (tab === 'members') {
+        loadMembers()
+      }
+    }
 
     // Load pending requests
     const loadRequests = async () => {
@@ -298,32 +326,34 @@ export default {
       }
     }
 
-    // Load data when tab changes
-    const onTabChange = () => {
+    // Load data on component mount, restoring the subsection from the URL
+    onMounted(async () => {
+      activeTab.value = getTabFromUrl()
+      syncUrlWithTab(activeTab.value)
+      // Only load data for the active subsection (no automatic refresh)
       if (activeTab.value === 'requests') {
         loadRequests()
       } else if (activeTab.value === 'members') {
         loadMembers()
       }
-    }
-
-    // Watch for tab changes
-    const watchTab = () => {
-      // Simple polling approach - reload when tab becomes active
-      setInterval(() => {
-        if (activeTab.value === 'requests') {
-          loadRequests()
-        } else if (activeTab.value === 'members') {
-          loadMembers()
-        }
-      }, 5000) // Refresh every 5 seconds
-    }
-
-    onMounted(() => {
-      loadRequests()
-      loadMembers()
-      watchTab()
     })
+
+    // Keep the active subsection in sync when the URL changes
+    // (e.g. a shared link is opened, or the user uses back/forward navigation)
+    watch(
+      () => route.query.tab,
+      (tab) => {
+        const next = VALID_TABS.includes(tab) ? tab : 'requests'
+        if (next !== activeTab.value) {
+          activeTab.value = next
+          if (next === 'requests') {
+            loadRequests()
+          } else if (next === 'members') {
+            loadMembers()
+          }
+        }
+      }
+    )
 
     return {
       activeTab,
@@ -336,7 +366,7 @@ export default {
       rejectRequest,
       addMember,
       removeMember,
-      onTabChange
+      setActiveTab
     }
   }
 }
@@ -344,9 +374,8 @@ export default {
 
 <style scoped>
 .trusted-members-container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 2rem 1rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
 }
 
 .page-title {
