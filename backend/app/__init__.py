@@ -30,9 +30,17 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, get_jwt_identity, jwt_required
 from flask_jwt_extended.exceptions import JWTDecodeError, NoAuthorizationError
 from dotenv import load_dotenv
-import requests
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text as sql_text
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+_storage_uri = os.getenv('RATELIMIT_STORAGE_URI', 'memory://')
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=['60/minute'],
+    storage_uri=_storage_uri,
+)
 
 # Local imports
 from app.database import db
@@ -48,11 +56,11 @@ from app.routes.submission_routes import submission_bp
 from app.utils import (
     extract_page_title_from_url,
     build_mediawiki_revisions_api_params,
-    get_mediawiki_headers,
     get_latest_revision_author,
-    MEDIAWIKI_API_TIMEOUT,
     get_article_reference_count,
 )
+from app.services.mediawiki import MediaWikiClient
+from app.utils.errors import safe_error_response
 from app.utils.url_validation import validate_wiki_url
 
 # ---------------------------------------------------------------------------
@@ -243,6 +251,11 @@ def create_app():
     CORS(flask_app, origins=allowed_origins, supports_credentials=True)
 
     # ---------------------------------------------------------------------------
+    # RATE LIMITING
+    # ---------------------------------------------------------------------------
+    limiter.init_app(flask_app)
+
+    # ---------------------------------------------------------------------------
     # BLUEPRINT REGISTRATION
     # ---------------------------------------------------------------------------
     flask_app.register_blueprint(user_bp, url_prefix='/api/user')
@@ -337,7 +350,7 @@ def check_cookie():
             'trusted_member_request_status': db_trusted_member_request_status
         }
 
-        return jsonify(response_data), 200, {'Cache-Control': 'public, max-age=60, stale-while-revalidate=30'}
+        return jsonify(response_data), 200, {'Cache-Control': 'private, no-store'}
 
     except (JWTDecodeError, NoAuthorizationError):
         # No token or invalid token - user is definitely not logged in
@@ -424,11 +437,21 @@ def health_check():
     Returns:
         JSON: Application status information
     """
-    return jsonify({
-        'status': 'healthy',
-        'message': 'WikiContest API is running',
-        'version': '1.0.0'
-    }), 200
+    try:
+        db.session.execute(sql_text('SELECT 1'))
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'message': 'WikiContest API is running',
+            'version': '1.0.0'
+        }), 200
+    except Exception:
+        return jsonify({
+            'status': 'unhealthy',
+            'database': 'disconnected',
+            'message': 'WikiContest API is running',
+            'version': '1.0.0'
+        }), 503
 
 
 @app.route('/oauth/callback', methods=['GET'])
@@ -566,21 +589,16 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
         # Add additional parameters for this endpoint
         api_params['inprop'] = 'url|displaytitle'
 
-        # Make request to MediaWiki API using shared headers
-        # This ensures consistency with the submission route
-        # Use increased timeout to handle slow API responses
-        headers = get_mediawiki_headers()
-        response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
+        # Make request to MediaWiki API using the centralized client
+        client = MediaWikiClient()
+        data = client.get(api_url, params=api_params)
 
-        # Check if request was successful
-        if response.status_code != 200:
+        if data is None:
             return jsonify({
-                'error': f'MediaWiki API returned status {response.status_code}',
-                'details': response.text[:200]
-            }), response.status_code
-
-        # Parse JSON response
-        data = response.json()
+                'error': 'Failed to fetch article information from MediaWiki API',
+                'api_url': api_url,
+                'page_title': page_title
+            }), 502
 
         # Check for API errors
         if 'error' in data:
@@ -683,19 +701,8 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
             'base_url': base_url
         }), 200
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'error': (
-                'Request to MediaWiki API timed out. '
-                'The server may be slow or unavailable.'
-            )
-        }), 504
-    except requests.exceptions.RequestException as error:
-        return jsonify({
-            'error': f'Failed to connect to MediaWiki API: {str(error)}'
-        }), 502
     except ValueError as error:
-        # JSON parsing error
+        # JSON parsing or data conversion error
         return jsonify({
             'error': f'Invalid response from MediaWiki API: {str(error)}'
         }), 502
@@ -782,29 +789,14 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
             )
         }
 
-        try:
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-        except requests.exceptions.RequestException as error:
+        client = MediaWikiClient()
+        data = client.get(api_url, params=api_params)
+
+        if data is None:
             return jsonify({
-                'error': f'Failed to connect to MediaWiki API: {str(error)}',
+                'error': 'Failed to fetch article content from MediaWiki API',
                 'api_url': api_url,
                 'page_title': page_title
-            }), 502
-
-        # Check if request was successful
-        if response.status_code != 200:
-            return jsonify({
-                'error': f'MediaWiki API returned status {response.status_code}',
-                'details': response.text[:200]  # First 200 chars of error
-            }), response.status_code
-
-        # Parse JSON response
-        try:
-            data = response.json()
-        except ValueError as error:
-            return jsonify({
-                'error': f'Invalid JSON response from MediaWiki API: {str(error)}',
-                'response_preview': response.text[:200]
             }), 502
 
         # Check for API errors
@@ -874,17 +866,6 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
         response.headers['Cache-Control'] = 'public, max-age=30'
         return response, 200
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'error': (
-                'Request to MediaWiki API timed out. '
-                'The server may be slow or unavailable.'
-            )
-        }), 504
-    except requests.exceptions.RequestException as error:
-        return jsonify({
-            'error': f'Failed to connect to MediaWiki API: {str(error)}'
-        }), 502
     except ValueError as error:
         # JSON parsing error
         return jsonify({
@@ -919,7 +900,21 @@ def internal_error(_error):
     error response. It also rolls back any pending database transactions.
     """
     db.session.rollback()
+    try:
+        current_app.logger.error(
+            "Internal server error: %s", traceback.format_exc()
+        )
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
     return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.errorhandler(429)
+def ratelimit_handler(exc):
+    """
+    Return a consistent JSON response when flask-limiter blocks a request.
+    """
+    return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
 
 # ------------------------------------------------------------------------=
 # APPLICATION STARTUP
