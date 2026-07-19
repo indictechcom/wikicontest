@@ -1,5 +1,5 @@
 """
-OAuth Token Cache Model for WikiContest Application
+OAuth Token Cache Model for WikiEval Application
 
 Provides database-backed temporary storage for OAuth request tokens.
 This replaces the in-memory dict that failed across multiple Gunicorn workers

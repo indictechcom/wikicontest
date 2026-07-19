@@ -1,5 +1,5 @@
 """
-User Model for WikiContest Application
+User Model for WikiEval Application
 Defines the User table and related functionality
 """
 
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 class User(BaseModel):
     """
-    User model representing users in the WikiContest platform
+    User model representing users in the WikiEval platform
 
     Attributes:
         id: Primary key, auto-incrementing integer

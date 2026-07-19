@@ -1,5 +1,5 @@
 """
-Submission Model for WikiContest Application
+Submission Model for WikiEval Application
 Defines the Submission table and related functionality
 """
 
