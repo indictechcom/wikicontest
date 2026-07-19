@@ -25,6 +25,7 @@ from urllib.parse import urlparse, unquote, parse_qs
 import requests
 from flask import jsonify
 
+from app.services.mediawiki import MediaWikiClient
 from app.utils.url_validation import validate_wiki_url
 
 
@@ -38,6 +39,7 @@ __all__ = [
     "MEDIAWIKI_API_TIMEOUT",
     "validate_template_link",
     "extract_template_name_from_url",
+    "fetch_article_metrics",
     "check_article_has_template",
     "get_article_wikitext",
     "prepend_template_to_article",
@@ -350,20 +352,10 @@ def validate_template_link(template_url: str) -> Dict[str, Any]:  # pylint: disa
         "redirects": "true",
     }
 
-    try:
-        response = requests.get(api_url, params=params, headers=get_mediawiki_headers(), timeout=MEDIAWIKI_API_TIMEOUT)
-    except requests.RequestException as error:
-        result['error'] = f'Failed to verify template: network error ({str(error)})'
-        return result
-
-    if response.status_code != 200:
-        result['error'] = f'Failed to verify template: HTTP {response.status_code}'
-        return result
-
-    try:
-        data = response.json()
-    except ValueError:
-        result['error'] = 'Failed to parse API response'
+    client = MediaWikiClient()
+    data = client.get(api_url, params=params)
+    if data is None:
+        result['error'] = 'Failed to verify template: network or API error'
         return result
 
     if 'error' in data:
@@ -421,20 +413,9 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
         "redirects": "true",
     }
 
-    try:
-        response = requests.get(api_url, params=params, headers=get_mediawiki_headers(), timeout=15)
-    except requests.RequestException:
-        return None
-
-    if response.status_code != 200:
-        return None
-
-    try:
-        data = response.json()
-    except ValueError:
-        return None
-
-    if 'error' in data:
+    client = MediaWikiClient()
+    data = client.get(api_url, params=params, timeout=15)
+    if data is None:
         return None
 
     pages = data.get('query', {}).get('pages', [])
@@ -457,7 +438,7 @@ def get_article_wikitext(article_url: str) -> Optional[str]:  # pylint: disable=
     return content
 
 
-def get_detailed_reference_counts(article_url: str) -> Dict[str, int]:
+def get_detailed_reference_counts(article_url: str, wikitext=None) -> Dict[str, int]:
     """
     Count new (defined) and reused (self-closing) <ref> tags in a wiki article.
 
@@ -477,7 +458,8 @@ def get_detailed_reference_counts(article_url: str) -> Dict[str, int]:
 
     PR #198 Comment #7.
     """
-    wikitext = get_article_wikitext(article_url)
+    if wikitext is None:
+        wikitext = get_article_wikitext(article_url)
     if not wikitext:
         return {"new": 0, "reused": 0}
 
@@ -670,23 +652,9 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
         "converttitles": "true",
     }
 
-    try:
-        response = requests.get(api_url, params=params, headers=get_mediawiki_headers(), timeout=MEDIAWIKI_API_TIMEOUT)
-    except requests.RequestException:
-        # Network error. Caller will handle `None` gracefully
-        return None
-
-    if response.status_code != 200:
-        return None
-
-    try:
-        data = response.json()
-    except ValueError:
-        # Invalid JSON response
-        return None
-
-    if "error" in data:
-        # API returned an error
+    client = MediaWikiClient()
+    data = client.get(api_url, params=params)
+    if data is None:
         return None
 
     # Extract page data from response
@@ -755,27 +723,18 @@ def get_csrf_token(
         "formatversion": "2"  # Use modern format version
     }
 
-    headers = get_mediawiki_headers()
+    client = MediaWikiClient()
 
     try:
-        response = requests.get(api_url, params=params, auth=auth, headers=headers, timeout=15)
+        data = client.post(api_url, data=params, auth=auth, timeout=15)
     except requests.RequestException as error:
-        # Log the error for debugging
         import logging
         logging.error("CSRF token request failed: %s", str(error))
         return None
 
-    if response.status_code != 200:
-        # Log the status code and response for debugging
+    if data is None:
         import logging
-        logging.error("CSRF token HTTP %s: %s", response.status_code, response.text[:500])
-        return None
-
-    try:
-        data = response.json()
-    except ValueError as error:
-        import logging
-        logging.error("CSRF token JSON parse error: %s, response: %s", str(error), response.text[:500])
+        logging.error("CSRF token HTTP error or invalid response from %s", api_url)
         return None
 
     # Check for API errors
@@ -904,23 +863,18 @@ def prepend_template_to_article(  # pylint: disable=too-many-return-statements
 
     headers = get_mediawiki_headers()
 
+    client = MediaWikiClient()
+
     try:
-        response = requests.post(api_url, data=edit_params, auth=auth, headers=headers, timeout=30)
+        data = client.post(api_url, data=edit_params, auth=auth, timeout=30)
     except requests.RequestException as error:
         result['error'] = f'Network error during edit: {str(error)}'
         return result
 
-    if response.status_code != 200:
-        result['error'] = f'HTTP error during edit: {response.status_code}'
-        # Log response for debugging
+    if data is None:
+        result['error'] = 'HTTP error during edit or invalid response'
         import logging
-        logging.error("Edit API HTTP %s: %s", response.status_code, response.text[:500])
-        return result
-
-    try:
-        data = response.json()
-    except ValueError:
-        result['error'] = 'Failed to parse API response'
+        logging.error("Edit API HTTP error for %s", api_url)
         return result
 
     result['response'] = data
@@ -981,14 +935,13 @@ def _extract_article_content_from_revision(latest_rev: dict) -> str:  # pylint: 
     return latest_rev.get("*", "") or latest_rev.get("content", "")
 
 
-def _fetch_footnotes_count(api_url: str, page_title: str, headers: dict) -> int:
+def _fetch_footnotes_count(api_url: str, page_title: str) -> int:
     """
     Fetch and count footnotes from article content.
 
     Args:
         api_url: MediaWiki API URL
         page_title: Article page title
-        headers: HTTP headers for API request
 
     Returns:
         Integer count of footnotes, or 0 if fetch fails
@@ -1008,14 +961,11 @@ def _fetch_footnotes_count(api_url: str, page_title: str, headers: dict) -> int:
             "rvslots": "*",
         }
 
-        rev_response = requests.get(
-            api_url, params=rev_params, headers=headers, timeout=10
-        )
-
-        if rev_response.status_code != 200:
+        client = MediaWikiClient()
+        rev_data = client.get(api_url, params=rev_params, timeout=10)
+        if rev_data is None:
             return 0
 
-        rev_data = rev_response.json()
         if "error" in rev_data:
             return 0
 
@@ -1056,14 +1006,15 @@ def _log_warning(message: str, error: Exception) -> None:
         pass
 
 
-def get_article_image_count(article_url: str) -> Optional[int]:
+def get_article_image_count(article_url: str, wikitext=None) -> Optional[int]:
     """
     The count is approximate and based purely on wikitext patterns; it does
     not guarantee that every match results in a rendered image, but it
     generally tracks user-added content images.
     """
     try:
-        wikitext = get_article_wikitext(article_url)
+        if wikitext is None:
+            wikitext = get_article_wikitext(article_url)
         if wikitext is None:
             return None
 
@@ -1077,7 +1028,7 @@ def get_article_image_count(article_url: str) -> Optional[int]:
         return None
 
 
-def get_article_infobox_count(article_url: str) -> Optional[int]:
+def get_article_infobox_count(article_url: str, wikitext=None) -> Optional[int]:
     """Count approximate number of infobox templates in article wikitext.
 
     Detection is done via a simple regex scan for ``{{infobox ...}}`` in the
@@ -1086,7 +1037,8 @@ def get_article_infobox_count(article_url: str) -> Optional[int]:
     sufficient for high-level richness metrics.
     """
     try:
-        wikitext = get_article_wikitext(article_url)
+        if wikitext is None:
+            wikitext = get_article_wikitext(article_url)
         if wikitext is None:
             return None
 
@@ -1127,14 +1079,14 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
         if error:
             return None
         api_url = f"{base_url}/w/api.php"
-        headers = get_mediawiki_headers()
 
         # Step 1: Get article content to count footnotes (<ref> tags)
-        footnotes_count = _fetch_footnotes_count(api_url, page_title, headers)
+        footnotes_count = _fetch_footnotes_count(api_url, page_title)
 
         # Step 2: Count external links using extlinks API
         external_links_count = 0
         elcontinue = None
+        client = MediaWikiClient()
 
         # Loop to handle pagination (MediaWiki API returns max 500 links per request)
         while True:
@@ -1155,16 +1107,10 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
             if elcontinue:
                 api_params["elcontinue"] = elcontinue
 
-            # Make API request using shared headers
-            response = requests.get(
-                api_url, params=api_params, headers=headers, timeout=10
-            )
-
-            if response.status_code != 200:
+            api_data = client.get(api_url, params=api_params)
+            if api_data is None:
                 # Request failed, return None
                 return None
-
-            api_data = response.json()
 
             # Check for API errors
             if "error" in api_data:
@@ -1246,8 +1192,6 @@ def get_mediawiki_user_edit_count(
         else:
             api_url = f"{mw_uri}/w/api.php"
 
-        headers = get_mediawiki_headers()
-
         # Global edit count across all Wikimedia projects (CentralAuth)
         api_params = {
             'action': 'query',
@@ -1258,17 +1202,10 @@ def get_mediawiki_user_edit_count(
             'formatversion': '2'
         }
 
-        response = requests.get(
-            api_url,
-            params=api_params,
-            headers=headers,
-            timeout=MEDIAWIKI_API_TIMEOUT
-        )
-
-        if response.status_code != 200:
+        client = MediaWikiClient()
+        data = client.get(api_url, params=api_params)
+        if data is None:
             return None
-
-        data = response.json()
 
         global_info = data.get('query', {}).get('globaluserinfo', {})
         if not global_info.get('missing'):
@@ -1287,17 +1224,9 @@ def get_mediawiki_user_edit_count(
             'formatversion': '2'
         }
 
-        response = requests.get(
-            api_url,
-            params=api_params,
-            headers=headers,
-            timeout=MEDIAWIKI_API_TIMEOUT
-        )
-
-        if response.status_code != 200:
+        data = client.get(api_url, params=api_params)
+        if data is None:
             return None
-
-        data = response.json()
 
         if 'error' in data:
             return None
@@ -1572,25 +1501,18 @@ def append_categories_to_article(  # pylint: disable=too-many-return-statements
         "formatversion": "2"  # Use modern format version
     }
 
-    headers = get_mediawiki_headers()
+    client = MediaWikiClient()
 
     try:
-        response = requests.post(api_url, data=edit_params, auth=auth, headers=headers, timeout=30)
+        data = client.post(api_url, data=edit_params, auth=auth, timeout=30)
     except requests.RequestException as error:
         result['error'] = f'Network error during edit: {str(error)}'
         return result
 
-    if response.status_code != 200:
-        result['error'] = f'HTTP error during edit: {response.status_code}'
-        # Log response for debugging
+    if data is None:
+        result['error'] = 'HTTP error during edit or invalid response'
         import logging
-        logging.error("Category edit API HTTP %s: %s", response.status_code, response.text[:500])
-        return result
-
-    try:
-        data = response.json()
-    except ValueError:
-        result['error'] = 'Failed to parse API response'
+        logging.error("Category edit API HTTP error for %s", api_url)
         return result
 
     result['response'] = data
@@ -1651,45 +1573,43 @@ def get_article_incoming_links(article_url: str) -> Optional[int]:
             "redirects": "true",  # Follow redirects to get actual page
             "converttitles": "true",
         }
-        
-        headers = get_mediawiki_headers()
-        
+
+        client = MediaWikiClient()
+
         # Make initial request
-        response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-        if response.status_code != 200:
+        data = client.get(api_url, params=params)
+        if data is None:
             return None
-            
-        data = response.json()
+
         if "error" in data:
             return None
-            
+
         # Count backlinks from response
         backlinks = data.get("query", {}).get("backlinks", [])
         total_count = len(backlinks)
-        
+
         # Check if there are more results (continuation)
         continue_params = data.get("continue")
         while continue_params and total_count < 10000:  # Safety limit to prevent infinite loops
             # Update params with continuation token
             params.update(continue_params)
-            
-            response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-            if response.status_code != 200:
+
+            data = client.get(api_url, params=params)
+            if data is None:
                 break
-                
-            data = response.json()
+
             if "error" in data:
                 break
-                
+
             # Add more backlinks to count
             more_backlinks = data.get("query", {}).get("backlinks", [])
             total_count += len(more_backlinks)
-            
+
             # Get next continuation token
             continue_params = data.get("continue")
-            
+
         return total_count
-        
+
     except Exception:  # pylint: disable=broad-exception-caught
         # If link counting fails, return None to indicate failure
         # This ensures submission process continues even if link counting fails
@@ -1734,44 +1654,42 @@ def get_article_outgoing_links(article_url: str) -> Optional[int]:
             "redirects": "true",  # Follow redirects to get actual page
             "converttitles": "true",
         }
-        
-        headers = get_mediawiki_headers()
-        
+
+        client = MediaWikiClient()
+
         # Make initial request
-        response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-        if response.status_code != 200:
+        data = client.get(api_url, params=params)
+        if data is None:
             return None
-            
-        data = response.json()
+
         if "error" in data:
             return None
-            
+
         # Extract links from response
         pages = data.get("query", {}).get("pages", [])
         if not pages:
             return None
-            
+
         page_data = pages[0]
         if page_data.get("missing", False):
             return None
-            
+
         links = page_data.get("links", [])
         total_count = len(links)
-        
+
         # Check if there are more results (continuation)
         continue_params = data.get("continue")
         while continue_params and total_count < 10000:  # Safety limit to prevent infinite loops
             # Update params with continuation token
             params.update(continue_params)
-            
-            response = requests.get(api_url, params=params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-            if response.status_code != 200:
+
+            data = client.get(api_url, params=params)
+            if data is None:
                 break
-                
-            data = response.json()
+
             if "error" in data:
                 break
-                
+
             # Add more links to count
             pages = data.get("query", {}).get("pages", [])
             if pages:
@@ -1845,8 +1763,6 @@ def crawl_category_articles(
         if mw_uri is None:
             mw_uri = api_url
 
-        headers = get_mediawiki_headers()
-
         # Build API params for category members
         # cmtitle requires the full title with namespace prefix (e.g., "Category:Living_people")
         params = {
@@ -1864,6 +1780,7 @@ def crawl_category_articles(
         continue_token: Optional[str] = continue_from
         # Track the token that will be returned for the *next* batch
         next_continue: Optional[str] = None
+        client = MediaWikiClient()
 
         while len(articles) < limit:
             # Add continue token if we have one (either seeded or from prev page)
@@ -1873,17 +1790,9 @@ def crawl_category_articles(
                 # Remove stale key from a previous iteration that has now been cleared
                 del params["cmcontinue"]
 
-            response = requests.get(
-                mw_uri,
-                params=params,
-                headers=headers,
-                timeout=MEDIAWIKI_API_TIMEOUT
-            )
-
-            if response.status_code != 200:
+            data = client.get(mw_uri, params=params)
+            if data is None:
                 break
-
-            data = response.json()
 
             if "error" in data:
                 break
@@ -1942,5 +1851,97 @@ def crawl_category_articles(
         import logging  # pylint: disable=import-outside-toplevel
         logging.error(f"crawl_category_articles failed: {str(e)}")
         return None
+
+
+# ---------------------------------------------------------------------------
+# Parallel MediaWiki metric fetching
+# ---------------------------------------------------------------------------
+
+def fetch_article_metrics(article_link, contest_start_date=None):
+    """Fetch supplementary MediaWiki metrics for an article in parallel.
+
+    Uses a ThreadPoolExecutor to run independent API calls concurrently,
+    reducing per-submission latency from ~6x round-trip to ~2x.
+
+    NOTE: Revisions fetch (article existence check, author, creation date,
+    current size) is NOT done here — it stays inline in submit_to_contest
+    as the gate check before calling this function.
+
+    Args:
+        article_link: Full URL to the wiki article.
+        contest_start_date: Optional datetime for size_at_start calculation.
+
+    Returns:
+        dict with keys: reference_count, new_ref_count, reused_ref_count,
+        image_count, infobox_count, incoming_links, outgoing_links,
+        size_at_start. Values are None on individual fetch failure.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed  # pylint: disable=import-outside-toplevel
+    try:
+        from flask import copy_current_request_context  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        # Fallback: if Flask is not available (e.g. tests), define identity wrapper
+        def copy_current_request_context(fn):  # type: ignore[misc]
+            return fn
+
+    # Fetch wikitext once — shared by image, infobox, and detailed refs
+    wikitext = get_article_wikitext(article_link)
+
+    def _fetch_references():
+        return get_article_reference_count(article_link)
+
+    def _fetch_detailed_refs():
+        return get_detailed_reference_counts(article_link, wikitext=wikitext)
+
+    def _fetch_images():
+        return get_article_image_count(article_link, wikitext=wikitext)
+
+    def _fetch_infoboxes():
+        return get_article_infobox_count(article_link, wikitext=wikitext)
+
+    def _fetch_incoming():
+        return get_article_incoming_links(article_link)
+
+    def _fetch_outgoing():
+        return get_article_outgoing_links(article_link)
+
+    def _fetch_size_at_start():
+        return get_article_size_at_timestamp(article_link, contest_start_date)
+
+    tasks = {
+        "reference_count": _fetch_references,
+        "new_ref_count": _fetch_detailed_refs,
+        "image_count": _fetch_images,
+        "infobox_count": _fetch_infoboxes,
+        "incoming_links": _fetch_incoming,
+        "outgoing_links": _fetch_outgoing,
+    }
+    if contest_start_date is not None:
+        tasks["size_at_start"] = _fetch_size_at_start
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        wrapped = {
+            executor.submit(copy_current_request_context(fn)): key
+            for key, fn in tasks.items()
+        }
+        for future in as_completed(wrapped):
+            key = wrapped[future]
+            try:
+                results[key] = future.result(timeout=30)
+            except Exception as exc:  # pylint: disable=broad-exception-caught
+                _log_warning(f"fetch_article_metrics: failed to fetch {key}", exc)
+                results[key] = None
+
+    # Unpack detailed_refs dict into separate counts
+    detailed = results.pop("new_ref_count", None)
+    if isinstance(detailed, dict):
+        results["new_ref_count"] = detailed.get("new", 0) or 0
+        results["reused_ref_count"] = detailed.get("reused", 0) or 0
+    else:
+        results["new_ref_count"] = 0
+        results["reused_ref_count"] = 0
+
+    return results
 
 
