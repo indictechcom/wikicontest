@@ -1,5 +1,5 @@
 /**
- * API Service for WikiContest Backend Communication
+ * API Service for WikiEval Backend Communication
  *
  * This module handles all HTTP requests to the Flask backend API.
  * It includes:
