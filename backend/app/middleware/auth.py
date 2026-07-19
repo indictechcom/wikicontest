@@ -11,6 +11,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
     get_jwt
 )
+from app.database import db
 from app.models.user import User
 
 
@@ -34,7 +35,7 @@ def get_current_user():
 
         # Convert string user_id back to integer for database query
         # JWT stores identity as string, but database expects integer
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
     except Exception:
         # Return None if token is invalid, expired, or missing
         return None
@@ -145,7 +146,7 @@ def require_submission_permission(permission_type):
 
             # Fetch submission from database
             from app.models.submission import Submission
-            submission = Submission.query.get(submission_id)
+            submission = db.session.get(Submission, submission_id)
             if not submission:
                 return jsonify({'error': 'Submission not found'}), 404
 

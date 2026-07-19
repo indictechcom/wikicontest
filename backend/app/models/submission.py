@@ -471,7 +471,7 @@ class Submission(BaseModel):
         self.status = new_status
         self.score = final_score
         self.reviewed_by = reviewer.id if reviewer else None
-        self.reviewed_at = datetime.utcnow()
+        self.reviewed_at = datetime.now(timezone.utc)
         self.review_comment = comment
 
         # Update user's total score across all submissions
@@ -479,7 +479,7 @@ class Submission(BaseModel):
             # Ensure submitter relationship is loaded
             if self.submitter is None:
                 from app.models.user import User
-                self.submitter = User.query.get(self.user_id)
+                self.submitter = db.session.get(User, self.user_id)
                 if self.submitter is None:
                     raise ValueError(f"Submitter user with id {self.user_id} not found")
 

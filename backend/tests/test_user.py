@@ -5,6 +5,8 @@ Tests for user dashboard and trusted member endpoints.
 import pytest
 from unittest.mock import patch
 
+from app.database import db
+
 
 class TestDashboard:
     """Tests for /api/user/dashboard."""
@@ -94,7 +96,7 @@ class TestTrustedMemberRequest:
         assert resp.status_code == 200
 
         from app.models.user import User
-        updated = User.query.get(user.id)
+        updated = db.session.get(User, user.id)
         assert updated.is_trusted_member is True
 
     @patch("app.utils.get_mediawiki_user_edit_count", return_value=50)
@@ -111,7 +113,7 @@ class TestTrustedMemberRequest:
         assert resp.status_code == 200
 
         from app.models.user import User
-        updated = User.query.get(user.id)
+        updated = db.session.get(User, user.id)
         assert updated.trusted_member_request_status == "rejected"
 
     @patch("app.utils.get_mediawiki_user_edit_count", return_value=50)

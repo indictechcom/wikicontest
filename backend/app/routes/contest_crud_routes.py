@@ -120,7 +120,7 @@ def get_contest_by_id(contest_id):
     Returns:
         JSON response with contest data
     """
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
@@ -201,7 +201,7 @@ def get_contest_leaderboard_detailed(contest_id):
     from sqlalchemy import func, case
 
     # Verify contest exists
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
@@ -724,7 +724,7 @@ def delete_contest(contest_id):
         JSON response with success message
     """
     user = request.current_user
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
@@ -759,7 +759,7 @@ def update_contest(contest_id):
 
         current_app.logger.debug("update_contest payload: %s", data)
 
-        contest = Contest.query.get(contest_id)
+        contest = db.session.get(Contest, contest_id)
         if not contest:
             return jsonify({"error": "Contest not found"}), 404
 

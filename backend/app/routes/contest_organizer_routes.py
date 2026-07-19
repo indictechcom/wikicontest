@@ -66,7 +66,7 @@ def get_contest_organizers(contest_id):
     user = request.current_user
 
     # Get contest
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
@@ -112,7 +112,7 @@ def add_contest_organizer(contest_id):
     data = request.validated_data
 
     # Get contest
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
@@ -174,7 +174,7 @@ def remove_contest_organizer(contest_id, username):
     user = request.current_user
 
     # Get contest
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 

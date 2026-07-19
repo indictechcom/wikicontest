@@ -76,7 +76,7 @@ def crawl_category_for_contest(contest_id):
         data = request.get_json()
 
         # Fetch contest
-        contest = Contest.query.get(contest_id)
+        contest = db.session.get(Contest, contest_id)
         if not contest:
             return jsonify({"error": "Contest not found"}), 404
 

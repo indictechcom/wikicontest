@@ -9,13 +9,14 @@ from __future__ import annotations
 from typing import Tuple, Optional
 
 from flask import jsonify
+from app.database import db
 from app.models.contest import Contest
 
 __all__ = ["validate_contest_submission_access"]
 
 
 def validate_contest_submission_access(contest_id, user, Contest) -> tuple:
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return None, (jsonify({"error": "Contest not found"}), 404)

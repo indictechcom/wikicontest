@@ -75,7 +75,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     data = request.validated_data
 
     # Get contest
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
@@ -484,7 +484,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             contest_start_datetime = datetime.combine(contest.start_date, time.min)
 
             # Get submission time (current time when submission is being created)
-            submission_datetime = datetime.utcnow()
+            submission_datetime = datetime.now(timezone.utc)
 
             # Get article size at contest start
             size_at_start = get_article_size_at_timestamp(

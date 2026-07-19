@@ -9,6 +9,7 @@ user blueprints.
 
 from flask import Blueprint, request, jsonify, current_app
 
+from app.database import db
 from app.extensions import limiter
 from app.middleware.auth import require_auth, require_role, handle_errors
 from app.models.user import User
@@ -218,7 +219,7 @@ def approve_trusted_member(user_id):
     Returns:
         JSON response with success message
     """
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -257,7 +258,7 @@ def reject_trusted_member(user_id):
     Returns:
         JSON response with success message
     """
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -289,7 +290,7 @@ def add_trusted_member(user_id):
     Returns:
         JSON response with success message
     """
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -328,7 +329,7 @@ def remove_trusted_member(user_id):
     Returns:
         JSON response with success message
     """
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404

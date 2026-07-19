@@ -5,6 +5,8 @@ P0 Backend Tests — Submission CRUD
 import pytest
 from datetime import date, timedelta
 
+from app.database import db
+
 
 class TestSubmissionCRUD:
     def test_submit_article_valid(self, client, db, factories, mock_mediawiki):
@@ -121,7 +123,7 @@ class TestAutomatedScoringEvaluation:
 
         # Check submission status
         from app.models.submission import Submission
-        sub = Submission.query.get(submission_id)
+        sub = db.session.get(Submission, submission_id)
         assert sub is not None
         # Automated evaluation should set status to accepted or rejected
         assert sub.status in ("accepted", "rejected")
@@ -340,7 +342,7 @@ class TestUpdateStatusScorePropagation:
         submission.update_status(new_status="accepted", score=8, contest=contest)
 
         from app.models.user import User
-        updated_user = User.query.get(user.id)
+        updated_user = db.session.get(User, user.id)
         assert updated_user.score == initial_score + 8
 
     def test_update_status_rejected_sets_rejection_score(self, db, factories):
@@ -353,7 +355,7 @@ class TestUpdateStatusScorePropagation:
         submission.update_status(new_status="rejected", score=0, contest=contest)
 
         from app.models.user import User
-        updated_user = User.query.get(user.id)
+        updated_user = db.session.get(User, user.id)
         assert updated_user.score == initial_score
 
     def test_update_status_commit_false_defers_commit(self, db, factories):
@@ -370,6 +372,6 @@ class TestUpdateStatusScorePropagation:
         # Rollback should revert
         db.session.rollback()
         from app.models.submission import Submission
-        refreshed = Submission.query.get(submission.id)
+        refreshed = db.session.get(Submission, submission.id)
         assert refreshed.status == "pending"
 

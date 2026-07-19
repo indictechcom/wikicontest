@@ -233,7 +233,7 @@ def oauth_config_check():
         JSON: OAuth configuration details (without secrets)
     """
     user_id = get_jwt_identity()
-    current_user = User.query.get(int(user_id))
+    current_user = db.session.get(User, int(user_id))
     if not current_user or not current_user.is_admin():
         return jsonify({'error': 'Admin access required'}), 403
     consumer_key = current_app.config.get('CONSUMER_KEY', '')

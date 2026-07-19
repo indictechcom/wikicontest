@@ -70,7 +70,7 @@ def get_contest_outreach_data(contest_id):
     Returns:
         JSON response with Outreach Dashboard course data or error message
     """
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
@@ -106,7 +106,7 @@ def get_outreach_dashboard_users(contest_id):
     Returns:
         JSON response with Outreach Dashboard course users data or error message
     """
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
@@ -142,7 +142,7 @@ def get_outreach_dashboard_articles(contest_id):
     Returns:
         JSON response with Outreach Dashboard course articles data or error message
     """
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
@@ -178,7 +178,7 @@ def get_outreach_dashboard_uploads(contest_id):
     Returns:
         JSON response with Outreach Dashboard course uploads data or error message
     """
-    contest = Contest.query.get(contest_id)
+    contest = db.session.get(Contest, contest_id)
 
     if not contest:
         return jsonify({"error": "Contest not found"}), 404

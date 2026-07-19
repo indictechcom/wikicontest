@@ -329,7 +329,7 @@ def approve_contest_request(request_id):
         JSON response with success message and created contest ID
     """
     user = request.current_user
-    contest_request = ContestRequest.query.get(request_id)
+    contest_request = db.session.get(ContestRequest, request_id)
 
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
@@ -340,7 +340,7 @@ def approve_contest_request(request_id):
         }), 400
 
     # Get the requester user to use as contest creator
-    requester = User.query.get(contest_request.user_id)
+    requester = db.session.get(User, contest_request.user_id)
     if not requester:
         return jsonify({'error': 'Requester user not found'}), 404
 
@@ -372,7 +372,7 @@ def approve_contest_request(request_id):
         # Update request status
         contest_request.status = 'approved'
         contest_request.reviewed_by = user.id
-        contest_request.reviewed_at = datetime.utcnow()
+        contest_request.reviewed_at = datetime.now(timezone.utc)
         contest_request.save()
 
         return jsonify({
@@ -409,7 +409,7 @@ def reject_contest_request(request_id):
     # Get JSON data if provided (rejection_reason is optional)
     data = request.get_json() or {}
 
-    contest_request = ContestRequest.query.get(request_id)
+    contest_request = db.session.get(ContestRequest, request_id)
 
     if not contest_request:
         return jsonify({'error': 'Contest request not found'}), 404
@@ -422,7 +422,7 @@ def reject_contest_request(request_id):
     # Update request status
     contest_request.status = 'rejected'
     contest_request.reviewed_by = user.id
-    contest_request.reviewed_at = datetime.utcnow()
+    contest_request.reviewed_at = datetime.now(timezone.utc)
     contest_request.rejection_reason = data.get('rejection_reason', '')
     contest_request.save()
 
