@@ -49,13 +49,13 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/contest/:name/edit',
+    path: '/contest/:contestId/edit',
     name: 'EditContest',
     component: () => import('../views/EditContest.vue'),
     meta: { requiresAuth: true }
   },
   {
-    path: '/contest/:name',
+    path: '/contest/:contestId',
     name: 'ContestView',
     component: ContestView,
     meta: { requiresAuth: true }
@@ -103,13 +103,13 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/contest/:id/submissions',
+    path: '/contest/:contestId/submissions',
     name: 'ContestSubmissions',
     component: ContestSubmissionsView,
     meta: { requiresAuth: true }
   },
   {
-    path: '/contest/:name/leaderboard',
+    path: '/contest/:contestId/leaderboard',
     name: 'ContestLeaderboard',
     component: ContestLeaderboard,
     meta: { requiresAuth: true }
