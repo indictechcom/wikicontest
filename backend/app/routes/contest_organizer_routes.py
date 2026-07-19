@@ -3,8 +3,6 @@ Contest organizer routes for WikiContest Application.
 """
 
 from datetime import datetime, timezone
-import os
-import traceback
 
 from flask import Blueprint, request, jsonify, current_app
 from sqlalchemy.exc import IntegrityError
@@ -15,31 +13,6 @@ from app.models.contest import Contest
 from app.models.submission import Submission
 from app.models.user import User
 from app.models.contest_request import ContestRequest
-from app.utils import (
-    validate_contest_submission_access,
-    get_article_size_at_timestamp,
-    extract_page_title_from_url,
-    get_latest_revision_author,
-    build_mediawiki_revisions_api_params,
-    get_mediawiki_headers,
-    validate_template_link,
-    extract_template_name_from_url,
-    check_article_has_template,
-    prepend_template_to_article,
-    extract_category_name_from_url,
-    check_article_has_category,
-    append_categories_to_article,
-    fetch_article_metrics,
-    get_article_reference_count,
-    get_detailed_reference_counts,
-    get_mediawiki_user_edit_count,
-    get_article_image_count,
-    get_article_infobox_count,
-    get_article_incoming_links,
-    get_article_outgoing_links,
-    crawl_category_articles,
-    MEDIAWIKI_API_TIMEOUT,
-)
 from app.utils.url_validation import validate_wiki_url
 from app.routes._contest_helpers import validate_date_string, parse_date_or_none
 
