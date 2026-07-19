@@ -33,6 +33,9 @@ data-bs-target="#navbarNav">
             <li class="nav-item" v-if="dashboardAccess?.jury">
               <router-link class="nav-link" to="/jury/dashboard">Jury</router-link>
             </li>
+            <li class="nav-item" v-if="isSuperadmin">
+              <router-link class="nav-link" to="/manage-trusted-members">Manage Trusted Members</router-link>
+            </li>
           </ul>
 
           <!-- Right: Theme Toggle and Login/User Menu -->
@@ -71,18 +74,6 @@ id="userDropdown"
                     <li>
                       <router-link class="dropdown-item" to="/profile">
                         <i class="fas fa-user me-2"></i>Profile
-                      </router-link>
-                    </li>
-                    <!-- Trusted Members link - only visible to superadmins -->
-                    <li v-if="isSuperadmin">
-                      <router-link class="dropdown-item" to="/trusted-members">
-                        <i class="fas fa-user-shield me-2"></i>Trusted Members
-                      </router-link>
-                    </li>
-                    <!-- Jury Dashboard link - only visible to jury members -->
-                    <li v-if="dashboardAccess?.jury">
-                      <router-link class="dropdown-item" to="/jury/dashboard">
-                        <i class="fas fa-tachometer-alt me-2"></i>Jury Dashboard
                       </router-link>
                     </li>
                     <li>
