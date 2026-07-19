@@ -87,6 +87,10 @@ const routes = [
   },
   {
     path: '/trusted-members',
+    redirect: '/manage-trusted-members'
+  },
+  {
+    path: '/manage-trusted-members',
     name: 'TrustedMembers',
     component: TrustedMembers,
     meta: { requiresAuth: true }
