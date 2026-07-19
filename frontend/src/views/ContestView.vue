@@ -279,8 +279,14 @@ class="text-decoration-none">
 
               <!-- Category Crawler Section (for Automated Scoring Contests) -->
               <div
-                v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles"
-                class="card mb-4">
+                v-if="
+                  contest.automated_settings?.enabled === true &&
+                  contest.categories &&
+                  contest.categories.length > 0 &&
+                  canImportArticles
+                "
+                class="card mb-4"
+              >
                 <div class="card-header">
                   <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
                 </div>
@@ -467,10 +473,22 @@ class="mt-2 pt-2"
                           </td>
                           <td>{{ submission.username || 'Unknown' }}</td>
                           <td>
-                            <span :class="`badge bg-${getStatusColor(submission.status)}`"
-                              :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                            <span
+                              :class="`badge bg-${getStatusColor(submission.status)}`"
+                              :style="(
+                                submission.evaluation_reason &&
+                                contestScoringMode === 'automated'
+                              )
+                                ? 'cursor: pointer;'
+                                : ''"
                               @click="showEvaluationDetails(submission)"
-                              :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                              :title="(
+                                submission.evaluation_reason &&
+                                contestScoringMode === 'automated'
+                              )
+                                ? 'Click to see details'
+                                : ''"
+                            >
                               {{ submission.status }}
                             </span>
                             <div v-if="submission.already_reviewed" class="text-muted small mt-1">
@@ -479,9 +497,20 @@ class="mt-2 pt-2"
                           </td>
                           <td>
                             <span
-                              :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                              :style="(
+                                submission.evaluation_reason &&
+                                contestScoringMode === 'automated'
+                              )
+                                ? 'cursor: pointer; text-decoration: underline;'
+                                : ''"
                               @click="showEvaluationDetails(submission)"
-                              :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                              :title="(
+                                submission.evaluation_reason &&
+                                contestScoringMode === 'automated'
+                              )
+                                ? 'Click to see score breakdown'
+                                : ''"
+                            >
                               {{ submission.score || 0 }}
                             </span>
                           </td>
@@ -795,9 +824,14 @@ class="text-decoration-none">
           </div>
 
           <!-- Category Crawler Section (for Automated Scoring Contests) -->
-          <div
-            v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles"
-            class="card mb-4">
+<div
+              v-if="
+                contest.automated_settings?.enabled === true &&
+                contest.categories &&
+                contest.categories.length > 0 &&
+                canImportArticles
+              "
+              class="card mb-4">
             <div class="card-header">
               <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
             </div>
@@ -1013,10 +1047,22 @@ class="mt-2 pt-2"
                       </td>
                       <td>{{ submission.username || 'Unknown' }}</td>
                       <td>
-                        <span :class="`badge bg-${getStatusColor(submission.status)}`"
-                          :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer;' : ''"
+                        <span
+                          :class="`badge bg-${getStatusColor(submission.status)}`"
+                          :style="(
+                            submission.evaluation_reason &&
+                            contestScoringMode === 'automated'
+                          )
+                            ? 'cursor: pointer;'
+                            : ''"
                           @click="showEvaluationDetails(submission)"
-                          :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see details' : ''">
+                          :title="(
+                            submission.evaluation_reason &&
+                            contestScoringMode === 'automated'
+                          )
+                            ? 'Click to see details'
+                            : ''"
+                        >
                           {{ submission.status }}
                         </span>
                         <div v-if="submission.already_reviewed" class="text-muted small mt-1">
@@ -1025,9 +1071,20 @@ class="mt-2 pt-2"
                       </td>
                       <td>
                         <span
-                          :style="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'cursor: pointer; text-decoration: underline;' : ''"
+                          :style="(
+                            submission.evaluation_reason &&
+                            contestScoringMode === 'automated'
+                          )
+                            ? 'cursor: pointer; text-decoration: underline;'
+                            : ''"
                           @click="showEvaluationDetails(submission)"
-                          :title="(submission.evaluation_reason && contestScoringMode === 'automated') ? 'Click to see score breakdown' : ''">
+                          :title="(
+                            submission.evaluation_reason &&
+                            contestScoringMode === 'automated'
+                          )
+                            ? 'Click to see score breakdown'
+                            : ''"
+                        >
                           {{ submission.score || 0 }}
                         </span>
                       </td>
@@ -1355,6 +1412,7 @@ export default {
     const savingContest = ref(false)
     let jurySearchTimeout = null
     let organizerSearchTimeout = null
+    let editModal = null
 
     // Scoring system state
     const enableMultiParameterScoring = ref(false)
@@ -1801,7 +1859,7 @@ export default {
     }
 
     // Load contest by ID or name from route
-    const loadContest = async (id = null) => {
+    const loadContest = async (_id = null) => {
       loading.value = true
       error.value = null
 
@@ -2337,15 +2395,33 @@ export default {
             min_outgoing_links: Number(contest.value.automated_settings.eligibility?.min_outgoing_links ?? 3)
           }
           automatedSettings.evaluation = {
-            points_per_accepted: Number(contest.value.automated_settings.evaluation?.points_per_accepted ?? 10),
-            points_per_byte: Number(contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001),
-            points_per_incoming_link: Number(contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2),
-            points_per_outgoing_link: Number(contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1),
-            points_per_category: Number(contest.value.automated_settings.evaluation?.points_per_category ?? 1),
-            points_per_new_reference: Number(contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3),
-            points_per_reused_reference: Number(contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1),
-            points_per_infobox: Number(contest.value.automated_settings.evaluation?.points_per_infobox ?? 5),
-            points_per_image: Number(contest.value.automated_settings.evaluation?.points_per_image ?? 2)
+            points_per_accepted: Number(
+              contest.value.automated_settings.evaluation?.points_per_accepted ?? 10
+            ),
+            points_per_byte: Number(
+              contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001
+            ),
+            points_per_incoming_link: Number(
+              contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2
+            ),
+            points_per_outgoing_link: Number(
+              contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1
+            ),
+            points_per_category: Number(
+              contest.value.automated_settings.evaluation?.points_per_category ?? 1
+            ),
+            points_per_new_reference: Number(
+              contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3
+            ),
+            points_per_reused_reference: Number(
+              contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1
+            ),
+            points_per_infobox: Number(
+              contest.value.automated_settings.evaluation?.points_per_infobox ?? 5
+            ),
+            points_per_image: Number(
+              contest.value.automated_settings.evaluation?.points_per_image ?? 2
+            )
           }
         } else {
           loadDefaultAutomatedSettings()
