@@ -120,21 +120,27 @@
                 {{ truncateText(contest.description, 200) }}
               </p>
 
-              <!-- Action Buttons -->
-              <div class="d-flex gap-2 mt-auto">
-                <button
-                  v-if="contest.status !== 'past'"
-                  class="btn btn-primary btn-sm"
-                  @click.stop="goToContest(contest)">
-                  <i class="fas fa-gavel me-1"></i>Review Submissions
-                </button>
-                <button
-                  v-else
-                  class="btn btn-outline-secondary btn-sm"
-                  @click.stop="goToContest(contest)">
-                  <i class="fas fa-eye me-1"></i>View Contest
-                </button>
-              </div>
+<!-- Action Buttons -->
+               <div class="d-flex gap-2 mt-auto">
+                 <button
+                   v-if="contest.status !== 'past'"
+                   class="btn btn-primary btn-sm"
+                   @click.stop="goToContest(contest)">
+                   <i class="fas fa-gavel me-1"></i>Review Submissions
+                 </button>
+                 <button
+                   v-if="contest.status !== 'past'"
+                   class="btn btn-success btn-sm"
+                   @click.stop="viewSubmissions(contest)">
+                   <i class="fas fa-list me-1"></i>View Submissions
+                 </button>
+                 <button
+                   v-else
+                   class="btn btn-outline-secondary btn-sm"
+                   @click.stop="goToContest(contest)">
+                   <i class="fas fa-eye me-1"></i>View Contest
+                 </button>
+               </div>
             </div>
           </div>
         </div>
@@ -233,6 +239,12 @@ export default {
         name: 'ContestView',
         params: { name: contest.slug || contest.name }
       })
+    }
+
+    // Navigate to contest submissions page
+    const viewSubmissions = (contest) => {
+      if (!contest) return
+      router.push({ name: 'ContestSubmissions', params: { id: contest.id } })
     }
 
     // Switch between current, upcoming, and past contests
@@ -389,7 +401,8 @@ export default {
       getStatusIcon,
       getOrganizers,
       getInitials,
-      truncateText
+      truncateText,
+      viewSubmissions
     }
   }
 }

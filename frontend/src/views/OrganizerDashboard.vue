@@ -124,22 +124,27 @@
                 </span>
               </div>
 
-              <!-- Action Buttons -->
-              <div class="d-flex gap-2 mt-3" v-if="canEditOrDelete(contest)">
-                <button
-                  class="btn btn-primary btn-sm"
-                  @click.stop="goToEditPage(contest)">
-                  <i class="fas fa-edit me-1"></i>Edit Contest
-                </button>
-                <button
-                  class="btn btn-danger btn-sm"
-                  @click.stop="handleDeleteContest(contest)"
-                  :disabled="deletingContest">
-                  <span v-if="deletingContest" class="spinner-border spinner-border-sm me-1"></span>
-                  <i v-else class="fas fa-trash me-1"></i>
-                  {{ deletingContest ? 'Deleting...' : 'Delete' }}
-                </button>
-              </div>
+<!-- Action Buttons -->
+               <div class="d-flex gap-2 mt-3" v-if="canEditOrDelete(contest)">
+                 <button
+                   class="btn btn-primary btn-sm"
+                   @click.stop="goToEditPage(contest)">
+                   <i class="fas fa-edit me-1"></i>Edit Contest
+                 </button>
+                 <button
+                   class="btn btn-success btn-sm"
+                   @click.stop="viewSubmissions(contest)">
+                   <i class="fas fa-list me-1"></i>View Submissions
+                 </button>
+                 <button
+                   class="btn btn-danger btn-sm"
+                   @click.stop="handleDeleteContest(contest)"
+                   :disabled="deletingContest">
+                   <span v-if="deletingContest" class="spinner-border spinner-border-sm me-1"></span>
+                   <i v-else class="fas fa-trash me-1"></i>
+                   {{ deletingContest ? 'Deleting...' : 'Delete' }}
+                 </button>
+               </div>
             </div>
           </div>
         </div>
@@ -231,6 +236,12 @@ export default {
     const goToEditPage = (contest) => {
       if (!contest) return
       router.push({ name: 'EditContest', params: { name: contest.slug || contest.name } })
+    }
+
+    // Navigate to contest submissions page
+    const viewSubmissions = (contest) => {
+      if (!contest) return
+      router.push({ name: 'ContestSubmissions', params: { id: contest.id } })
     }
 
     // Delete contest with confirmation
@@ -447,6 +458,7 @@ export default {
       showCreateContestModal,
       goToEditPage,
       handleDeleteContest,
+      viewSubmissions,
       setActiveCategory,
       formatDate,
       formatDateRange,
