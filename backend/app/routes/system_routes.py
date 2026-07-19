@@ -1,5 +1,5 @@
 """
-System & authentication routes for WikiContest Application.
+System & authentication routes for WikiEval Application.
 
 Holds the application-level endpoints that are not part of a feature
 blueprint (user/contest/submission): cookie/session checks, frontend
@@ -189,14 +189,14 @@ def health_check():
         return jsonify({
             'status': 'healthy',
             'database': 'connected',
-            'message': 'WikiContest API is running',
+            'message': 'WikiEval API is running',
             'version': '1.0.0'
         }), 200
     except Exception:
         return jsonify({
             'status': 'unhealthy',
             'database': 'disconnected',
-            'message': 'WikiContest API is running',
+            'message': 'WikiEval API is running',
             'version': '1.0.0'
         }), 503
 
@@ -207,7 +207,7 @@ def oauth_callback_redirect():
     Redirect /oauth/callback to the blueprint handler at /api/user/oauth/callback.
 
     The Toolforge OAuth consumer is registered with callback URL
-    https://wikicontest.toolforge.org/oauth/callback, but the actual handler
+    https://wikieval.toolforge.org/oauth/callback, but the actual handler
     lives at /api/user/oauth/callback (the user_bp blueprint).
     This route bridges the two by forwarding all query parameters.
     """
@@ -244,7 +244,7 @@ def oauth_config_check():
 
     # Build callback URL based on environment
     # For local development: http://localhost:5000/api/user/oauth/callback
-    # For Toolforge: https://wikicontest.toolforge.org/oauth/callback
+    # For Toolforge: https://wikieval.toolforge.org/oauth/callback
     # (if OAUTH_CALLBACK_PATH is set)
     scheme = request.scheme
     host = request.host

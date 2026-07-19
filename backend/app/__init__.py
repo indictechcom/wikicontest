@@ -1,9 +1,9 @@
 """
-WikiContest Flask Application
+WikiEval Flask Application
 Main application entry point for the Python Flask backend
 
 This module initializes the Flask application with all necessary configurations,
-extensions, and route blueprints. It serves as the central hub for the WikiContest
+extensions, and route blueprints. It serves as the central hub for the WikiEval
 platform, handling both API endpoints and static file serving.
 
 Architecture:
@@ -13,7 +13,7 @@ Architecture:
 - Database integration with SQLAlchemy ORM
 - Comprehensive error handling and logging
 
-Author: WikiContest Development Team
+Author: WikiEval Development Team
 Version: 1.0.0
 """
 # pylint: disable=too-many-lines
@@ -103,7 +103,7 @@ def create_app():
 
     # Wrap with ProxyFix so Flask reads X-Forwarded-Proto / X-Forwarded-Host
     # from the Node.js frontend proxy. This ensures request.scheme == 'https'
-    # and request.host == 'wikicontest.toolforge.org', which is critical for:
+    # and request.host == 'wikieval.toolforge.org', which is critical for:
     #   - Building correct OAuth callback URLs
     #   - Setting session cookies with the right domain (frontend domain, not backend)
     flask_app.wsgi_app = ProxyFix(
@@ -197,7 +197,7 @@ def create_app():
     # Set to True if OAuth consumer was registered with "oob" (out-of-band) callback
     # Most web apps should use False and register with a proper callback URL
     flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').strip().lower() == 'true'
-    # Frontend URL for post-OAuth redirect (e.g. https://wikicontest.toolforge.org)
+    # Frontend URL for post-OAuth redirect (e.g. https://wikieval.toolforge.org)
     flask_app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', '')
     # Custom callback path for OAuth (e.g. /oauth/callback for Toolforge)
     # When set, overrides the default blueprint path (/api/user/oauth/callback)

@@ -1,5 +1,5 @@
 """
-MediaWiki API helper functions for WikiContest Application.
+MediaWiki API helper functions for WikiEval Application.
 
 Provides shared helpers for building MediaWiki API requests, parsing responses,
 and fetching article metadata (size, author, creation date, etc.).
@@ -70,8 +70,8 @@ def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:
 def get_mediawiki_headers() -> Dict[str, str]:
     return {
         "User-Agent": (
-            "WikiContest/1.0 (" + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + "; "
-            "contact@wikicontest.org) Python/requests"
+            "WikiEval/1.0 (" + os.environ.get('FRONTEND_URL', 'https://wikieval.toolforge.org') + "; "
+            "contact@wikieval.org) Python/requests"
         )
     }
 
