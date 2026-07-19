@@ -411,6 +411,7 @@ class Submission(BaseModel):
         comment=None,
         contest=None,
         parameter_scores=None,
+        commit=True,
     ):
         """
         Update submission status and calculate score
@@ -478,7 +479,7 @@ class Submission(BaseModel):
             # Ensure submitter relationship is loaded
             if self.submitter is None:
                 from app.models.user import User
-                self.submitter = User.query.get(self.user_id)
+                self.submitter = db.session.get(User, self.user_id)
                 if self.submitter is None:
                     raise ValueError(f"Submitter user with id {self.user_id} not found")
 
@@ -486,7 +487,8 @@ class Submission(BaseModel):
             self.submitter.update_score(score_difference)
 
         # Persist all changes to database
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return True
 
 

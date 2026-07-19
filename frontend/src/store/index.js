@@ -16,6 +16,8 @@ import api from '../services/api'
 const state = reactive({
   // Current authenticated user
   currentUser: null,
+  // Timestamp of last auth check (for caching)
+  lastAuthCheck: 0,
   // Contest data cache
   contests: {
     current: [],
@@ -27,6 +29,13 @@ const state = reactive({
     contests: false,
     dashboard: false
   },
+  // Dashboard access permissions
+  dashboardAccess: {
+    participant: true,
+    organizer: false,
+    jury: false
+  },
+  dashboardAccessLoaded: false,
   // Theme state - default to light mode, or load from localStorage
   theme: localStorage.getItem('theme') || 'light'
 })
@@ -67,18 +76,6 @@ export function useStore() {
         console.log(' Normalized role:', normalizedRole)
         console.log(' Role comparison - normalizedRole === "superadmin":', normalizedRole === 'superadmin')
 
-        // Special check for Adityakumar0545
-        if (response.username === 'Adityakumar0545') {
-          console.log('⚠️ [SPECIAL CHECK] User Adityakumar0545 detected')
-          console.log('  - Raw role from response:', roleFromResponse)
-          console.log('  - Normalized role:', normalizedRole)
-          if (normalizedRole !== 'superadmin') {
-            console.error(' [ERROR] Adityakumar0545 should have superadmin role but got:', normalizedRole)
-          } else {
-            console.log(' [SUCCESS] Adityakumar0545 has correct superadmin role')
-          }
-        }
-
         const newUser = {
           id: response.userId,
           username: response.username || response.email || 'User',
@@ -97,12 +94,15 @@ export function useStore() {
         console.log(' User role being stored:', newUser.role)
         state.currentUser = newUser
         console.log(' Current user set. State:', state.currentUser)
-        console.log(' State currentUser.role:', state.currentUser?.role)
+        // Update last auth check timestamp for caching
+        state.lastAuthCheck = Date.now()
         return true
       } else {
         // No valid user data - clear state
         console.log(' Invalid response, clearing user')
         state.currentUser = null
+        // Update last auth check timestamp for caching
+        state.lastAuthCheck = Date.now()
         return false
       }
     } catch (error) {
@@ -121,6 +121,8 @@ export function useStore() {
         state.currentUser = null
       }
 
+      // Update last auth check timestamp for caching
+      state.lastAuthCheck = Date.now()
       // Only log if it's not a 401 (which is expected for logged out users)
       if (error.status !== 401 && error.status !== undefined) {
         console.log('Auth check error:', error.message)
@@ -168,6 +170,8 @@ export function useStore() {
       // This ensures the cookie is available for subsequent requests
       await new Promise(resolve => setTimeout(resolve, 200))
 
+      // Update last auth check timestamp for caching
+      state.lastAuthCheck = Date.now()
       return { success: true, data: response }
     } catch (error) {
       // Ensure state is cleared on login failure
@@ -213,7 +217,17 @@ export function useStore() {
     state.loading.contests = true
     try {
       const response = await api.get('/contest')
-      state.contests = response
+      // Backend returns { contests: { current, upcoming, past }, total, ... }
+      // Store only the categorized object so getContestsByCategory can read
+      // state.contests[category] without the extra envelope keys.
+      const contestsData = (response && response.contests)
+        ? response.contests
+        : {
+          current: [],
+          upcoming: [],
+          past: []
+        }
+      state.contests = contestsData
       return { success: true, data: response }
     } catch (error) {
       return { success: false, error: error.message }
@@ -297,6 +311,48 @@ export function useStore() {
     applyTheme(state.theme)
   }
 
+  // Load dashboard access permissions
+  const loadDashboardAccess = async () => {
+    // Skip if already loaded
+    if (state.dashboardAccessLoaded) {
+      return
+    }
+
+    try {
+      const data = await api.get('/user/dashboard/access')
+      console.log('[DashboardAccess] API response:', data)
+      if (data) {
+        state.dashboardAccess = {
+          participant: data.can_access_participant !== false,
+          organizer: data.can_access_organizer === true,
+          jury: data.can_access_jury === true
+        }
+        console.log('[DashboardAccess] Updated:', state.dashboardAccess)
+      }
+    } catch (error) {
+      console.error('[DashboardAccess] API call failed:', error)
+      // Fallback: derive access from the main dashboard endpoint
+      try {
+        const dashboardData = await api.get('/user/dashboard')
+        state.dashboardAccess = {
+          participant: true,
+          organizer: (dashboardData.organized_contests?.length || 0) > 0,
+          jury: (dashboardData.jury_contests?.length || 0) > 0
+        }
+        console.log('[DashboardAccess] Fallback from /user/dashboard:', state.dashboardAccess)
+      } catch (fallbackError) {
+        console.error('[DashboardAccess] Fallback also failed:', fallbackError)
+        state.dashboardAccess = {
+          participant: true,
+          organizer: false,
+          jury: false
+        }
+      }
+    } finally {
+      state.dashboardAccessLoaded = true
+    }
+  }
+
   return {
     // State (expose for direct access if needed)
     state,
@@ -304,6 +360,7 @@ export function useStore() {
     isAuthenticated,
     currentUser,
     contests,
+    dashboardAccess: computed(() => state.dashboardAccess),
     // Theme
     theme: computed(() => state.theme),
     // Actions
@@ -312,6 +369,7 @@ export function useStore() {
     register,
     logout,
     loadContests,
+    loadDashboardAccess,
     createContest,
     requestContest,
     getContestsByCategory,

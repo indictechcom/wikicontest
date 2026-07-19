@@ -19,15 +19,21 @@ data-bs-target="#navbarNav">
           <!-- Middle: Navigation Links (Centered) -->
           <ul class="navbar-nav mx-auto">
             <li class="nav-item">
-              <!-- Home link - will show active indicator when on exact / route -->
               <router-link class="nav-link" to="/">Home</router-link>
             </li>
-            <li class="nav-item" v-if="isAuthenticated">
-              <!-- Contests link - shows active indicator when on /contests page -->
+            <li class="nav-item">
               <router-link class="nav-link" to="/contests">Contests</router-link>
             </li>
+            <li class="nav-item" v-if="dashboardAccess?.organizer">
+              <router-link class="nav-link" to="/organizer/dashboard">Organizer</router-link>
+            </li>
+            <li class="nav-item" v-if="dashboardAccess?.jury">
+              <router-link class="nav-link" to="/jury/dashboard">Jury</router-link>
+            </li>
+            <li class="nav-item" v-if="isSuperadmin">
+              <router-link class="nav-link" to="/manage-trusted-members">Manage Trusted Members</router-link>
+            </li>
             <li class="nav-item" v-if="isAuthenticated">
-              <!-- Dashboard link - shows active indicator when on /dashboard page -->
               <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
             </li>
           </ul>
@@ -70,18 +76,6 @@ id="userDropdown"
                         <i class="fas fa-user me-2"></i>Profile
                       </router-link>
                     </li>
-                    <!-- Trusted Members link - only visible to superadmins -->
-                    <li v-if="isSuperadmin">
-                      <router-link class="dropdown-item" to="/trusted-members">
-                        <i class="fas fa-user-shield me-2"></i>Trusted Members
-                      </router-link>
-                    </li>
-                    <!-- Jury Dashboard link - only visible to jury members -->
-                    <li v-if="isJury">
-                      <router-link class="dropdown-item" to="/jurydashboard">
-                        <i class="fas fa-tachometer-alt me-2"></i>Jury Dashboard
-                      </router-link>
-                    </li>
                     <li>
                       <hr class="dropdown-divider" />
                     </li>
@@ -110,11 +104,10 @@ id="userDropdown"
 </template>
 
 <script>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useStore } from './store'
 import { useRouter } from 'vue-router'
 import AlertContainer from './components/AlertContainer.vue'
-import api from './services/api'
 
 export default {
   name: 'App',
@@ -124,12 +117,12 @@ export default {
   setup() {
     const store = useStore()
     const router = useRouter()
-    const isJury = ref(false)
 
     // Access reactive store properties directly without wrapping
     const isAuthenticated = store.isAuthenticated
     const currentUser = store.currentUser
     const theme = store.theme
+    const dashboardAccess = store.dashboardAccess
 
     // Check if user is superadmin
     const isSuperadmin = computed(() => {
@@ -162,23 +155,13 @@ export default {
 
       // Verify user authentication status
       try {
-        // Force a fresh auth check - this will clear state if not authenticated
         await store.checkAuth()
       } catch (error) {
-        // Silently fail - user is not authenticated
-        // This is normal for users who aren't logged in
-        // checkAuth already clears state on error
         console.log('Auth check completed - user not logged in')
       }
-      // Determine if user has jury privileges
-      try {
-        const data = await api.get('/user/dashboard')
 
-        // Frontend-only check: user is jury if they have assigned contests
-        isJury.value = Array.isArray(data.jury_contests) && data.jury_contests.length > 0
-      } catch (e) {
-        isJury.value = false
-      }
+      // Load dashboard access permissions
+      await store.loadDashboardAccess()
     })
 
     // Handle user logout and cleanup
@@ -213,10 +196,10 @@ export default {
       isAuthenticated,
       currentUser,
       theme,
+      dashboardAccess,
       toggleTheme,
       handleLogout,
       getApiBaseUrl,
-      isJury,
       isSuperadmin
     }
   }

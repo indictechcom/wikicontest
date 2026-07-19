@@ -7,7 +7,10 @@
                 <i class="fas fa-arrow-left me-2"></i>Back to Contest
             </button>
 
-            <button v-if="!loading" class="btn btn-primary" @click="refreshLeaderboard" :disabled="refreshing">
+            <button v-if="!loading"
+class="btn btn-primary"
+@click="refreshLeaderboard"
+:disabled="refreshing">
                 <span v-if="refreshing" class="spinner-border spinner-border-sm me-2"></span>
                 <i v-else class="fas fa-sync-alt me-2"></i>
                 {{ refreshing ? 'Refreshing...' : 'Refresh' }}
@@ -110,17 +113,21 @@
                 <nav>
                     <ul class="pagination">
                         <li class="page-item" :class="{ disabled: pagination.page === 1 }">
-                            <button class="page-link" @click="changePage(pagination.page - 1)"
+                            <button class="page-link"
+@click="changePage(pagination.page - 1)"
                                 :disabled="pagination.page === 1">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                         </li>
-                        <li v-for="page in visiblePages" :key="page" class="page-item"
+                        <li v-for="page in visiblePages"
+:key="page"
+class="page-item"
                             :class="{ active: page === pagination.page }">
                             <button class="page-link" @click="changePage(page)">{{ page }}</button>
                         </li>
                         <li class="page-item" :class="{ disabled: pagination.page === pagination.total_pages }">
-                            <button class="page-link" @click="changePage(pagination.page + 1)"
+                            <button class="page-link"
+@click="changePage(pagination.page + 1)"
                                 :disabled="pagination.page === pagination.total_pages">
                                 <i class="fas fa-chevron-right"></i>
                             </button>
@@ -138,124 +145,125 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
 
 export default {
-    name: 'ContestLeaderboard',
+  name: 'ContestLeaderboard',
 
-    setup() {
-        const router = useRouter()
-        const route = useRoute()
+  setup() {
+    const router = useRouter()
+    const route = useRoute()
 
-        const contest = ref(null)
-        const contestStats = ref({
-            total_submissions: 0,
-            total_reviewed: 0,
-            total_pending: 0,
-            total_marks_awarded: 0
-        })
-        const leaderboard = ref([])
-        const loading = ref(true)
-        const refreshing = ref(false)
-        const error = ref(null)
+    const contest = ref(null)
+    const contestStats = ref({
+      total_submissions: 0,
+      total_reviewed: 0,
+      total_pending: 0,
+      total_marks_awarded: 0
+    })
+    const leaderboard = ref([])
+    const loading = ref(true)
+    const refreshing = ref(false)
+    const error = ref(null)
 
-        const pagination = ref({
-            page: 1,
-            per_page: 50,
-            total_pages: 1,
-            total_results: 0
-        })
+    const pagination = ref({
+      page: 1,
+      per_page: 50,
+      total_pages: 1,
+      total_results: 0
+    })
 
-        // Alphabetically sorted computed property — updates automatically when leaderboard data changes
-        const sortedLeaderboard = computed(() =>
-            [...leaderboard.value].sort((a, b) =>
-                a.username.localeCompare(b.username, undefined, { sensitivity: 'base' })
-            )
-        )
+    // Alphabetically sorted computed property — updates automatically when leaderboard data changes
+    const sortedLeaderboard = computed(() =>
+      [...leaderboard.value].sort((a, b) =>
+        a.username.localeCompare(b.username, undefined, { sensitivity: 'base' })
+      )
+    )
 
-        const getContestId = async () => {
-            const contestName = route.params.name
-            const contestData = await api.get(`/contest/name/${contestName}`)
-            return contestData.id
-        }
+    const getContestId = async () => {
+      const contestId = route.params.contestId
+      if (contestId) return Number(contestId)
 
-        const loadLeaderboard = async (showLoading = true) => {
-            if (showLoading) loading.value = true
-            else refreshing.value = true
-            error.value = null
-
-            try {
-                const contestId = await getContestId()
-
-                const params = {
-                    page: pagination.value.page,
-                    per_page: pagination.value.per_page
-                }
-
-                const data = await api.get(`/contest/${contestId}/leaderboard`, { params })
-
-                contest.value = data.contest
-                contestStats.value = data.contest_stats
-                leaderboard.value = data.leaderboard
-                pagination.value = data.pagination
-            } catch (err) {
-                console.error('Error loading leaderboard:', err)
-                error.value = 'Failed to load leaderboard: ' + (err.message || 'Unknown error')
-            } finally {
-                loading.value = false
-                refreshing.value = false
-            }
-        }
-
-        const refreshLeaderboard = () => loadLeaderboard(false)
-
-        const changePage = (page) => {
-            if (page < 1 || page > pagination.value.total_pages) return
-            pagination.value.page = page
-            loadLeaderboard(false)
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-        }
-
-        const visiblePages = computed(() => {
-            const total = pagination.value.total_pages
-            const current = pagination.value.page
-            const delta = 2
-            const pages = []
-            for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
-                pages.push(i)
-            }
-            return pages
-        })
-
-        const getStatusLabel = (status) => {
-            const labels = { current: 'Active', upcoming: 'Upcoming', past: 'Ended', unknown: 'Unknown' }
-            return labels[status] || 'Unknown'
-        }
-
-        const getStatusBadgeClass = (status) => {
-            const classes = { current: 'bg-success', upcoming: 'bg-warning', past: 'bg-secondary', unknown: 'bg-secondary' }
-            return classes[status] || 'bg-secondary'
-        }
-
-        const goBack = () => {
-            router.push({ name: 'ContestView', params: { name: route.params.name } })
-        }
-
-        onMounted(() => loadLeaderboard())
-
-        return {
-            contest,
-            contestStats,
-            sortedLeaderboard,
-            loading,
-            refreshing,
-            error,
-            pagination,
-            visiblePages,
-            refreshLeaderboard,
-            changePage,
-            getStatusLabel,
-            getStatusBadgeClass,
-            goBack
-        }
+      throw new Error('Contest ID is required')
     }
+
+    const loadLeaderboard = async (showLoading = true) => {
+      if (showLoading) loading.value = true
+      else refreshing.value = true
+      error.value = null
+
+      try {
+        const contestId = await getContestId()
+
+        const params = {
+          page: pagination.value.page,
+          per_page: pagination.value.per_page
+        }
+
+        const data = await api.get(`/contest/${contestId}/leaderboard`, { params })
+
+        contest.value = data.contest
+        contestStats.value = data.contest_stats
+        leaderboard.value = data.leaderboard
+        pagination.value = data.pagination
+      } catch (err) {
+        console.error('Error loading leaderboard:', err)
+        error.value = 'Failed to load leaderboard: ' + (err.message || 'Unknown error')
+      } finally {
+        loading.value = false
+        refreshing.value = false
+      }
+    }
+
+    const refreshLeaderboard = () => loadLeaderboard(false)
+
+    const changePage = (page) => {
+      if (page < 1 || page > pagination.value.total_pages) return
+      pagination.value.page = page
+      loadLeaderboard(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    const visiblePages = computed(() => {
+      const total = pagination.value.total_pages
+      const current = pagination.value.page
+      const delta = 2
+      const pages = []
+      for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+        pages.push(i)
+      }
+      return pages
+    })
+
+    const getStatusLabel = (status) => {
+      const labels = { current: 'Active', upcoming: 'Upcoming', past: 'Ended', unknown: 'Unknown' }
+      return labels[status] || 'Unknown'
+    }
+
+    const getStatusBadgeClass = (status) => {
+      const classes = { current: 'bg-success', upcoming: 'bg-warning', past: 'bg-secondary', unknown: 'bg-secondary' }
+      return classes[status] || 'bg-secondary'
+    }
+
+    const goBack = () => {
+      router.push({ name: 'ContestView', params: { contestId: route.params.contestId } })
+    }
+
+    onMounted(() => loadLeaderboard())
+
+    return {
+      contest,
+      contestStats,
+      sortedLeaderboard,
+      loading,
+      refreshing,
+      error,
+      pagination,
+      visiblePages,
+      refreshLeaderboard,
+      changePage,
+      getStatusLabel,
+      getStatusBadgeClass,
+      goBack
+    }
+  }
 }
 </script>
 

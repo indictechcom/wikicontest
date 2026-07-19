@@ -1,350 +1,215 @@
-# WikiContest Toolforge Deployment Guide
+# Toolforge Deployment Guide: WikiContest
 
-This guide provides step-by-step instructions for deploying the WikiContest Flask application to Wikimedia Toolforge.
+WikiContest is deployed as a **single tool** on Wikimedia Toolforge using the Build Service.
+Flask (Gunicorn) serves both the REST API (`/api/*`) and the Vue.js static frontend from `frontend/dist/`.
 
+The Node.js buildpack builds the Vue.js app during the container image build phase (`postinstall` in root `package.json`), and the Python buildpack runs Gunicorn at runtime.
 
+**URL:** `https://wikicontest.toolforge.org`
+
+## Architecture
+
+```
+Browser
+  │
+  ▼
+┌─────────────────────────────────────────────────────┐
+│  wikicontest.toolforge.org  (single Toolforge tool) │
+│                                                     │
+│  Gunicorn (4 workers)                               │
+│  ├── Flask routes: /api/*, /oauth/*                 │
+│  └── Static files: frontend/dist/  (Vue.js SPA)     │
+│                                                     │
+│  ToolsDB: s57509__wikicontest                       │
+└─────────────────────────────────────────────────────┘
+```
+
+No separate frontend proxy, no Node.js runtime at request time, no CORS issues.
 
 ## Prerequisites
 
-Before you begin, ensure you have:
+- Wikimedia developer account with Toolforge access
+- SSH access to `login.toolforge.org`
+- OAuth consumer registered at https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
+  - Callback URL: `https://wikicontest.toolforge.org/oauth/callback`
 
-- A Toolforge account
-- SSH access to Toolforge
-- Basic knowledge of Python and Flask
-- Node.js and npm installed locally (for building the frontend)
+## Step 1: Create the Tool
 
+From the Toolforge bastion:
 
-
-## Deployment Steps
-
-### Step 1: Create Your Tool Account
-
-1. Follow the [Toolforge quickstart guide](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Quickstart) to create your tool
-2. SSH into Toolforge:
 ```bash
-   ssh <your-username>@login.toolforge.org
+# Create the tool (if it doesn't exist already)
+# This is done via https://toolsadmin.wikimedia.org/
+# Tool name: wikicontest
 ```
-3. Switch to your tool user:
+
+## Step 2: Configure Environment Variables
+
 ```bash
-   become wikicontest
+become wikicontest
+
+# Tool identity
+toolforge envvars create FLASK_ENV "production"
+
+# OAuth credentials (from Special:OAuthConsumerRegistration)
+toolforge envvars create CONSUMER_KEY "your-consumer-key"
+toolforge envvars create CONSUMER_SECRET "your-consumer-secret"
+toolforge envvars create OAUTH_USE_OOB "True"
+toolforge envvars create OAUTH_CALLBACK_PATH "/oauth/callback"
+
+# Security keys (generate with: openssl rand -hex 32)
+toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
+
+# Frontend URL (used for OAuth redirects and User-Agent headers)
+toolforge envvars create FRONTEND_URL "https://wikicontest.toolforge.org"
+
+# Database — ToolsDB credentials from replica.my.cnf
+TOOL_DB_USER=$(grep -Po '(?<=user = ).*' ~/replica.my.cnf)
+TOOL_DB_PASS=$(grep -Po '(?<=password = ).*' ~/replica.my.cnf | tr -d "'")
+toolforge envvars create TOOL_TOOLSDB_USER "$TOOL_DB_USER"
+toolforge envvars create TOOL_TOOLSDB_PASSWORD "$TOOL_DB_PASS"
+toolforge envvars create TOOL_TOOLSDB_DBNAME "wikicontest"
 ```
 
-### Step 2: Build the Vue.js Frontend
+> **Note:** `toolforge envvars create` may inject values with trailing newlines.
+> The application strips whitespace from all env vars at startup to handle this.
 
-Build the Vue.js frontend for production **on your local machine** before deploying:
+## Step 3: Build and Deploy
 
-1. **Build the frontend:**
 ```bash
-   cd frontend
-   npm install
-   npm run build
-```
-   
-   This creates a `dist/` directory containing optimized production files.
+# Build the container image (installs Node.js + Python, builds frontend)
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
 
-2. **Verify the build:**
+# Start the service
+toolforge webservice --mount none buildservice start
+```
+
+## Step 4: Initialize the Database
+
 ```bash
-   ls -la dist/
+# Run Alembic migrations to create the database schema
+cd backend
+alembic upgrade head
 ```
-   
-   You should see `index.html` and an `assets/` directory with JavaScript and CSS files.
 
-### Step 3: Prepare the Application Structure
+## Step 5: Verify
 
-1. **Run the deployment script (recommended):**
 ```bash
-   cd backend
-   chmod +x deploy_to_toolforge.sh
-   ./deploy_to_toolforge.sh
+# Check service status
+toolforge webservice status
+
+# View logs
+toolforge webservice logs
+
+# Test from the bastion
+curl -s https://wikicontest.toolforge.org/api/health
 ```
 
-2. **Or manually create the directory structure:**
+Expected response:
+```json
+{"message":"WikiContest API is running","status":"healthy","version":"1.0.0"}
+```
+
+## How It Works
+
+The `Procfile` runs Gunicorn directly:
+
+```
+web: cd backend && exec gunicorn --bind=0.0.0.0:${PORT:-8000} --workers=4 --forwarded-allow-ips=* --access-logfile - --error-logfile - "wsgi:application"
+```
+
+The Node.js buildpack runs during the **build phase** only (via `postinstall` in root `package.json`):
+1. Installs frontend dependencies (`cd frontend && npm install`)
+2. Builds the Vue.js SPA (`npm run build` → `frontend/dist/`)
+3. The built files are baked into the container image
+
+At **runtime**, Gunicorn starts Flask which:
+- Serves API endpoints via blueprints (`/api/user/*`, `/api/contest/*`, `/api/submission/*`)
+- Serves the Vue.js SPA from `frontend/dist/` for all other routes
+- Handles Vue Router history mode by returning `index.html` for unknown paths
+
+## Rebuilding After Code Changes
+
 ```bash
-   mkdir -p $HOME/www/python/src
-   mkdir -p $HOME/www/python/src/models
-   mkdir -p $HOME/www/python/src/routes
-   mkdir -p $HOME/www/python/src/middleware
+become wikicontest
+
+# Pull latest code and rebuild
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
+
+# Restart the service to use the new image
+toolforge webservice stop
+toolforge webservice --mount none buildservice start
 ```
 
-**Note:** Flask will automatically serve the Vue.js frontend from the `frontend/dist/` directory.
+## Environment Variables Reference
 
-### Step 4: Set Up the Python Virtual Environment
-
-1. **Start a Kubernetes shell:**
-```bash
-   webservice python3.13 shell
-```
-
-2. **Create and activate the virtual environment:**
-```bash
-   python3 -m venv $HOME/www/python/venv
-   source $HOME/www/python/venv/bin/activate
-   pip install --upgrade pip
-```
-
-3. **Install Python dependencies:**
-```bash
-   pip install -r $HOME/www/python/src/requirements.txt
-```
-
-4. **Exit the Kubernetes shell:**
-```bash
-   exit
-```
-
-### Step 5: Configure OAuth
-
-1. **Register an OAuth consumer:**
-   - Navigate to: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
-   - **Callback URL:** `https://wikicontest.toolforge.org/oauth/callback`
-   - **Contact email:** Your Wikimedia account email
-   - **Grant settings:** Request authorization for specific permissions (Basic rights)
-   - Save your **Consumer Key** and **Consumer Secret**
-
-2. **Generate security keys:**
-```bash
-   python3 -c "import secrets; print('SECRET_KEY = \"' + secrets.token_urlsafe(48) + '\"')"
-   python3 -c "import secrets; print('JWT_SECRET_KEY = \"' + secrets.token_urlsafe(48) + '\"')"
-```
-
-3. **Create the configuration file:**
-```bash
-   nano $HOME/www/python/src/config.toml
-```
-
-4. **Add your configuration:**
-```toml
-   GREETING = "Welcome to WikiContest on Toolforge!"
-   
-   # Security (use generated keys from step 2)
-   SECRET_KEY = "your-generated-secret-key"
-   JWT_SECRET_KEY = "your-generated-jwt-secret-key"
-   
-   # Database
-   SQLALCHEMY_DATABASE_URI = "sqlite:///wikicontest.db"
-   SQLALCHEMY_TRACK_MODIFICATIONS = false
-   
-   # JWT Configuration
-   JWT_ACCESS_TOKEN_EXPIRES = 86400
-   
-   # Debug mode
-   DEBUG = false
-   
-   # OAuth Configuration
-   OAUTH_MWURI = "https://meta.wikimedia.org/w/index.php"
-   CONSUMER_KEY = "your-consumer-key-from-oauth-registration"
-   CONSUMER_SECRET = "your-consumer-secret-from-oauth-registration"
-   
-   # OAuth Callback Path - REQUIRED for Toolforge
-   OAUTH_CALLBACK_PATH = "/oauth/callback"
-   
-   # OAuth Callback Type
-   OAUTH_USE_OOB = false
-```
-
-### Step 6: Secure Your Configuration
-
-Set proper file permissions to protect sensitive data:
-```bash
-# Make config file readable only by the tool user
-chmod u=rw,go= $HOME/www/python/src/config.toml
-```
-
-### Step 7: Start the Webservice
-```bash
-webservice python3.13 start
-```
-
-### Step 8: Verify Your Deployment
-
-Test your deployment by accessing these URLs:
-
-1. **Main application:** https://wikicontest.toolforge.org/
-2. **API health check:** https://wikicontest.toolforge.org/api/health
-3. **OAuth login:** https://wikicontest.toolforge.org/login
-
-
-
-## File Structure on Toolforge
-```
-$HOME/
-├── uwsgi.log
-├── error.log
-└── www/
-    └── python/
-        ├── src/
-        │   ├── app.py                 # Main Flask application
-        │   ├── config.toml            # Configuration file (secure)
-        │   ├── requirements.txt       # Python dependencies
-        │   ├── models/
-        │   │   ├── user.py            # User model
-        │   │   ├── contest.py         # Contest model
-        │   │   └── submission.py      # Submission model
-        │   ├── routes/
-        │   │   ├── user_routes.py     # User API routes
-        │   │   ├── contest_routes.py  # Contest API routes
-        │   │   └── submission_routes.py # Submission API routes
-        │   └── middleware/
-        │       └── auth.py            # Authentication middleware
-        └── venv/                      # Python virtual environment
-```
-
-**Note:** The Vue.js frontend is built locally and deployed as static files. Flask automatically serves the production build from the `frontend/dist/` directory.
-
-
-
-## Frontend Technology Stack
-
-The WikiContest frontend uses modern web technologies:
-
-- **Vue.js 3** – Progressive JavaScript framework
-- **Vue Router** – Client-side routing
-- **Vite** – Modern build tool
-- **Axios** – HTTP client for API requests
-- **Bootstrap 5** – CSS framework
-
-### Frontend Deployment Approach
-
-The frontend is built locally using `npm run build`, and the production files are served by Flask from the `frontend/dist/` directory. This approach provides:
-
-- Optimized production builds with minification
-- Seamless integration with Toolforge's Python webservice
-- Compatibility with MediaWiki/Toolforge infrastructure
-- Simple updates and deployments
-
-
+| Variable | Required | Description |
+|---|---|---|
+| `FLASK_ENV` | Yes | Set to `production` |
+| `CONSUMER_KEY` | Yes | OAuth consumer key from Meta-Wiki |
+| `CONSUMER_SECRET` | Yes | OAuth consumer secret |
+| `OAUTH_USE_OOB` | Yes | Set to `True` if consumer uses oob callback |
+| `OAUTH_CALLBACK_PATH` | Yes | Set to `/oauth/callback` |
+| `SECRET_KEY` | Yes | Flask secret key (random hex) |
+| `JWT_SECRET_KEY` | Yes | JWT signing key (random hex) |
+| `FRONTEND_URL` | Yes | `https://wikicontest.toolforge.org` |
+| `TOOL_TOOLSDB_USER` | Yes | ToolsDB username from `replica.my.cnf` |
+| `TOOL_TOOLSDB_PASSWORD` | Yes | ToolsDB password from `replica.my.cnf` |
+| `TOOL_TOOLSDB_DBNAME` | Yes | Database name (`wikicontest`) |
+| `DATABASE_URL` | No | Full MySQL URI (auto-constructed from ToolsDB vars if unset) |
 
 ## Troubleshooting
 
-### Common Issues
+### OAuth redirect goes to localhost
+The `FRONTEND_URL` env var is missing or set to a development URL. Set it to `https://wikicontest.toolforge.org`.
 
-#### Webservice Won't Start
-
-Check the log files for errors:
+### "oauth_callback must be set to oob"
+`OAUTH_USE_OOB` is not evaluating to `True`. This is usually caused by a trailing newline in the env var value. The app strips whitespace at startup, but if you set the value before the fix was deployed, re-set it:
 ```bash
-tail -n 50 $HOME/uwsgi.log
-tail -n 50 $HOME/error.log
+toolforge envvars delete OAUTH_USE_OOB
+toolforge envvars create OAUTH_USE_OOB "True"
 ```
 
-#### Import Errors
-
-Verify your virtual environment is properly set up:
+### Frontend shows blank page
+The Vue.js build may have failed during image creation. Check build logs:
 ```bash
-webservice python3.13 shell
-source $HOME/www/python/venv/bin/activate
-pip list
+toolforge build logs
 ```
 
-#### OAuth Errors
+### Database connection errors
+Verify ToolsDB credentials match `~/replica.my.cnf` on the tool account.
 
-If OAuth authentication fails:
+## Pre-Deployment Checklist
 
-- Verify `CONSUMER_KEY` and `CONSUMER_SECRET` in `config.toml`
-- Ensure the callback URL matches exactly: `https://wikicontest.toolforge.org/oauth/callback`
-- Confirm your OAuth consumer is approved on Meta-Wiki
-- Verify `OAUTH_CALLBACK_PATH = "/oauth/callback"` is set in `config.toml`
+- [ ] All functions have proper documentation
+- [ ] Error handling is comprehensive
+- [ ] Security measures are in place (input validation, authentication)
+- [ ] Database queries are optimized (no N+1 queries)
+- [ ] Frontend validation is complete
+- [ ] Unit tests pass successfully
+- [ ] Integration tests pass successfully
+- [ ] No sensitive data in code (secrets in environment variables)
 
-#### Database Errors
+## Production Configuration
 
-Check if the database file exists:
-```bash
-ls -la $HOME/www/python/src/
+Set production environment variables in `.env`:
+```env
+FLASK_ENV=production
+FLASK_DEBUG=False
+DATABASE_URL=mysql+pymysql://user:pass@host:port/db
+SECRET_KEY=<generate-secure-key>
+JWT_SECRET_KEY=<generate-secure-key>
+JWT_COOKIE_SECURE=True
+JWT_COOKIE_SAMESITE=None
 ```
 
-### Useful Commands
-```bash
-# Restart the webservice
-webservice restart
+## Post-Deployment Verification
 
-# Stop the webservice
-webservice stop
-
-# Check webservice status
-webservice status
-
-# View logs in real-time
-tail -f $HOME/uwsgi.log
-
-# Test database connection
-webservice python3.13 shell
-python3 -c "from app import app, db; app.app_context().push(); print('Database OK')"
-```
-
-
-
-## Security Considerations
-
-Follow these security best practices:
-
-1. **Never commit secrets** – Keep `config.toml` out of version control
-2. **File permissions** – Ensure `config.toml` is only readable by the tool user (`chmod u=rw,go=`)
-3. **OAuth secrets** – Keep consumer key and secret secure
-4. **Database security** – Store SQLite file in a secure location with proper permissions
-
-
-
-## Production Optimizations
-
-Consider these optimizations for production use:
-
-1. **Enable caching** – Use Redis for session storage
-2. **Database optimization** – Add proper indexing to improve query performance
-3. **Static files** – Consider using a CDN for better frontend performance
-4. **Monitoring** – Set up proper logging and monitoring for your application
-
-
-
-## Updates and Maintenance
-
-### Updating Code
-```bash
-# Copy new files to the server
-cp new_file.py $HOME/www/python/src/
-
-# Restart the webservice
-webservice restart
-```
-
-### Updating Dependencies
-```bash
-# Enter the Kubernetes shell
-webservice python3.13 shell
-
-# Activate virtual environment
-source $HOME/www/python/venv/bin/activate
-
-# Update dependencies
-pip install -r $HOME/www/python/src/requirements.txt
-
-# Exit and restart
-exit
-webservice restart
-```
-
-
-
-## Additional Resources
-
-- [Toolforge Documentation](https://wikitech.wikimedia.org/wiki/Help:Toolforge)
-- [Toolforge Python Guide](https://wikitech.wikimedia.org/wiki/Help:Toolforge/Python)
-- [Flask Documentation](https://flask.palletsprojects.com/)
-- [Vue.js Documentation](https://vuejs.org/)
-- [Vite Documentation](https://vitejs.dev/)
-- [OAuth Documentation](https://www.mediawiki.org/wiki/OAuth)
-
-
-
-## Getting Help
-
-If you encounter issues:
-
-- **Toolforge IRC:** #wikimedia-cloud on Libera.Chat
-- **Toolforge Mailing List:** cloud@lists.wikimedia.org
-- **Phabricator:** #Cloud-Services project
-
-
-
-## Important Notes
-
-- This deployment uses SQLite for simplicity. For production use with many concurrent users, consider migrating to MySQL or PostgreSQL.
-- Remember to set `OAUTH_CALLBACK_PATH = "/oauth/callback"` in your `config.toml` – this is required for OAuth to work correctly on Toolforge.
+- [ ] Application loads successfully
+- [ ] Health check endpoint responds
+- [ ] User authentication works
+- [ ] Database connections are stable
+- [ ] API endpoints return expected responses
+- [ ] Error logging is functional
+- [ ] SSL/HTTPS is working correctly

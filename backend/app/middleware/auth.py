@@ -11,6 +11,7 @@ from flask_jwt_extended import (
     verify_jwt_in_request,
     get_jwt
 )
+from app.database import db
 from app.models.user import User
 
 
@@ -34,7 +35,7 @@ def get_current_user():
 
         # Convert string user_id back to integer for database query
         # JWT stores identity as string, but database expects integer
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
     except Exception:
         # Return None if token is invalid, expired, or missing
         return None
@@ -95,9 +96,17 @@ def require_role(roles):
             else:
                 allowed_roles = roles
 
-            # Check if user has required role or is admin (admins bypass all role checks)
-            if user.role not in allowed_roles and not user.is_admin():
-                return jsonify({'error': 'Insufficient permissions'}), 403
+            # Check if user has required role
+            # Superadmin role is strictly enforced - only superadmins can access superadmin-only endpoints
+            # Admins can bypass other role checks (like 'admin' role) but NOT superadmin
+            if user.role not in allowed_roles:
+                # Special case: if 'superadmin' is required, only superadmins can access
+                # Admins do NOT bypass superadmin requirement
+                if 'superadmin' in allowed_roles:
+                    return jsonify({'error': 'Insufficient permissions'}), 403
+                # For other roles (like 'admin'), admins can bypass
+                if not user.is_admin():
+                    return jsonify({'error': 'Insufficient permissions'}), 403
 
             # Attach user to request context
             request.current_user = user
@@ -108,63 +117,8 @@ def require_role(roles):
 
 
 # ------------------------------------------------------------------------
-# CONTEST-SPECIFIC PERMISSION DECORATORS
+# SUBMISSION-SPECIFIC PERMISSION DECORATORS
 # ------------------------------------------------------------------------
-
-def require_contest_permission(permission_type):
-    """
-    Decorator to require specific contest permissions
-
-    Args:
-        permission_type: Type of permission ('creator', 'jury', 'participant')
-
-    Returns:
-        Decorator function
-    """
-    def decorator(f):
-        @wraps(f)
-        @jwt_required()
-        def decorated_function(*args, **kwargs):
-            # Authenticate user
-            user = get_current_user()
-            if not user:
-                return jsonify({'error': 'Invalid user'}), 401
-
-            # Extract contest_id from URL route parameters
-            contest_id = kwargs.get('id')
-            if not contest_id:
-                return jsonify({'error': 'Contest ID required'}), 400
-
-            # Fetch contest from database
-            from app.models.contest import Contest
-            contest = Contest.query.get(contest_id)
-            if not contest:
-                return jsonify({'error': 'Contest not found'}), 404
-
-            # Check permissions based on requested permission type
-            has_permission = False
-
-            if permission_type == 'creator':
-                # Only contest creator or admin can access
-                has_permission = user.is_contest_creator(contest) or user.is_admin()
-            elif permission_type == 'jury':
-                # Only jury members or admin can access
-                has_permission = user.is_jury_member(contest) or user.is_admin()
-            elif permission_type == 'participant':
-                # Any authenticated user can participate
-                has_permission = True
-
-            if not has_permission:
-                return jsonify({'error': 'Insufficient permissions for this contest'}), 403
-
-            # Attach both user and contest to request context for route handlers
-            request.current_user = user
-            request.current_contest = contest
-            return f(*args, **kwargs)
-
-        return decorated_function
-    return decorator
-
 
 def require_submission_permission(permission_type):
     """
@@ -186,13 +140,13 @@ def require_submission_permission(permission_type):
                 return jsonify({'error': 'Invalid user'}), 401
 
             # Extract submission_id from URL route parameters
-            submission_id = kwargs.get('id')
+            submission_id = kwargs.get('submission_id')
             if not submission_id:
                 return jsonify({'error': 'Submission ID required'}), 400
 
             # Fetch submission from database
             from app.models.submission import Submission
-            submission = Submission.query.get(submission_id)
+            submission = db.session.get(Submission, submission_id)
             if not submission:
                 return jsonify({'error': 'Submission not found'}), 404
 

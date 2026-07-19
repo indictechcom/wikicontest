@@ -52,6 +52,20 @@ class Config:
     # For production: DATABASE_URL must be set in environment
     # CRITICAL: No default password - use SQLite for development or require DATABASE_URL
     database_url = os.getenv('DATABASE_URL')
+
+    # Detect Toolforge ToolsDB environment
+    toolforge_db_user = os.getenv('TOOL_TOOLSDB_USER')
+    toolforge_db_password = os.getenv('TOOL_TOOLSDB_PASSWORD')
+    toolforge_db_name = os.getenv('TOOL_TOOLSDB_DBNAME', 'wikicontest')
+
+    # Auto-configure for Toolforge if environment variables are present
+    if toolforge_db_user and toolforge_db_password and not database_url:
+        # Construct ToolsDB connection string
+        # Format: mysql+pymysql://sXXXXX:password@tools.db.svc.wikimedia.cloud:3306/sXXXXX__dbname
+        tool_db_name = f"{toolforge_db_user}__{toolforge_db_name}"
+        database_url = f"mysql+pymysql://{toolforge_db_user}:{toolforge_db_password}@tools.db.svc.wikimedia.cloud:3306/{tool_db_name}"
+        print(f"Detected Toolforge environment. Using ToolsDB: {tool_db_name}")
+
     if not database_url:
         # Development fallback: use SQLite (no password, easier setup)
         database_url = 'sqlite:///wikicontest_dev.db'
@@ -133,12 +147,7 @@ class DevelopmentConfig(Config):
     # Simplifies local testing with various tools and ports
     CORS_ORIGINS = ['*']
 
-    # Development database (can be SQLite for easier setup)
-    # SQLite eliminates need for separate database server during development
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'sqlite:///wikicontest_dev.db'
-    )
+    # Database URI is inherited from Config, handling Toolforge detection natively
 
 
 class TestingConfig(Config):
@@ -160,6 +169,9 @@ class TestingConfig(Config):
     # Disable CSRF protection for easier testing
     # Simplifies test setup without compromising production security
     JWT_COOKIE_CSRF_PROTECT = False
+
+    # Disable rate limiting in tests to avoid 429 errors
+    RATELIMIT_ENABLED = False
 
     # Minimal CORS for testing
     # Only allow necessary test client connections
@@ -183,9 +195,7 @@ class ProductionConfig(Config):
     JWT_COOKIE_SECURE = True  # Require HTTPS
     JWT_COOKIE_CSRF_PROTECT = True
 
-    # Production database (should be set via environment variable)
-    # No default to enforce explicit production database configuration
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    # Production database URI is inherited from Config
 
     # Production CORS origins (should be set via environment variable)
     # Parse comma-separated list from environment for flexibility

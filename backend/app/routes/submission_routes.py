@@ -7,7 +7,6 @@ import json
 from urllib.parse import urlparse
 from datetime import datetime
 
-import requests
 from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy.orm import joinedload
 
@@ -18,6 +17,7 @@ from app.middleware.auth import (
     require_submission_permission,
     validate_json_data,
 )
+from app.utils.url_validation import validate_wiki_url
 from app.models.contest import Contest
 from app.models.submission import Submission
 from app.utils import (
@@ -25,10 +25,9 @@ from app.utils import (
     extract_page_title_from_url,
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
-    get_mediawiki_headers,
     get_detailed_reference_counts,
-    MEDIAWIKI_API_TIMEOUT,
 )
+from app.services.mediawiki import MediaWikiClient
 
 # Create blueprint
 submission_bp = Blueprint("submission", __name__)
@@ -330,15 +329,29 @@ def refresh_metadata(contest_id):
             .all()
         )
     else:
-        # Non-automated: fetch ALL submissions at once (original behaviour)
-        offset = 0
+        try:
+            offset = max(0, int(request.args.get("offset", 0)))
+        except (ValueError, TypeError):
+            offset = 0
+
+        try:
+            batch_size = min(
+                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+                _MAX_BATCH_SIZE,
+            )
+        except (ValueError, TypeError):
+            batch_size = _DEFAULT_BATCH_SIZE
+
+        total_count = Submission.query.filter_by(contest_id=contest_id).count()
+
         submissions = (
             Submission.query
             .filter_by(contest_id=contest_id)
             .order_by(Submission.id)
+            .offset(offset)
+            .limit(batch_size)
             .all()
         )
-        total_count = len(submissions)
 
     if not submissions:
         return (
@@ -370,22 +383,19 @@ def refresh_metadata(contest_id):
                 return None
 
             # Parse the article URL to extract base URL
-            url_obj = urlparse(article_link)
-            base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+            base_url, error = validate_wiki_url(article_link)
+            if error:
+                return error
 
             # Build API request - get 2 revisions (newest and oldest)
             api_url = f"{base_url}/w/api.php"
             # Build API parameters using shared utility function
             api_params = build_mediawiki_revisions_api_params(page_title)
-            # Get headers using shared utility function
-            headers = get_mediawiki_headers()
 
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-
-            if response.status_code != 200:
+            client = MediaWikiClient()
+            data = client.get(api_url, params=api_params)
+            if data is None:
                 return None
-
-            data = response.json()
 
             if "error" in data:
                 return None
@@ -709,10 +719,7 @@ def delete_submission(submission_id):
     user = request.current_user
 
     # Load submission with related data for permission check and score update
-    submission = Submission.query.options(
-        joinedload(Submission.submitter),
-        joinedload(Submission.contest),
-    ).get(submission_id)
+    submission = db.session.get(Submission, submission_id)
 
     if not submission:
         return jsonify({"error": "Submission not found"}), 404
@@ -837,7 +844,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (multi-parameter): {str(review_err)}")
+                current_app.logger.error(f"Review error (multi-parameter): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
@@ -854,7 +861,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (rejected, multi): {str(review_err)}")
+                current_app.logger.error(f"Review error (rejected, multi): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
     # --- Simple Scoring Mode ---
@@ -891,7 +898,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
             )
         except Exception as review_err:  # pylint: disable=broad-exception-caught
             db.session.rollback()
-            print(f"Review error (simple): {str(review_err)}")
+            current_app.logger.error(f"Review error (simple): {str(review_err)}")
             return jsonify({"error": "Internal server error"}), 500
 
     return (
