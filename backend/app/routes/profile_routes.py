@@ -1,5 +1,5 @@
 """
-Profile & dashboard routes for WikiContest Application.
+Profile & dashboard routes for WikiEval Application.
 
 Handles user dashboard data, profile retrieval/update, user search, and
 username lookup. Extracted from the original monolithic user_routes.py.

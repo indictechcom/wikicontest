@@ -1,5 +1,5 @@
 """
-Trusted member management routes for WikiContest Application.
+Trusted member management routes for WikiEval Application.
 
 Handles creator-account (trusted member) requests, listing, and
 superadmin approval/rejection/add/remove. Extracted from the original
