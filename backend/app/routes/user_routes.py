@@ -13,6 +13,7 @@ from app.database import db
 from app.middleware.auth import require_auth, require_role, handle_errors, validate_json_data
 from app.models.user import User
 from app.models.oauth_token_cache import OAuthTokenCache
+from app import limiter
 
 # Create blueprint
 user_bp = Blueprint('user', __name__)
@@ -55,6 +56,7 @@ def validate_username(username):
 # ------------------------------------------------------------------------
 
 @user_bp.route('/register', methods=['POST'])
+@limiter.limit("5/minute")
 @handle_errors
 @validate_json_data(['username', 'email', 'password'])
 def register():
@@ -124,6 +126,7 @@ def register():
 
 
 @user_bp.route('/login', methods=['POST'])
+@limiter.limit("10/minute")
 @handle_errors
 def login():
     """
@@ -282,13 +285,17 @@ def get_dashboard():
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
     # Organized contests (created by user OR listed as additional organizer)
-    all_contests = Contest.query.order_by(Contest.created_at.desc()).all()
+    organized_candidates = Contest.query.filter(
+        db.or_(
+            Contest.created_by == user.username,
+            Contest.organizers.ilike(f'%{user.username}%')
+        )
+    ).order_by(Contest.created_at.desc()).all()
     organized_contests_data = []
-    for contest in all_contests:
-        if user.is_contest_organizer(contest):
-            contest_data = contest.to_dict()
-            contest_data['submission_count'] = contest.get_submission_count()
-            organized_contests_data.append(contest_data)
+    for contest in organized_candidates:
+        contest_data = contest.to_dict()
+        contest_data['submission_count'] = contest.get_submission_count()
+        organized_contests_data.append(contest_data)
 
     # Jury contests
     jury_contests = Contest.query.filter(
@@ -352,12 +359,12 @@ def get_dashboard_access():
     from app.models.contest import Contest
 
     # Check if user is organizer of any contest
-    all_contests = Contest.query.all()
-    is_organizer = any(
-        user.is_contest_organizer(contest)
-        or (contest.created_by or '').strip().lower() == user.username.strip().lower()
-        for contest in all_contests
-    )
+    is_organizer = Contest.query.filter(
+        db.or_(
+            Contest.created_by == user.username,
+            Contest.organizers.ilike(f'%{user.username}%')
+        )
+    ).first() is not None
 
     # Check if user is jury of any contest
     is_jury = Contest.query.filter(
@@ -460,6 +467,7 @@ def update_profile():
 # ------------------------------------------------------------------------
 
 @user_bp.route('/oauth/login', methods=['GET'])
+@limiter.limit("10/minute")
 @handle_errors
 def oauth_login():
     """
@@ -649,13 +657,18 @@ def oauth_callback():
             request_secret = cached_secret
             current_app.logger.info('Retrieved OAuth token from DB cache (session cookie failed)')
 
-    # Log session data for debugging
+    # Log session data for debugging (tokens masked to avoid log exposure)
+    def _mask(value):
+        if not value:
+            return value
+        return f"{value[:4]}...{value[-4:]}" if len(value) > 8 else "***"
+
     current_app.logger.info(
-        f'OAuth callback received - oauth_token: {oauth_token}, '
-        f'oauth_verifier: {oauth_verifier}'
+        f'OAuth callback received - oauth_token: {_mask(oauth_token)}, '
+        f'oauth_verifier: {_mask(oauth_verifier)}'
     )
     current_app.logger.info(
-        f'Session data - request_token_key: {request_token_key}, '
+        f'Session data - request_token_key: {_mask(request_token_key)}, '
         f'request_secret: {bool(request_secret)}'
     )
     current_app.logger.info(f'Session keys: {list(session.keys())}')
@@ -690,9 +703,13 @@ def oauth_callback():
         # request.query_string is already bytes, which is what we need
         response_qs = request.query_string
 
-        # Log parameters before calling complete
-        current_app.logger.info(f'Calling mwoauth.complete with query string: {response_qs.decode("utf-8")}')
-        current_app.logger.info(f'oauth_verifier: {oauth_verifier}, oauth_token: {oauth_token}')
+        # Log parameters before calling complete (query string masked to avoid token exposure)
+        current_app.logger.info(
+            f'Calling mwoauth.complete with query string length: {len(response_qs)} bytes'
+        )
+        current_app.logger.info(
+            f'oauth_verifier: {_mask(oauth_verifier)}, oauth_token: {_mask(oauth_token)}'
+        )
 
         access_token = mwoauth.complete(
             mw_uri,
@@ -791,6 +808,7 @@ def oauth_callback():
 # ------------------------------------------------------------------------
 
 @user_bp.route('/search', methods=['GET'])
+@limiter.limit("30/minute")
 @require_auth
 @handle_errors
 def search_users():
@@ -811,9 +829,11 @@ def search_users():
     if not query or len(query) < 2:
         return jsonify({'users': []}), 200
 
-    # Search users whose username starts with or contains the query
+    # Search users whose username starts with the query (prefix match).
+    # Escape SQL LIKE wildcards to prevent injection via % or _ characters.
+    escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     users = User.query.filter(
-        User.username.ilike(f'%{query}%')
+        User.username.ilike(f'{escaped}%', escape='\\')
     ).limit(limit).all()
 
     return jsonify({
@@ -854,6 +874,7 @@ def get_user_username(user_id):
 # ------------------------------------------------------------------------
 
 @user_bp.route('/trusted-members/request', methods=['POST'])
+@limiter.limit("3/day")
 @require_auth
 @handle_errors
 def request_trusted_member():
