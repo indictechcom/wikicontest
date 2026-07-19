@@ -1,4 +1,4 @@
-# WikiContest Platform
+# WikiEval Platform
 
 A comprehensive web platform for hosting and managing collaborative Wikipedia article competitions. Built with Flask (Python) backend and Vue.js 3 frontend.
 
@@ -43,13 +43,13 @@ Before you begin, ensure you have the following installed:
 
 ## Quick Start
 
-Follow these steps to get the WikiContest platform running locally:
+Follow these steps to get the WikiEval platform running locally:
 
 ### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
-cd wikicontest/backend
+cd WikiEval/backend
 ```
 
 ### 2. Create Virtual Environment
@@ -79,14 +79,14 @@ pip install -r requirements.txt
 mysql -u root -p
 
 # Create database
-CREATE DATABASE wikicontest;
+CREATE DATABASE WikiEval;
 ```
 
 **Option B: SQLite (Quick Testing)**
 
 Skip MySQL setup and use SQLite by editing `.env` (step 5) to use:
 ```env
-DATABASE_URL=sqlite:///wikicontest.db
+DATABASE_URL=sqlite:///WikiEval.db
 ```
 
 ### 5. Configure Environment
@@ -101,7 +101,7 @@ cp .env.example .env
 
 **Example `.env` configuration:**
 ```env
-DATABASE_URL=mysql+pymysql://root:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://root:password@localhost/WikiEval
 SECRET_KEY=your-secret-key-here
 JWT_SECRET_KEY=your-jwt-secret-here
 ```
@@ -164,7 +164,7 @@ python main.py
 - **Development Mode:** `http://localhost:5173`
 - **Production Build:** `http://localhost:5000`
 
-You should see the WikiContest login page. Register a new account to get started!
+You should see the WikiEval login page. Register a new account to get started!
 
 
 
@@ -177,7 +177,7 @@ The `.env.example` file contains all available configuration options. Copy it to
 
 ```env
 # Database Configuration
-DATABASE_URL=mysql+pymysql://username:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://username:password@localhost/WikiEval
 
 # Security Keys (CHANGE IN PRODUCTION!)
 SECRET_KEY=your-secret-key-here
@@ -315,10 +315,10 @@ Tests are also run automatically via GitHub Actions on every push and pull reque
 
 ## Production Deployment (Toolforge)
 
-WikiContest is deployed on [Wikimedia Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge) as a single tool.
+WikiEval is deployed on [Wikimedia Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge) as a single tool.
 Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separate Node.js proxy needed.
 
-**Live URL:** https://wikicontest.toolforge.org
+**Live URL:** https://WikiEval.toolforge.org
 
 ### Quick Deploy
 
@@ -327,10 +327,10 @@ Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separ
 ssh login.toolforge.org
 
 # Become the tool account
-become wikicontest
+become WikiEval
 
 # Build from the ft/toolforge branch
-toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
+toolforge build start https://github.com/Agamya-Samuel/WikiEval.git --ref ft/toolforge
 
 # Start the service
 toolforge webservice --mount none buildservice start
@@ -348,10 +348,10 @@ toolforge envvars create OAUTH_USE_OOB "True"
 toolforge envvars create OAUTH_CALLBACK_PATH "/oauth/callback"
 toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
 toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
-toolforge envvars create FRONTEND_URL "https://wikicontest.toolforge.org"
+toolforge envvars create FRONTEND_URL "https://WikiEval.toolforge.org"
 toolforge envvars create TOOL_TOOLSDB_USER "..."
 toolforge envvars create TOOL_TOOLSDB_PASSWORD "..."
-toolforge envvars create TOOL_TOOLSDB_DBNAME "wikicontest"
+toolforge envvars create TOOL_TOOLSDB_DBNAME "WikiEval"
 ```
 
 ### Full Guide
@@ -383,7 +383,7 @@ Flask will serve the API at `/api/*` and the Vue.js SPA from `frontend/dist/` fo
 ## Project Structure
 
 ```
-wikicontest/
+WikiEval/
 ├── backend/                    # Flask backend application
 │   ├── main.py                # Application entry point
 │   ├── app/                   # Main application package
@@ -472,7 +472,7 @@ npm run preview
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### How to Contribute
 
@@ -515,8 +515,8 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 
 
-**WikiContest Platform** - Empowering collaborative Wikipedia article competitions! 
+**WikiEval Platform** - Empowering collaborative Wikipedia article competitions! 

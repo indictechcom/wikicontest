@@ -1,6 +1,6 @@
-# WikiContest Frontend - Vue.js Application
+# WikiEval Frontend - Vue.js Application
 
-A modern, responsive Vue.js 3 frontend for the WikiContest platform, providing an intuitive user interface for managing Wikipedia article contests, submissions, and user accounts.
+A modern, responsive Vue.js 3 frontend for the WikiEval platform, providing an intuitive user interface for managing Wikipedia article contests, submissions, and user accounts.
 
 ## Table of Contents
 
@@ -24,7 +24,7 @@ A modern, responsive Vue.js 3 frontend for the WikiContest platform, providing a
 
 ## Overview
 
-The WikiContest frontend is a single-page application (SPA) built with Vue.js 3 that provides a complete user interface for the WikiContest platform. It features responsive design, real-time updates, and seamless integration with the Flask backend API.
+The WikiEval frontend is a single-page application (SPA) built with Vue.js 3 that provides a complete user interface for the WikiEval platform. It features responsive design, real-time updates, and seamless integration with the Flask backend API.
 
 
 
@@ -587,7 +587,7 @@ Add state management in `src/store/index.js` if your feature requires shared sta
 
 ## License
 
-Part of the WikiContest platform project.
+Part of the WikiEval platform project.
 
 
 
