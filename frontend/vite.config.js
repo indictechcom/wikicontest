@@ -22,10 +22,14 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Organize output files
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'axios-vendor': ['axios']
+        manualChunks: (id) => {
+        if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+          return 'vue-vendor'
         }
+        if (id.includes('node_modules/axios')) {
+          return 'axios-vendor'
+        }
+      },
       }
     }
   },
