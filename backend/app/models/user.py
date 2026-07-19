@@ -291,7 +291,8 @@ class User(BaseModel):
         # Get organizers list from contest
         organizers = contest.get_organizers()
         if not organizers:
-            return False
+            # Fallback: creator is always an organizer even if organizers field is empty
+            return self.username.strip().lower() == (contest.created_by or '').strip().lower()
 
         # Normalize usernames for case-insensitive comparison
         username_lower = self.username.strip().lower()

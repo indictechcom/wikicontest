@@ -281,13 +281,14 @@ def get_dashboard():
             }
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
-    # Created contests
-    created_contests = Contest.query.filter_by(created_by=user.username).all()
-    created_contests_data = []
-    for contest in created_contests:
-        contest_data = contest.to_dict()
-        contest_data['submission_count'] = contest.get_submission_count()
-        created_contests_data.append(contest_data)
+    # Organized contests (created by user OR listed as additional organizer)
+    all_contests = Contest.query.order_by(Contest.created_at.desc()).all()
+    organized_contests_data = []
+    for contest in all_contests:
+        if user.is_contest_organizer(contest):
+            contest_data = contest.to_dict()
+            contest_data['submission_count'] = contest.get_submission_count()
+            organized_contests_data.append(contest_data)
 
     # Jury contests
     jury_contests = Contest.query.filter(
@@ -330,10 +331,48 @@ def get_dashboard():
             for row in contest_scores
         ],
         'submissions_by_contest': list(submissions_by_contest.values()),
-        'created_contests': created_contests_data,
+        'organized_contests': organized_contests_data,
         'jury_contests': jury_contests_data,
         'participated_contests': participated_contests_data  # NEW
     }), 200
+
+
+@user_bp.route('/dashboard/access', methods=['GET'])
+@require_auth
+@handle_errors
+def get_dashboard_access():
+    """
+    Get which dashboards the current user can access.
+
+    Returns:
+        JSON response with boolean flags for each dashboard type
+    """
+    user = request.current_user
+
+    from app.models.contest import Contest
+
+    # Check if user is organizer of any contest
+    all_contests = Contest.query.all()
+    is_organizer = any(
+        user.is_contest_organizer(contest)
+        or (contest.created_by or '').strip().lower() == user.username.strip().lower()
+        for contest in all_contests
+    )
+
+    # Check if user is jury of any contest
+    is_jury = Contest.query.filter(
+        Contest.jury_members.like(f'%{user.username}%')
+    ).first() is not None
+
+    # Trusted members and superadmins always have access to the organizer dashboard
+    can_access_organizer = is_organizer or user.is_trusted_member or user.is_superadmin()
+
+    return jsonify({
+        'can_access_participant': True,  # All authenticated users
+        'can_access_organizer': can_access_organizer,
+        'can_access_jury': is_jury
+    }), 200
+
 
 @user_bp.route('/all', methods=['GET'])
 @require_role('admin')
