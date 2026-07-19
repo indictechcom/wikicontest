@@ -29,6 +29,13 @@ const state = reactive({
     contests: false,
     dashboard: false
   },
+  // Dashboard access permissions
+  dashboardAccess: {
+    participant: true,
+    organizer: false,
+    jury: false
+  },
+  dashboardAccessLoaded: false,
   // Theme state - default to light mode, or load from localStorage
   theme: localStorage.getItem('theme') || 'light'
 })
@@ -114,13 +121,13 @@ export function useStore() {
         state.currentUser = null
       }
 
-// Update last auth check timestamp for caching
-       state.lastAuthCheck = Date.now()
-       // Only log if it's not a 401 (which is expected for logged out users)
-       if (error.status !== 401 && error.status !== undefined) {
-         console.log('Auth check error:', error.message)
-       }
-       return false
+      // Update last auth check timestamp for caching
+      state.lastAuthCheck = Date.now()
+      // Only log if it's not a 401 (which is expected for logged out users)
+      if (error.status !== 401 && error.status !== undefined) {
+        console.log('Auth check error:', error.message)
+      }
+      return false
     }
   }
 
@@ -159,13 +166,13 @@ export function useStore() {
         console.error('Failed to set user state after login')
       }
 
-// Wait a bit for the cookie to be set by the browser
-       // This ensures the cookie is available for subsequent requests
-       await new Promise(resolve => setTimeout(resolve, 200))
+      // Wait a bit for the cookie to be set by the browser
+      // This ensures the cookie is available for subsequent requests
+      await new Promise(resolve => setTimeout(resolve, 200))
 
-       // Update last auth check timestamp for caching
-       state.lastAuthCheck = Date.now()
-       return { success: true, data: response }
+      // Update last auth check timestamp for caching
+      state.lastAuthCheck = Date.now()
+      return { success: true, data: response }
     } catch (error) {
       // Ensure state is cleared on login failure
       state.currentUser = null
@@ -294,6 +301,48 @@ export function useStore() {
     applyTheme(state.theme)
   }
 
+  // Load dashboard access permissions
+  const loadDashboardAccess = async () => {
+    // Skip if already loaded
+    if (state.dashboardAccessLoaded) {
+      return
+    }
+
+    try {
+      const data = await api.get('/user/dashboard/access')
+      console.log('[DashboardAccess] API response:', data)
+      if (data) {
+        state.dashboardAccess = {
+          participant: data.can_access_participant !== false,
+          organizer: data.can_access_organizer === true,
+          jury: data.can_access_jury === true
+        }
+        console.log('[DashboardAccess] Updated:', state.dashboardAccess)
+      }
+    } catch (error) {
+      console.error('[DashboardAccess] API call failed:', error)
+      // Fallback: derive access from the main dashboard endpoint
+      try {
+        const dashboardData = await api.get('/user/dashboard')
+        state.dashboardAccess = {
+          participant: true,
+          organizer: (dashboardData.organized_contests?.length || 0) > 0,
+          jury: (dashboardData.jury_contests?.length || 0) > 0
+        }
+        console.log('[DashboardAccess] Fallback from /user/dashboard:', state.dashboardAccess)
+      } catch (fallbackError) {
+        console.error('[DashboardAccess] Fallback also failed:', fallbackError)
+        state.dashboardAccess = {
+          participant: true,
+          organizer: false,
+          jury: false
+        }
+      }
+    } finally {
+      state.dashboardAccessLoaded = true
+    }
+  }
+
   return {
     // State (expose for direct access if needed)
     state,
@@ -301,6 +350,7 @@ export function useStore() {
     isAuthenticated,
     currentUser,
     contests,
+    dashboardAccess: computed(() => state.dashboardAccess),
     // Theme
     theme: computed(() => state.theme),
     // Actions
@@ -309,6 +359,7 @@ export function useStore() {
     register,
     logout,
     loadContests,
+    loadDashboardAccess,
     createContest,
     requestContest,
     getContestsByCategory,
