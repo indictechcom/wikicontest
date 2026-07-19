@@ -1,6 +1,9 @@
 <template>
   <!-- Modal for displaying jury feedback on submissions -->
-  <div class="modal fade" id="juryFeedbackModal" tabindex="-1" aria-hidden="true">
+  <div class="modal fade"
+id="juryFeedbackModal"
+tabindex="-1"
+aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <!-- Modal header with Wikipedia blue background -->
@@ -52,7 +55,8 @@
               </h6>
               <div class="feedback-content">
                 <div class="parameter-scores-grid">
-                  <div v-for="(score, paramName) in submission.parameter_scores" :key="paramName"
+                  <div v-for="(score, paramName) in submission.parameter_scores"
+:key="paramName"
                     class="parameter-score-item">
                     <div class="parameter-name">{{ paramName }}</div>
                     <div class="parameter-score">

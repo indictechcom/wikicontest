@@ -34,14 +34,19 @@
 
           <div class="mb-3">
             <label for="editContestDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="editContestDescription" rows="3"
+            <textarea class="form-control"
+id="editContestDescription"
+rows="3"
               v-model="editForm.description"></textarea>
           </div>
 
           <div class="mb-3">
             <label for="editContestRules" class="form-label">Contest Rules *</label>
-            <textarea class="form-control" id="editContestRules" rows="4"
-              placeholder="Write rules about how articles must be submitted." v-model="editForm.rules"
+            <textarea class="form-control"
+id="editContestRules"
+rows="4"
+              placeholder="Write rules about how articles must be submitted."
+v-model="editForm.rules"
               required></textarea>
           </div>
 
@@ -57,11 +62,19 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label for="editStartDate" class="form-label">Start Date *</label>
-              <input type="date" class="form-control" id="editStartDate" v-model="editForm.start_date" required />
+              <input type="date"
+class="form-control"
+id="editStartDate"
+v-model="editForm.start_date"
+required />
             </div>
             <div class="col-md-6 mb-3">
               <label for="editEndDate" class="form-label">End Date *</label>
-              <input type="date" class="form-control" id="editEndDate" v-model="editForm.end_date" required />
+              <input type="date"
+class="form-control"
+id="editEndDate"
+v-model="editForm.end_date"
+required />
             </div>
           </div>
         </div>
@@ -76,7 +89,9 @@
             <small v-if="editForm.selectedOrganizers.length === 0" class="organizer-placeholder-text">
               No additional organizers added
             </small>
-            <span v-for="username in editForm.selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+            <span v-for="username in editForm.selectedOrganizers"
+:key="username"
+class="badge bg-success me-2 mb-2"
               style="font-size: 0.9rem; cursor: pointer;">
               {{ username }}
               <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
@@ -84,15 +99,21 @@
           </div>
 
           <div style="position: relative;">
-            <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
-              placeholder="Type username to add additional organizers..." autocomplete="off" />
+            <input type="text"
+class="form-control"
+v-model="organizerSearchQuery"
+@input="searchOrganizers"
+              placeholder="Type username to add additional organizers..."
+autocomplete="off" />
 
             <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
               class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
               style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-              <div v-for="user in organizerSearchResults" :key="user.username"
+              <div v-for="user in organizerSearchResults"
+:key="user.username"
                 class="p-2 border-bottom cursor-pointer"
-                :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
+                :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
+style="cursor: pointer;"
                 @click="addOrganizer(user.username)">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="d-flex align-items-center">
@@ -123,22 +144,31 @@
             <small v-if="editForm.selectedJuryMembers.length === 0" class="jury-placeholder-text">
               No jury members selected yet
             </small>
-            <span v-for="username in editForm.selectedJuryMembers" :key="username"
-              class="badge bg-primary me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
+            <span v-for="username in editForm.selectedJuryMembers"
+:key="username"
+              class="badge bg-primary me-2 mb-2"
+style="font-size: 0.9rem; cursor: pointer;">
               <i class="fas fa-gavel me-1"></i>{{ username }}
               <i class="fas fa-times ms-1" @click="removeJuryMember(username)"></i>
             </span>
           </div>
 
           <div style="position: relative;">
-            <input type="text" class="form-control" v-model="jurySearchQuery" @input="searchJuryMembers"
-              placeholder="Type username to search and add..." autocomplete="off" />
+            <input type="text"
+class="form-control"
+v-model="jurySearchQuery"
+@input="searchJuryMembers"
+              placeholder="Type username to search and add..."
+autocomplete="off" />
 
             <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
               class="jury-autocomplete position-absolute w-100 border rounded-bottom"
               style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-              <div v-for="user in jurySearchResults" :key="user.username" class="p-2 border-bottom cursor-pointer"
-                :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
+              <div v-for="user in jurySearchResults"
+:key="user.username"
+class="p-2 border-bottom cursor-pointer"
+                :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
+style="cursor: pointer;"
                 @click="addJuryMember(user.username)">
                 <div class="d-flex align-items-center justify-content-between">
                   <div class="d-flex align-items-center">
@@ -239,12 +269,22 @@
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label class="form-label">Maximum Score (Accepted) *</label>
-                  <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
+                  <input type="number"
+class="form-control"
+v-model.number="maxScore"
+min="1"
+max="1000"
+required />
                   <small class="text-muted">Final score scaled to this value</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Minimum Score (Rejected) *</label>
-                  <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
+                  <input type="number"
+class="form-control"
+v-model.number="minScore"
+min="0"
+max="1000"
+required />
                   <small class="text-muted">Score for rejected submissions</small>
                 </div>
               </div>
@@ -257,26 +297,38 @@
                       <div class="row align-items-center">
                         <div class="col-md-3">
                           <label class="small text-muted mb-1">Parameter Name</label>
-                          <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
+                          <input type="text"
+class="form-control"
+v-model="param.name"
+placeholder="e.g., Quality"
                             required />
                         </div>
                         <div class="col-md-3">
                           <label class="small text-muted mb-1">Weight (%)</label>
                           <div class="input-group">
-                            <input type="number" class="form-control" v-model.number="param.weight" min="0"
-                              max="100" placeholder="0-100" required />
+                            <input type="number"
+class="form-control"
+v-model.number="param.weight"
+min="0"
+                              max="100"
+placeholder="0-100"
+required />
                             <span class="input-group-text">%</span>
                           </div>
                         </div>
                         <div class="col-md-5">
                           <label class="small text-muted mb-1">Description (Optional)</label>
-                          <input type="text" class="form-control" v-model="param.description"
+                          <input type="text"
+class="form-control"
+v-model="param.description"
                             placeholder="Brief description" />
                         </div>
                         <div class="col-md-1 text-end">
                           <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                          <button type="button" class="btn btn-sm btn-outline-danger"
-                            @click="removeParameter(index)" :disabled="scoringParameters.length <= 1"
+                          <button type="button"
+class="btn btn-sm btn-outline-danger"
+                            @click="removeParameter(index)"
+:disabled="scoringParameters.length <= 1"
                             title="Remove parameter">
                             <i class="fas fa-trash"></i>
                           </button>
@@ -315,13 +367,19 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Points for Accepted Submissions *</label>
-                  <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
+                  <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_accepted"
+min="0"
                     required />
                   <small class="text-muted">Maximum points for accepted submissions</small>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Points for Rejected Submissions *</label>
-                  <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
+                  <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_rejected"
+min="0"
                     required />
                   <small class="text-muted">Points for rejected submissions (usually 0)</small>
                 </div>
@@ -335,13 +393,17 @@
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Minimum Edits</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.eligibility.min_edits" min="0" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.eligibility.min_edits"
+min="0" />
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Minimum Outgoing Links</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.eligibility.min_outgoing_links" min="0" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.eligibility.min_outgoing_links"
+min="0" />
                   </div>
                 </div>
               </div>
@@ -351,49 +413,75 @@
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Accepted</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_accepted" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_accepted"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Byte</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_byte" min="0" step="0.0001" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_byte"
+min="0"
+step="0.0001" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Incoming Link</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_incoming_link" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_incoming_link"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Outgoing Link</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_outgoing_link" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_outgoing_link"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Category</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_category" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_category"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per New Reference</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_new_reference" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_new_reference"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Reused Reference</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_reused_reference" min="0"
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_reused_reference"
+min="0"
                       step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Infobox</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_infobox" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_infobox"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Image</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_image" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_image"
+min="0"
+step="0.01" />
                   </div>
                 </div>
               </div>
@@ -404,7 +492,9 @@
           <div v-else class="unlocked-edit-mode">
             <div v-if="contestScoringMode !== 'automated'" class="scoring-mode-toggle mb-2">
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="editEnableMultiParam"
+                <input class="form-check-input"
+type="checkbox"
+id="editEnableMultiParam"
                   v-model="enableMultiParameterScoring" />
                 <label class="form-check-label fw-bold" for="editEnableMultiParam">
                   Enable Multi-Parameter Scoring
@@ -422,13 +512,17 @@
                 <div class="row">
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Minimum Edits</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.eligibility.min_edits" min="0" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.eligibility.min_edits"
+min="0" />
                   </div>
                   <div class="col-md-6 mb-3">
                     <label class="form-label">Minimum Outgoing Links</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.eligibility.min_outgoing_links" min="0" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.eligibility.min_outgoing_links"
+min="0" />
                   </div>
                 </div>
               </div>
@@ -438,49 +532,75 @@
                 <div class="row">
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Accepted</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_accepted" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_accepted"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Byte</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_byte" min="0" step="0.0001" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_byte"
+min="0"
+step="0.0001" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Incoming Link</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_incoming_link" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_incoming_link"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Outgoing Link</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_outgoing_link" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_outgoing_link"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Category</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_category" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_category"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per New Reference</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_new_reference" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_new_reference"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Reused Reference</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_reused_reference" min="0"
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_reused_reference"
+min="0"
                       step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Infobox</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_infobox" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_infobox"
+min="0"
+step="0.01" />
                   </div>
                   <div class="col-md-4 mb-3">
                     <label class="form-label">Points per Image</label>
-                    <input type="number" class="form-control"
-                      v-model.number="automatedSettings.evaluation.points_per_image" min="0" step="0.01" />
+                    <input type="number"
+class="form-control"
+                      v-model.number="automatedSettings.evaluation.points_per_image"
+min="0"
+step="0.01" />
                   </div>
                 </div>
               </div>
@@ -491,13 +611,19 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Points for Accepted Submissions *</label>
-                  <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
+                  <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_accepted"
+min="0"
                     required />
                   <small class="text-muted">Maximum points that can be awarded</small>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Points for Rejected Submissions *</label>
-                  <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
+                  <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_rejected"
+min="0"
                     required />
                   <small class="text-muted">Points for rejected submissions (usually 0)</small>
                 </div>
@@ -508,12 +634,22 @@
               <div class="row mb-3">
                 <div class="col-md-6">
                   <label class="form-label">Maximum Score (Accepted) *</label>
-                  <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
+                  <input type="number"
+class="form-control"
+v-model.number="maxScore"
+min="1"
+max="1000"
+required />
                   <small class="text-muted">Final weighted score scaled to this maximum</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Minimum Score (Rejected) *</label>
-                  <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
+                  <input type="number"
+class="form-control"
+v-model.number="minScore"
+min="0"
+max="1000"
+required />
                   <small class="text-muted">Fixed score for rejected submissions</small>
                 </div>
               </div>
@@ -526,26 +662,38 @@
                       <div class="row align-items-center">
                         <div class="col-md-3">
                           <label class="small text-muted mb-1">Parameter Name</label>
-                          <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
+                          <input type="text"
+class="form-control"
+v-model="param.name"
+placeholder="e.g., Quality"
                             required />
                         </div>
                         <div class="col-md-3">
                           <label class="small text-muted mb-1">Weight (%)</label>
                           <div class="input-group">
-                            <input type="number" class="form-control" v-model.number="param.weight" min="0"
-                              max="100" placeholder="0-100" required />
+                            <input type="number"
+class="form-control"
+v-model.number="param.weight"
+min="0"
+                              max="100"
+placeholder="0-100"
+required />
                             <span class="input-group-text">%</span>
                           </div>
                         </div>
                         <div class="col-md-5">
                           <label class="small text-muted mb-1">Description (Optional)</label>
-                          <input type="text" class="form-control" v-model="param.description"
+                          <input type="text"
+class="form-control"
+v-model="param.description"
                             placeholder="Brief description" />
                         </div>
                         <div class="col-md-1 text-end">
                           <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                          <button type="button" class="btn btn-sm btn-outline-danger"
-                            @click="removeParameter(index)" :disabled="scoringParameters.length <= 1"
+                          <button type="button"
+class="btn btn-sm btn-outline-danger"
+                            @click="removeParameter(index)"
+:disabled="scoringParameters.length <= 1"
                             title="Remove parameter">
                             <i class="fas fa-trash"></i>
                           </button>
@@ -589,14 +737,21 @@
 
           <div class="mb-3">
             <label class="form-label">Minimum Byte Count *</label>
-            <input type="number" v-model.number="editForm.min_byte_count" class="form-control" min="0"
-              placeholder="e.g., 1000" required />
+            <input type="number"
+v-model.number="editForm.min_byte_count"
+class="form-control"
+min="0"
+              placeholder="e.g., 1000"
+required />
             <small class="form-text text-muted">Articles must have at least this many bytes</small>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Minimum Reference Count</label>
-            <input type="number" v-model.number="editForm.min_reference_count" class="form-control" min="0"
+            <input type="number"
+v-model.number="editForm.min_reference_count"
+class="form-control"
+min="0"
               placeholder="e.g., 5" />
             <small class="form-text text-muted">
               Articles must have at least this many references. Set to 0 for no requirement.
@@ -613,10 +768,15 @@
 
             <div v-for="(category, index) in editForm.categories" :key="index" class="mb-2">
               <div class="input-group">
-                <input type="url" class="form-control" v-model="editForm.categories[index]"
+                <input type="url"
+class="form-control"
+v-model="editForm.categories[index]"
                   :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'" />
-                <button v-if="editForm.categories.length > 1" type="button" class="btn btn-outline-danger"
-                  @click="removeCategory(index)" title="Remove category">
+                <button v-if="editForm.categories.length > 1"
+type="button"
+class="btn btn-outline-danger"
+                  @click="removeCategory(index)"
+title="Remove category">
                   <i class="fas fa-times"></i>
                 </button>
               </div>
@@ -637,7 +797,10 @@
               Contest Template Link
               <span class="badge bg-secondary ms-1">Optional</span>
             </label>
-            <input type="url" class="form-control" id="editTemplateLink" v-model="editForm.template_link"
+            <input type="url"
+class="form-control"
+id="editTemplateLink"
+v-model="editForm.template_link"
               placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
             <small class="form-text text-muted d-block mt-2">
               <i class="fas fa-info-circle me-1"></i>
@@ -651,7 +814,9 @@
               Outreach Dashboard URL
               <span class="badge bg-secondary ms-1">Optional</span>
             </label>
-            <input type="url" class="form-control" id="editOutreachDashboardUrl"
+            <input type="url"
+class="form-control"
+id="editOutreachDashboardUrl"
               v-model="editForm.outreach_dashboard_url"
               placeholder="https://outreachdashboard.wmflabs.org/courses/WikiClub_Tech_SHUATS/Wikipedia_25_B_Day_Celebration_by_WikiClub_Tech_SHUATS" />
             <small class="form-text text-muted d-block mt-2">

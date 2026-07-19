@@ -202,8 +202,24 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const store = useStore()
+    const VALID_CATEGORIES = ['current', 'upcoming', 'past']
     const activeCategory = ref('current')
+
+    // Restore the active subsection from the URL query parameter (?tab=...)
+    const getCategoryFromUrl = () => {
+      const tab = route.query.tab
+      return VALID_CATEGORIES.includes(tab) ? tab : 'current'
+    }
+
+    // Reflect the active subsection in the URL without adding history entries.
+    // The URL always shows the current tab, including the default "current".
+    const syncUrlWithCategory = (category) => {
+      if (route.query.tab !== category) {
+        router.replace({ query: { ...route.query, tab: category } })
+      }
+    }
     const loading = ref(false)
     const submittingToContestId = ref(null)
     const showRequestTrustedMemberForm = ref(false)
@@ -340,6 +356,7 @@ export default {
     // Switch between current, upcoming, and past contests
     const setActiveCategory = (category) => {
       activeCategory.value = category
+      syncUrlWithCategory(category)
     }
 
     // Truncate long text with ellipsis
@@ -538,6 +555,10 @@ export default {
 
     // Load contests on component mount
     onMounted(async () => {
+      // Restore the active subsection from the shared URL, if present
+      activeCategory.value = getCategoryFromUrl()
+      // Default the URL bar to showing the current tab
+      syncUrlWithCategory(activeCategory.value)
       loading.value = true
       try {
         await store.loadContests()
@@ -547,6 +568,18 @@ export default {
         loading.value = false
       }
     })
+
+    // Keep the active subsection in sync when the URL changes
+    // (e.g. a shared link is opened, or the user uses back/forward navigation)
+    watch(
+      () => route.query.tab,
+      (tab) => {
+        const category = VALID_CATEGORIES.includes(tab) ? tab : 'current'
+        if (category !== activeCategory.value) {
+          activeCategory.value = category
+        }
+      }
+    )
 
     return {
       activeCategory,

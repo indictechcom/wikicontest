@@ -6,12 +6,17 @@
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
-        <button v-if="contest && contestScoringMode !== 'automated'" class="btn btn-primary text-white"
-          @click="goToLeaderboard" title="View Contest Leaderboard">
+        <button v-if="contest && contestScoringMode !== 'automated'"
+class="btn btn-primary text-white"
+          @click="goToLeaderboard"
+title="View Contest Leaderboard">
           <i class="fas fa-trophy me-2"></i>Leaderboard
         </button>
         <!-- Only contest creators and admins can delete -->
-        <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest" :disabled="deletingContest">
+        <button v-if="canDeleteContest"
+class="btn btn-danger"
+@click="handleDeleteContest"
+:disabled="deletingContest">
           <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
           <i v-else class="fas fa-trash me-2"></i>
           {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
@@ -53,14 +58,26 @@
       <!-- Main Content with Tabs -->
       <ul class="nav nav-tabs mb-4" role="tablist" v-if="contest.outreach_dashboard_url">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
-            type="button" role="tab" aria-controls="overview" aria-selected="true">
+          <button class="nav-link active"
+id="overview-tab"
+data-bs-toggle="tab"
+data-bs-target="#overview"
+            type="button"
+role="tab"
+aria-controls="overview"
+aria-selected="true">
             <i class="fas fa-info-circle me-2"></i>Overview
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="outreach-tab" data-bs-toggle="tab" data-bs-target="#outreach" type="button"
-            role="tab" aria-controls="outreach" aria-selected="false">
+          <button class="nav-link"
+id="outreach-tab"
+data-bs-toggle="tab"
+data-bs-target="#outreach"
+type="button"
+            role="tab"
+aria-controls="outreach"
+aria-selected="false">
             <i class="fas fa-graduation-cap me-2"></i>Outreach Dashboard
           </button>
         </li>
@@ -68,7 +85,10 @@
 
       <div class="tab-content" :class="{ 'mt-0': !contest.outreach_dashboard_url }">
         <!-- Overview Tab -->
-        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade show active" id="overview" role="tabpanel"
+        <div v-if="contest.outreach_dashboard_url"
+class="tab-pane fade show active"
+id="overview"
+role="tabpanel"
           aria-labelledby="overview-tab">
           <div class="row">
             <div :class="canViewSubmissions ? 'col-md-12' : 'col-md-12'">
@@ -108,7 +128,8 @@
                       </div>
 
                       <div class="params-list">
-                        <div v-for="param in contest.scoring_parameters.parameters" :key="param.name"
+                        <div v-for="param in contest.scoring_parameters.parameters"
+:key="param.name"
                           class="param-item">
                           <div class="param-row">
                             <span class="param-label">{{ param.name }}</span>
@@ -204,7 +225,10 @@
                   </p>
                   <ul class="list-unstyled">
                     <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-                      <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                      <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
                         <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
                       </a>
                     </li>
@@ -263,9 +287,14 @@
                       <option value="">Select a category...</option>
                       <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
                     </select>
-                    <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="5000"
+                    <input type="number"
+v-model.number="crawlLimit"
+placeholder="Limit"
+min="1"
+max="5000"
                       class="form-control crawler-limit" />
-                    <button class="btn btn-primary crawler-btn" @click="crawlCategory"
+                    <button class="btn btn-primary crawler-btn"
+@click="crawlCategory"
                       :disabled="crawling || !selectedCategory">
                       <span v-if="crawling">
                         <i class="fas fa-spinner fa-spin me-1"></i> Importing...
@@ -306,14 +335,18 @@
                 <div class="card-header">
                   <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-                    <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                    <button v-if="loadingSubmissions || refreshingMetadata"
+class="btn btn-sm btn-outline-secondary"
                       disabled>
                       <span class="spinner-border spinner-border-sm me-2"></span>
                       {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
                     </button>
                     <!-- Refresh metadata fetches latest article data from MediaWiki -->
-                    <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
-                      :disabled="submissions.length === 0" title="Refresh article metadata"
+                    <button v-else
+class="btn btn-sm btn-outline-light"
+@click="refreshMetadata"
+                      :disabled="submissions.length === 0"
+title="Refresh article metadata"
                       style="color: white; border-color: white;">
                       <i class="fas fa-database me-1"></i>Refresh Metadata
                     </button>
@@ -323,24 +356,28 @@
                   <!-- Filter Tabs (automated scoring only) -->
                   <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
                     <div class="btn-group" role="group" aria-label="Filter submissions">
-                      <button type="button" class="btn btn-sm"
+                      <button type="button"
+class="btn btn-sm"
                         :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'"
                         @click="submissionFilter = 'all'">
                         All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
                       </button>
-                      <button type="button" class="btn btn-sm"
+                      <button type="button"
+class="btn btn-sm"
                         :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'"
                         @click="submissionFilter = 'accepted'">
                         Accepted <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
                           'accepted').length}}</span>
                       </button>
-                      <button type="button" class="btn btn-sm"
+                      <button type="button"
+class="btn btn-sm"
                         :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
                         @click="submissionFilter = 'rejected'">
                         Rejected <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
                           'rejected').length}}</span>
                       </button>
-                      <button type="button" class="btn btn-sm"
+                      <button type="button"
+class="btn btn-sm"
                         :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'"
                         @click="submissionFilter = 'pending'">
                         Pending <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
@@ -370,14 +407,18 @@
                         <tr v-for="submission in filteredSubmissions" :key="submission.id">
                           <!-- Article Title with Metadata -->
                           <td>
-                            <a href="#" @click.prevent="showArticlePreview(submission)"
-                              class="text-decoration-none article-title-link" :title="submission.article_link">
+                            <a href="#"
+@click.prevent="showArticlePreview(submission)"
+                              class="text-decoration-none article-title-link"
+:title="submission.article_link">
                               {{ submission.article_title }}
                             </a>
                             <!-- Expansion bytes (can be negative for content removal) -->
                             <div v-if="submission.article_expansion_bytes !== null &&
-                              submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
-                              <i class="me-1" :class="submission.article_expansion_bytes > 0
+                              submission.article_expansion_bytes !== undefined"
+class="text-muted small mt-1">
+                              <i class="me-1"
+:class="submission.article_expansion_bytes > 0
                                 ? 'fas fa-arrow-up'
                                 : submission.article_expansion_bytes < 0
                                   ? 'fas fa-arrow-down'
@@ -405,7 +446,8 @@
                               <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
                             </div>
                             <!-- Latest revision author may differ from original -->
-                            <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
+                            <div v-if="submission.latest_revision_author"
+class="mt-2 pt-2"
                               style="border-top: 1px solid #dee2e6;">
                               <div>
                                 <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
@@ -439,8 +481,10 @@
                           </td>
                           <td>{{ formatDate(submission.submitted_at) }}</td>
                           <td>
-                            <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
-                              class="btn btn-sm btn-outline-danger" title="Delete Submission"
+                            <button v-if="canViewSubmissions"
+@click="handleDeleteSubmission(submission)"
+                              class="btn btn-sm btn-outline-danger"
+title="Delete Submission"
                               :disabled="deletingSubmissionId === submission.id">
                               <span v-if="deletingSubmissionId === submission.id"
                                 class="spinner-border spinner-border-sm"></span>
@@ -456,7 +500,6 @@
             </div>
 
 
-
             <!-- Bottom Action Row -->
             <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
               <!-- Debug warning for auth issues -->
@@ -470,7 +513,8 @@
 
               <!-- Submit article button for active contests -->
               <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-                class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+                class="btn btn-primary ms-auto"
+@click="handleSubmitArticle">
                 <i class="fas fa-paper-plane me-2"></i>Submit Article
               </button>
             </div>
@@ -478,7 +522,10 @@
         </div>
 
         <!-- Outreach Dashboard Tab -->
-        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade" id="outreach" role="tabpanel"
+        <div v-if="contest.outreach_dashboard_url"
+class="tab-pane fade"
+id="outreach"
+role="tabpanel"
           aria-labelledby="outreach-tab">
           <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
@@ -695,7 +742,10 @@
               </p>
               <ul class="list-unstyled">
                 <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-                  <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                  <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
                     <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
                   </a>
                 </li>
@@ -755,10 +805,15 @@
                   <option value="">Select a category...</option>
                   <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
-                <input type="number" v-model.number="crawlLimit" placeholder="Limit" min="1" max="2000"
+                <input type="number"
+v-model.number="crawlLimit"
+placeholder="Limit"
+min="1"
+max="2000"
                   class="form-control crawler-limit" />
 
-                <button class="btn btn-primary crawler-btn" @click="crawlCategory"
+                <button class="btn btn-primary crawler-btn"
+@click="crawlCategory"
                   :disabled="crawling || !selectedCategory">
                   <span v-if="crawling">
                     <i class="fas fa-spinner fa-spin me-1"></i> Importing...
@@ -795,7 +850,8 @@
                       <i class="fas fa-info-circle me-2"></i>
                       More articles available in this category.
                     </span>
-                    <button class="btn btn-sm btn-primary ms-3" @click="crawlNextBatch"
+                    <button class="btn btn-sm btn-primary ms-3"
+@click="crawlNextBatch"
                       :disabled="crawling">
                       <span v-if="crawling">
                         <i class="fas fa-spinner fa-spin me-1"></i> Importing...
@@ -824,14 +880,18 @@
                   <span v-if="refreshProgress" class="text-muted small fst-italic">
                     <i class="fas fa-spinner fa-spin me-1"></i>{{ refreshProgress }}
                   </span>
-                  <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                  <button v-if="loadingSubmissions || refreshingMetadata"
+class="btn btn-sm btn-outline-secondary"
                     disabled>
                     <span class="spinner-border spinner-border-sm me-2"></span>
                     {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
                   </button>
                   <!-- Refresh metadata fetches latest article data from MediaWiki -->
-                  <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
-                    :disabled="submissions.length === 0" title="Refresh article metadata"
+                  <button v-else
+class="btn btn-sm btn-outline-light"
+@click="refreshMetadata"
+                    :disabled="submissions.length === 0"
+title="Refresh article metadata"
                     style="color: white; border-color: white;">
                     <i class="fas fa-database me-1"></i>Refresh Metadata
                   </button>
@@ -842,24 +902,28 @@
               <!-- Filter Tabs (automated scoring only) -->
               <div v-if="contestScoringMode === 'automated' && submissions.length > 0" class="mb-3">
                 <div class="btn-group" role="group" aria-label="Filter submissions">
-                  <button type="button" class="btn btn-sm"
+                  <button type="button"
+class="btn btn-sm"
                     :class="submissionFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'"
                     @click="submissionFilter = 'all'">
                     All <span class="badge bg-light text-dark ms-1">{{ submissions.length }}</span>
                   </button>
-                  <button type="button" class="btn btn-sm"
+                  <button type="button"
+class="btn btn-sm"
                     :class="submissionFilter === 'accepted' ? 'btn-success' : 'btn-outline-success'"
                     @click="submissionFilter = 'accepted'">
                     Accepted <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
                       'accepted').length}}</span>
                   </button>
-                  <button type="button" class="btn btn-sm"
+                  <button type="button"
+class="btn btn-sm"
                     :class="submissionFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
                     @click="submissionFilter = 'rejected'">
                     Rejected <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
                       'rejected').length}}</span>
                   </button>
-                  <button type="button" class="btn btn-sm"
+                  <button type="button"
+class="btn btn-sm"
                     :class="submissionFilter === 'pending' ? 'btn-warning' : 'btn-outline-warning'"
                     @click="submissionFilter = 'pending'">
                     Pending <span class="badge bg-light text-dark ms-1">{{submissions.filter(s => s.status ===
@@ -889,14 +953,18 @@
                     <tr v-for="submission in filteredSubmissions" :key="submission.id">
                       <!-- Article Title with Metadata -->
                       <td>
-                        <a href="#" @click.prevent="showArticlePreview(submission)"
-                          class="text-decoration-none article-title-link" :title="submission.article_link">
+                        <a href="#"
+@click.prevent="showArticlePreview(submission)"
+                          class="text-decoration-none article-title-link"
+:title="submission.article_link">
                           {{ submission.article_title }}
                         </a>
                         <!-- Expansion bytes (can be negative for content removal) -->
                         <div v-if="submission.article_expansion_bytes !== null &&
-                          submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
-                          <i class="me-1" :class="submission.article_expansion_bytes > 0
+                          submission.article_expansion_bytes !== undefined"
+class="text-muted small mt-1">
+                          <i class="me-1"
+:class="submission.article_expansion_bytes > 0
                             ? 'fas fa-arrow-up'
                             : submission.article_expansion_bytes < 0
                               ? 'fas fa-arrow-down'
@@ -924,7 +992,8 @@
                           <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
                         </div>
                         <!-- Latest revision author may differ from original -->
-                        <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
+                        <div v-if="submission.latest_revision_author"
+class="mt-2 pt-2"
                           style="border-top: 1px solid #dee2e6;">
                           <div>
                             <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
@@ -958,8 +1027,10 @@
                       </td>
                       <td>{{ formatDate(submission.submitted_at) }}</td>
                       <td>
-                        <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
-                          class="btn btn-sm btn-outline-danger" title="Delete Submission"
+                        <button v-if="canViewSubmissions"
+@click="handleDeleteSubmission(submission)"
+                          class="btn btn-sm btn-outline-danger"
+title="Delete Submission"
                           :disabled="deletingSubmissionId === submission.id">
                           <span v-if="deletingSubmissionId === submission.id"
                             class="spinner-border spinner-border-sm"></span>
@@ -975,7 +1046,6 @@
         </div>
 
 
-
         <!-- Bottom Action Row -->
         <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
           <!-- Debug warning for auth issues -->
@@ -989,7 +1059,8 @@
 
           <!-- Submit article button for active contests -->
           <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-            class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+            class="btn btn-primary ms-auto"
+@click="handleSubmitArticle">
             <i class="fas fa-paper-plane me-2"></i>Submit Article
           </button>
         </div>
@@ -998,13 +1069,18 @@
   </div>
 
   <!-- Modals -->
-  <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+  <SubmitArticleModal v-if="submittingToContestId"
+:contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
-  <ArticlePreviewModal v-if="!!currentSubmission" :can-review="canUserReview"
-    :article-url="currentSubmission.article_link" :article-title="currentSubmission.article_title"
-    :submission-id="currentSubmission.id" :submission="currentSubmission"
-    :contest-scoring-config="contest?.scoring_parameters" @reviewed="handleSubmissionReviewed"
+  <ArticlePreviewModal v-if="!!currentSubmission"
+:can-review="canUserReview"
+    :article-url="currentSubmission.article_link"
+:article-title="currentSubmission.article_title"
+    :submission-id="currentSubmission.id"
+:submission="currentSubmission"
+    :contest-scoring-config="contest?.scoring_parameters"
+@reviewed="handleSubmissionReviewed"
     @deleted="handleSubmissionDeleted" />
 
   <!-- ========================================================================== -->
@@ -1093,7 +1169,10 @@
   </div>
 
   <!-- Evaluation Details Modal (for automated scoring contests) -->
-  <div class="modal fade" id="evaluationDetailsModal" tabindex="-1" aria-labelledby="evaluationDetailsModalLabel"
+  <div class="modal fade"
+id="evaluationDetailsModal"
+tabindex="-1"
+aria-labelledby="evaluationDetailsModalLabel"
     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -1101,7 +1180,10 @@
           <h5 class="modal-title" id="evaluationDetailsModalLabel">
             <i class="fas fa-chart-bar me-2"></i>Evaluation Details
           </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button"
+class="btn-close"
+data-bs-dismiss="modal"
+aria-label="Close"></button>
         </div>
         <div class="modal-body" v-if="selectedEvaluationSubmission">
           <h6 class="mb-3">
@@ -1252,7 +1334,7 @@ export default {
     const submissions = ref([])
     const loadingSubmissions = ref(false)
     const refreshingMetadata = ref(false)
-    const refreshProgress = ref('')   // persists across batches — unlike 5-sec showAlert toasts
+    const refreshProgress = ref('') // persists across batches — unlike 5-sec showAlert toasts
     const deletingContest = ref(false)
     const canDeleteContest = ref(false)
     const checkingAuth = ref(false)
@@ -1387,7 +1469,7 @@ export default {
         const csrfToken = getCookie('csrf_access_token')
         const body = {
           category_url: selectedCategory.value,
-          limit: crawlLimit.value || 100,
+          limit: crawlLimit.value || 100
         }
         if (continueFrom) {
           body.continue_from = continueFrom
@@ -1836,7 +1918,7 @@ export default {
             const done = hasMore ? offset : response.total_count
             refreshProgress.value = hasMore
               ? `Refreshing… ${done} / ${response.total_count} articles done`
-              : `Finishing last batch…`
+              : 'Finishing last batch…'
           }
         }
 
@@ -2575,7 +2657,7 @@ export default {
       selectedEvaluationSubmission,
       // Submission filter tabs
       submissionFilter,
-      filteredSubmissions,
+      filteredSubmissions
     }
   }
 }

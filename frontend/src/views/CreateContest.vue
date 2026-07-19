@@ -4,7 +4,10 @@
     <div class="page-header py-2">
       <div class="container-fluid d-flex justify-content-between align-items-center">
         <div class="text-white">WikiContest Tool</div>
-        <button type="button" class="btn btn-secondary btn-sm" @click="goBack" :disabled="loading">
+        <button type="button"
+class="btn btn-secondary btn-sm"
+@click="goBack"
+:disabled="loading">
           <i class="fas fa-times me-1"></i>Cancel
         </button>
       </div>
@@ -672,7 +675,10 @@ v-model="formData.outreach_dashboard_url"
 
         <!-- Action footer -->
         <div class="page-footer">
-          <button type="button" class="btn btn-secondary" @click="goBack" :disabled="loading">
+          <button type="button"
+class="btn btn-secondary"
+@click="goBack"
+:disabled="loading">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
           <button type="submit" class="btn btn-primary" :disabled="loading">
