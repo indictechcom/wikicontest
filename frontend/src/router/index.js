@@ -139,7 +139,7 @@ router.beforeEach(async (to, from, next) => {
   // ── Step 1: Determine authentication status ──────────────────────
   // Use the reactive state directly to access lastAuthCheck
   const NOW = Date.now()
-  const AUTH_CACHE_TTL = 30 * 1000 // 30 seconds
+  const AUTH_CACHE_TTL = 5 * 1000 // 5 seconds
   const cachedAuth = store.state.lastAuthCheck
   const cacheValid = cachedAuth && (NOW - cachedAuth) < AUTH_CACHE_TTL
 

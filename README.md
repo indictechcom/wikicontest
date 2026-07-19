@@ -280,27 +280,6 @@ CONSUMER_SECRET=your-consumer-secret-from-registration
 
 ## Testing
 
-### Manual Testing
-
-```bash
-# Ensure migrations are applied
-alembic upgrade head
-
-# Start the application
-python main.py
-
-# Open http://localhost:5000 (or http://localhost:5173 in dev mode)
-```
-
-### Test the Following Features:
-
-- User registration and login
-- Contest creation
-- Article submission
-- Dashboard functionality
-- Leaderboard display
-- OAuth login (if configured)
-
 ### Automated Tests
 
 ```bash
@@ -313,6 +292,24 @@ pytest
 # Run with coverage
 pytest --cov=app tests/
 ```
+
+### Pre-Push Hook
+
+This repository includes a pre-push hook that runs the full backend test suite before allowing a push. To install it:
+
+```bash
+# Copy the hook to git's hooks directory (already done if you cloned the repo)
+cp .git/hooks/pre-push .git/hooks/pre-push
+
+# Or use the shared hooks directory
+git config core.hooksPath .githooks
+```
+
+The hook runs `pytest tests/ -v` from the `backend` directory. If any tests fail, the push is aborted.
+
+### Continuous Integration
+
+Tests are also run automatically via GitHub Actions on every push and pull request to `main`. See `.github/workflows/test.yml` for the workflow configuration.
 
 
 
