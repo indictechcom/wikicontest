@@ -82,5 +82,8 @@ export default {
   patch: (url, data = {}, config = {}) => api.patch(url, data, config),
 
   // Delete a submission
-  deleteSubmission: (submissionId) => api.delete(`/submission/${submissionId}`)
+  deleteSubmission: (submissionId) => api.delete(`/submission/${submissionId}`),
+
+  // Get contest submissions
+  getContestSubmissions: (contestId) => api.get(`/submission/contest/${contestId}`)
 }

@@ -15,6 +15,7 @@ import Profile from '../views/Profile.vue'
 import TrustedMembers from '../views/TrustedMembers.vue'
 import JuryDashboard from '../components/JuryDashboard.vue'
 import ContestLeaderboard from '../components/ContestLeaderboard.vue'
+import ContestSubmissionsView from '../views/ContestSubmissionsView.vue'
 
 // Lazy-loaded views
 const Dashboard = () => import('../views/Dashboard.vue')
@@ -22,6 +23,12 @@ const OrganizerDashboard = () => import('../views/OrganizerDashboard.vue')
 
 // Store module reference for lazy loading to prevent circular dependencies
 let storeModule = null
+
+// Helper to build the OAuth login URL
+function getLoginUrl () {
+  const base = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api'
+  return `${base}/user/oauth/login`
+}
 
 // Application route definitions
 const routes = [
@@ -89,23 +96,29 @@ const routes = [
     path: '/trusted-members',
     redirect: '/manage-trusted-members'
   },
-  {
-    path: '/manage-trusted-members',
-    name: 'TrustedMembers',
-    component: TrustedMembers,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/contest/:name/leaderboard',
-    name: 'ContestLeaderboard',
-    component: ContestLeaderboard,
-    meta: { requiresAuth: true }
-  },
-  {
-    // Redirect unknown routes to home page
-    path: '/:pathMatch(.*)*',
-    redirect: '/'
-  }
+{
+      path: '/manage-trusted-members',
+      name: 'TrustedMembers',
+      component: TrustedMembers,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/contest/:id/submissions',
+      name: 'ContestSubmissions',
+      component: ContestSubmissionsView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/contest/:name/leaderboard',
+      name: 'ContestLeaderboard',
+      component: ContestLeaderboard,
+      meta: { requiresAuth: true }
+    },
+    {
+      // Redirect unknown routes to home page
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
+    }
 ]
 
 // Initialize router with HTML5 history mode
@@ -123,94 +136,59 @@ router.beforeEach(async (to, from, next) => {
   const { useStore } = storeModule
   const store = useStore()
 
-  // Auth caching: if we checked auth within last 30 seconds, use cached result
+  // ── Step 1: Determine authentication status ──────────────────────
+  // Use the reactive state directly to access lastAuthCheck
   const NOW = Date.now()
-  const AUTH_CACHE_TTL = 30 * 1000 // 30 seconds in milliseconds
-  if (store.lastAuthCheck && (NOW - store.lastAuthCheck) < AUTH_CACHE_TTL) {
-    // Use cached auth state
-    const hasUserInStore = store.isAuthenticated && store.currentUser
-    if (to.meta.requiresAuth && !hasUserInStore) {
-      // Build API base URL based on environment
-      const getApiBaseUrl = () => {
-        if (import.meta.env.DEV) {
-          return 'http://localhost:5000/api'
-        }
-        return '/api'
-      }
-      // Preserve intended destination for post-login redirect
-      if (to.fullPath !== '/') {
-        sessionStorage.setItem('oauth_redirect', to.fullPath)
-      }
-      // Redirect to MediaWiki OAuth login (full page navigation)
-      window.location.href = `${getApiBaseUrl()}/user/oauth/login`
-      // Cancel the router navigation since we're doing a full page redirect
-      return next(false)
-    }
-    return next()
-  }
+  const AUTH_CACHE_TTL = 30 * 1000 // 30 seconds
+  const cachedAuth = store.state.lastAuthCheck
+  const cacheValid = cachedAuth && (NOW - cachedAuth) < AUTH_CACHE_TTL
 
-  // Check if user data exists in store from recent login
-  const hasUserInStore = store.isAuthenticated && store.currentUser
-
-  // Verify authentication status with server
   let isAuthenticated = false
-  try {
-    isAuthenticated = await store.checkAuth()
-  } catch (error) {
-    // Fallback to store state if server check fails but user recently logged in
-    if (hasUserInStore) {
-      console.log('Auth check failed but user exists in store, using store state')
-      isAuthenticated = true
-    } else {
+
+  if (cacheValid) {
+    // Trust cached auth state — .value is required for ComputedRef
+    isAuthenticated = store.isAuthenticated.value === true
+  } else {
+    // Verify authentication status with server
+    try {
+      isAuthenticated = await store.checkAuth()
+    } catch (_err) {
       isAuthenticated = false
     }
   }
 
-  // Handle protected routes
+  // ── Step 2: Redirect unauthenticated users to login ──────────────
   if (to.meta.requiresAuth && !isAuthenticated) {
-    // Build API base URL based on environment
-    const getApiBaseUrl = () => {
-      if (import.meta.env.DEV) {
-        return 'http://localhost:5000/api'
-      }
-      return '/api'
-    }
-
-    // Preserve intended destination for post-login redirect
     if (to.fullPath !== '/') {
       sessionStorage.setItem('oauth_redirect', to.fullPath)
     }
-
-    // Redirect to MediaWiki OAuth login (full page navigation)
-    window.location.href = `${getApiBaseUrl()}/user/oauth/login`
-    // Cancel the router navigation since we're doing a full page redirect
-    next(false)
-  } else if (to.meta.requiredRole && isAuthenticated) {
-    // Load dashboard access permissions if not already loaded
-    if (!store.state.dashboardAccessLoaded) {
-      await store.loadDashboardAccess()
-    }
-
-    // Enforce role-based dashboard access
-    const access = store.dashboardAccess.value
-    const requiredRole = to.meta.requiredRole
-    let hasAccess = false
-
-    if (requiredRole === 'organizer') {
-      hasAccess = access?.organizer === true
-    } else if (requiredRole === 'jury') {
-      hasAccess = access?.jury === true
-    }
-
-    if (!hasAccess) {
-      next({ path: '/dashboard', replace: true })
-    } else {
-      next()
-    }
-  } else {
-    // Allow navigation for authenticated users or public routes
-    next()
+    window.location.href = getLoginUrl()
+    return next(false)
   }
+
+  // ── Step 3: Enforce role-based access for dashboard routes ────────
+  if (to.meta.requiredRole) {
+    try {
+      if (!store.state.dashboardAccessLoaded) {
+        await store.loadDashboardAccess()
+      }
+
+      const access = store.dashboardAccess.value
+      const role = to.meta.requiredRole
+      const hasAccess =
+        (role === 'organizer' && access?.organizer === true) ||
+        (role === 'jury' && access?.jury === true)
+
+      if (!hasAccess) {
+        return next({ path: '/dashboard', replace: true })
+      }
+    } catch (_err) {
+      // On error, allow navigation — the component can handle it
+    }
+  }
+
+  // ── Step 4: Allow navigation ─────────────────────────────────────
+  next()
 })
 
 export default router
