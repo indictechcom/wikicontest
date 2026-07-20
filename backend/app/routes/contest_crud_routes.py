@@ -718,22 +718,19 @@ def update_contest(contest_id):
             return jsonify({"error": "Permission denied"}), 403
 
         # --- CRITICAL: Scoring System Change Validation ---
-        if "scoring_parameters" in data:
-            # Get current and proposed scoring modes
+        if "scoring_parameters" in data or "automated_settings" in data:
             current_mode = contest.get_scoring_mode()
 
-            proposed_params = data.get("scoring_parameters")
-            if proposed_params is None:
-                proposed_mode = "simple"
-            elif (
-                isinstance(proposed_params, dict)
-                and proposed_params.get("enabled") is True
-            ):
+            proposed_as = data.get("automated_settings") if "automated_settings" in data else contest.get_automated_settings()
+            proposed_sp = data.get("scoring_parameters") if "scoring_parameters" in data else contest.get_scoring_parameters()
+
+            if isinstance(proposed_as, dict) and proposed_as.get("enabled") is True:
+                proposed_mode = "automated"
+            elif isinstance(proposed_sp, dict) and proposed_sp.get("enabled") is True:
                 proposed_mode = "multi_parameter"
             else:
                 proposed_mode = "simple"
 
-            # Check if mode is changing
             if current_mode != proposed_mode:
                 can_change, reason = contest.can_change_scoring_system()
                 if not can_change:
@@ -1008,11 +1005,6 @@ def update_contest(contest_id):
             else:
                 # Validate automated scoring structure if enabled
                 if as_settings.get("enabled"):
-                    # Check if scoring system can be changed before enabling automated settings
-                    can_change, reason = contest.can_change_scoring_system()
-                    if not can_change:
-                        return jsonify({"error": reason}), 400
-
                     # Validate eligibility section
                     eligibility = as_settings.get("eligibility", {})
                     if not isinstance(eligibility, dict):
