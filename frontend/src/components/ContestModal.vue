@@ -662,13 +662,13 @@ export default {
     const forceAuthRefresh = async () => {
       checkingAuth.value = true
       try {
-        console.log('🔄 Manual auth refresh triggered')
+        console.log('Manual auth refresh triggered')
         await store.checkAuth()
         await new Promise(resolve => setTimeout(resolve, 200))
         checkDeletePermission()
-        console.log('🔄 Auth refresh completed, user:', store.currentUser || (store.state && store.state.currentUser))
+        console.log('Auth refresh completed, user:', store.currentUser || (store.state && store.state.currentUser))
       } catch (error) {
-        console.error('🔄 Auth refresh failed:', error)
+        console.error('Auth refresh failed:', error)
       } finally {
         checkingAuth.value = false
       }
@@ -725,13 +725,13 @@ export default {
         canDeleteContest.value = false
 
         try {
-          console.log('🔍 Modal opened, checking auth for contest:', newContest.name)
-          console.log('🔍 Contest created by:', newContest.created_by)
+          console.log('Modal opened, checking auth for contest:', newContest.name)
+          console.log('Contest created by:', newContest.created_by)
 
           // First, check if user is already in the store (from login)
           let loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
 
-          console.log('📊 Initial user check:', {
+          console.log('Initial user check:', {
             storeCurrentUser: store.currentUser,
             stateCurrentUser: (store.state && store.state.currentUser) || null,
             computedCurrentUser: currentUser.value,
@@ -740,7 +740,7 @@ export default {
 
           // If user is not in store, try to load it via checkAuth
           if (!loadedUser) {
-            console.log('⚠️ User not in store, calling checkAuth()...')
+            console.log('User not in store, calling checkAuth()...')
             let userLoaded = false
             let retries = 0
             const maxRetries = 3
@@ -768,7 +768,7 @@ export default {
               }
 
               if (!userLoaded && retries < maxRetries - 1) {
-                console.log(`🔄 Retrying auth check... (${retries + 1}/${maxRetries})`)
+                console.log(`Retrying auth check... (${retries + 1}/${maxRetries})`)
                 await new Promise(resolve => setTimeout(resolve, 300))
               }
               retries++
@@ -784,7 +784,7 @@ export default {
           loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
 
           // Log final state for debugging
-          console.log('📊 Final user state:', {
+          console.log('Final user state:', {
             isAuthenticated: store.isAuthenticated,
             currentUser: store.currentUser,
             stateCurrentUser: (store.state && store.state.currentUser) || null,
@@ -813,7 +813,7 @@ export default {
 
           // If permission check didn't work, try a few more times
           if (!canDeleteContest.value) {
-            console.log('⚠️ Delete permission false, retrying permission check...')
+            console.log('Delete permission false, retrying permission check...')
 
             // Retry up to 3 times with 150ms delay between attempts
             for (let i = 0; i < 3; i++) {
@@ -838,7 +838,7 @@ export default {
           if (!canDeleteContest.value) {
             // Gather final user state for debugging
             const finalUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
-            console.error('❌ Delete permission still false after all attempts')
+            console.error('Delete permission still false after all attempts')
             console.error('Final user check:', finalUser)
             console.error('Contest creator:', newContest.created_by)
 
@@ -853,7 +853,7 @@ export default {
             console.log('Delete permission check successful!')
           }
         } catch (error) {
-          console.error('❌ Failed to check auth:', error)
+          console.error('Failed to check auth:', error)
           canDeleteContest.value = false
         } finally {
           checkingAuth.value = false

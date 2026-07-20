@@ -143,11 +143,11 @@ def create_app():
             import secrets
             if not secret_key:
                 secret_key = secrets.token_urlsafe(48)
-                print("⚠️  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
+                print("WARNING: SECRET_KEY not set in environment. Generated temporary key.")
                 print("   Set SECRET_KEY in environment for production!")
             if not jwt_secret_key:
                 jwt_secret_key = secrets.token_urlsafe(48)
-                print("⚠️  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
+                print("WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
                 print("   Set JWT_SECRET_KEY in environment for production!")
     flask_app.config['SECRET_KEY'] = secret_key
     flask_app.config['JWT_SECRET_KEY'] = jwt_secret_key
@@ -344,7 +344,7 @@ if __name__ == '__main__':
     # Default to False for production safety
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     if debug_mode:
-        print("⚠️  WARNING: Debug mode is enabled. Disable in production!")
+        print("WARNING: Debug mode is enabled. Disable in production!")
     app.run(
         debug=debug_mode,  # Controlled by FLASK_DEBUG environment variable
         host='0.0.0.0',    # Allow connections from any IP
