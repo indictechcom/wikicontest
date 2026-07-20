@@ -420,7 +420,7 @@ class Contest(BaseModel, ContestMixin):
         Calculate the contest score from weighted parameter scores.
         
         Parameters:
-            parameter_scores (dict): Mapping of parameter names to scores on a 0–10 scale.
+            parameter_scores (dict): Mapping of parameter names to scores on a 0-10 scale.
         
         Returns:
             int: Weighted score clamped to the configured minimum and maximum, or the accepted mark when multi-parameter scoring is disabled.
