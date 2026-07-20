@@ -11,7 +11,7 @@ A comprehensive web platform for hosting and managing collaborative Wikipedia ar
 - [Running the Application](#running-the-application)
 - [OAuth Setup](#oauth-setup)
 - [Testing](#testing)
-- [Production Deployment](#production-deployment)
+- [Production Deployment](#production-deployment-toolforge)
 - [Project Structure](#project-structure)
 - [Frontend Technology](#frontend-technology)
 - [Contributing](#contributing)
@@ -318,7 +318,7 @@ Tests are also run automatically via GitHub Actions on every push and pull reque
 WikiEval is deployed on [Wikimedia Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge) as a single tool.
 Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separate Node.js proxy needed.
 
-**Live URL:** https://WikiEval.toolforge.org
+**Live URL:** https://wikieval.toolforge.org
 
 ### Quick Deploy
 
@@ -327,10 +327,10 @@ Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separ
 ssh login.toolforge.org
 
 # Become the tool account
-become WikiEval
+become wikieval
 
 # Build from the ft/toolforge branch
-toolforge build start https://github.com/Agamya-Samuel/WikiEval.git --ref ft/toolforge
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
 
 # Start the service
 toolforge webservice --mount none buildservice start

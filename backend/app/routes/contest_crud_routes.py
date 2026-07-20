@@ -1008,6 +1008,11 @@ def update_contest(contest_id):
             else:
                 # Validate automated scoring structure if enabled
                 if as_settings.get("enabled"):
+                    # Check if scoring system can be changed before enabling automated settings
+                    can_change, reason = contest.can_change_scoring_system()
+                    if not can_change:
+                        return jsonify({"error": reason}), 400
+
                     # Validate eligibility section
                     eligibility = as_settings.get("eligibility", {})
                     if not isinstance(eligibility, dict):

@@ -287,62 +287,37 @@ def refresh_metadata(contest_id):
     # For simple / multi-parameter contests we preserve the original       #
     # behaviour: process every submission in a single request.             #
     # ------------------------------------------------------------------ #
-    if is_automated:
-        # IMPORTANT: Each article requires ~6 Wikipedia API calls in
-        # automated mode (revisions, refs, incoming/outgoing links,
-        # images, infoboxes).  A batch of 50 = ~300 network calls which
-        # can easily take 10+ minutes and appear "stuck".
-        # Default is 10 (≈60 calls, completes in under 60 s).
-        _DEFAULT_BATCH_SIZE = 10
-        _MAX_BATCH_SIZE = 50
+    # IMPORTANT: Each article requires ~6 Wikipedia API calls in
+    # automated mode (revisions, refs, incoming/outgoing links,
+    # images, infoboxes).  A batch of 50 = ~300 network calls which
+    # can easily take 10+ minutes and appear "stuck".
+    # Default is 10 (≈60 calls, completes in under 60 s).
+    _DEFAULT_BATCH_SIZE = 10
+    _MAX_BATCH_SIZE = 50
 
-        try:
-            offset = max(0, int(request.args.get("offset", 0)))
-        except (ValueError, TypeError):
-            offset = 0
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+    except (ValueError, TypeError):
+        offset = 0
 
-        try:
-            batch_size = min(
-                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
-                _MAX_BATCH_SIZE,
-            )
-        except (ValueError, TypeError):
-            batch_size = _DEFAULT_BATCH_SIZE
-
-        total_count = Submission.query.filter_by(contest_id=contest_id).count()
-
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .offset(offset)
-            .limit(batch_size)
-            .all()
+    try:
+        batch_size = min(
+            max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+            _MAX_BATCH_SIZE,
         )
-    else:
-        try:
-            offset = max(0, int(request.args.get("offset", 0)))
-        except (ValueError, TypeError):
-            offset = 0
+    except (ValueError, TypeError):
+        batch_size = _DEFAULT_BATCH_SIZE
 
-        try:
-            batch_size = min(
-                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
-                _MAX_BATCH_SIZE,
-            )
-        except (ValueError, TypeError):
-            batch_size = _DEFAULT_BATCH_SIZE
+    total_count = Submission.query.filter_by(contest_id=contest_id).count()
 
-        total_count = Submission.query.filter_by(contest_id=contest_id).count()
-
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .offset(offset)
-            .limit(batch_size)
-            .all()
-        )
+    submissions = (
+        Submission.query
+        .filter_by(contest_id=contest_id)
+        .order_by(Submission.id)
+        .offset(offset)
+        .limit(batch_size)
+        .all()
+    )
 
     if not submissions:
         return (
@@ -386,7 +361,7 @@ def refresh_metadata(contest_id):
             # Parse the article URL to extract base URL
             base_url, error = validate_wiki_url(article_link)
             if error:
-                return error
+                return None
 
             # Build API request - get 2 revisions (newest and oldest)
             api_url = f"{base_url}/w/api.php"

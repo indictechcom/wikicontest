@@ -261,8 +261,9 @@ def create_contest_request():
             201,
         )
 
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         # Log error internally but don't expose details to client
+        current_app.logger.error("Error creating contest request: %s", exc)
         return jsonify({"error": "Failed to create contest request"}), 500
 
 
