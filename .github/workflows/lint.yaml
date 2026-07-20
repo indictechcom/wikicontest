@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies (frontend only)
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
       - name: Run ESLint (frontend only)
         working-directory: frontend
