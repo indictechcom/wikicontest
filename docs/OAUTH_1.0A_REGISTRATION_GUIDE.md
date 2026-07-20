@@ -27,7 +27,7 @@ Fill in each field as described below.
 |-------|-------|-------|
 | **Application name** | `WikiEval` or `WikiEval Evaluation Tool` | Must be unique across Wikimedia OAuth consumers. |
 | **Application description** | `A platform for hosting and participating in collaborative online Wikipedia article competitions, with automated evaluation and jury review workflows.` | Be specific about your tool's purpose. |
-| **OAuth "callback" URL** | `https://WikiEval.toolforge.org/oauth/callback` | **Must match exactly** the URL your application uses for OAuth callbacks. See Redirect URI section below. |
+| **OAuth "callback" URL** | `https://wikieval.toolforge.org/oauth/callback` | **Must match exactly** the URL your application uses for OAuth callbacks. See Redirect URI section below. |
 | **Contact email** | Your valid email address | Used by Wikimedia administrators for consumer approval communications. |
 | **Consumer version** | `1.0` | Leave at default unless you have a specific reason to change. |
 | **Owner-only** | `No` | Must be `No` to allow any Wikimedia user to authorize the application. |
@@ -97,9 +97,9 @@ In Wikimedia OAuth 1.0a, the "callback URL" serves the same purpose as the redir
 | Component | Value |
 |-----------|-------|
 | Protocol | `https://` |
-| Host | `WikiEval.toolforge.org` |
+| Host | `wikieval.toolforge.org` |
 | Path | `/oauth/callback` |
-| Full URL | `https://WikiEval.toolforge.org/oauth/callback` |
+| Full URL | `https://wikieval.toolforge.org/oauth/callback` |
 
 ### Custom Callback Path Override
 
@@ -243,7 +243,7 @@ OAUTH_CALLBACK_PATH=
 
 For production/Toolforge, add:
 ```env
-FRONTEND_URL=https://WikiEval.toolforge.org
+FRONTEND_URL=https://wikieval.toolforge.org
 ```
 
 
@@ -262,7 +262,7 @@ FRONTEND_URL=https://WikiEval.toolforge.org
 
 OAuth consumers are environment-specific because callback URLs are fixed and cannot be changed after registration. Maintain separate consumers for:
 - **Local Development**: `http://localhost:5000/api/user/oauth/callback`
-- **Production (Toolforge)**: `https://WikiEval.toolforge.org/oauth/callback`
+- **Production (Toolforge)**: `https://wikieval.toolforge.org/oauth/callback`
 
 ### OAuth 1.0a vs OAuth 2.0
 

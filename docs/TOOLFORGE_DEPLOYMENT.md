@@ -5,7 +5,7 @@ Flask (Gunicorn) serves both the REST API (`/api/*`) and the Vue.js static front
 
 The Node.js buildpack builds the Vue.js app during the container image build phase (`postinstall` in root `package.json`), and the Python buildpack runs Gunicorn at runtime.
 
-**URL:** `https://WikiEval.toolforge.org`
+**URL:** `https://wikieval.toolforge.org`
 
 ## Architecture
 
@@ -14,13 +14,13 @@ Browser
   │
   ▼
 ┌─────────────────────────────────────────────────────┐
-│  WikiEval.toolforge.org  (single Toolforge tool) │
+│  wikieval.toolforge.org  (single Toolforge tool)    │
 │                                                     │
 │  Gunicorn (4 workers)                               │
 │  ├── Flask routes: /api/*, /oauth/*                 │
 │  └── Static files: frontend/dist/  (Vue.js SPA)     │
 │                                                     │
-│  ToolsDB: s57509__WikiEval                       │
+│  ToolsDB: s57509__WikiEval                          │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -31,7 +31,7 @@ No separate frontend proxy, no Node.js runtime at request time, no CORS issues.
 - Wikimedia developer account with Toolforge access
 - SSH access to `login.toolforge.org`
 - OAuth consumer registered at https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
-  - Callback URL: `https://WikiEval.toolforge.org/oauth/callback`
+  - Callback URL: `https://wikieval.toolforge.org/oauth/callback`
 
 ## Step 1: Create the Tool
 
@@ -62,7 +62,7 @@ toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
 toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
 
 # Frontend URL (used for OAuth redirects and User-Agent headers)
-toolforge envvars create FRONTEND_URL "https://WikiEval.toolforge.org"
+toolforge envvars create FRONTEND_URL "https://wikieval.toolforge.org"
 
 # Database — ToolsDB credentials from replica.my.cnf
 TOOL_DB_USER=$(grep -Po '(?<=user = ).*' ~/replica.my.cnf)
@@ -103,7 +103,7 @@ toolforge webservice status
 toolforge webservice logs
 
 # Test from the bastion
-curl -s https://WikiEval.toolforge.org/api/health
+curl -s https://wikieval.toolforge.org/api/health
 ```
 
 Expected response:
@@ -153,7 +153,7 @@ toolforge webservice --mount none buildservice start
 | `OAUTH_CALLBACK_PATH` | Yes | Set to `/oauth/callback` |
 | `SECRET_KEY` | Yes | Flask secret key (random hex) |
 | `JWT_SECRET_KEY` | Yes | JWT signing key (random hex) |
-| `FRONTEND_URL` | Yes | `https://WikiEval.toolforge.org` |
+| `FRONTEND_URL` | Yes | `https://wikieval.toolforge.org` |
 | `TOOL_TOOLSDB_USER` | Yes | ToolsDB username from `replica.my.cnf` |
 | `TOOL_TOOLSDB_PASSWORD` | Yes | ToolsDB password from `replica.my.cnf` |
 | `TOOL_TOOLSDB_DBNAME` | Yes | Database name (`WikiEval`) |
@@ -162,7 +162,7 @@ toolforge webservice --mount none buildservice start
 ## Troubleshooting
 
 ### OAuth redirect goes to localhost
-The `FRONTEND_URL` env var is missing or set to a development URL. Set it to `https://WikiEval.toolforge.org`.
+The `FRONTEND_URL` env var is missing or set to a development URL. Set it to `https://wikieval.toolforge.org`.
 
 ### "oauth_callback must be set to oob"
 `OAUTH_USE_OOB` is not evaluating to `True`. This is usually caused by a trailing newline in the env var value. The app strips whitespace at startup, but if you set the value before the fix was deployed, re-set it:

@@ -155,7 +155,7 @@ You should maintain separate OAuth consumers for different environments:
 | Environment | Callback URL |
 |-------------|-------------|
 | **Local Development** | `http://localhost:5000/api/user/oauth/callback` |
-| **Production/Toolforge** | `https://WikiEval.toolforge.org/oauth/callback` |
+| **Production/Toolforge** | `https://wikieval.toolforge.org/oauth/callback` |
 
 This separation ensures:
 - Local testing doesn't affect production authentication
@@ -212,7 +212,7 @@ http://localhost:3000/api/user/oauth/callback
 | `http://localhost:5000/oauth/callback`             | Missing `/api/user` prefix                 |
 | `http://localhost/api/user/oauth/callback`         | Missing port number (`:5000`)              |
 | `http://localhost:5000/api/user/oauth/callback/`   | Extra trailing slash                       |
-| `https://WikiEval.toolforge.org/oauth/callback` | Using production URL for local development |
+| `https://wikieval.toolforge.org/oauth/callback` | Using production URL for local development |
 
 ### Correct URL
 ```
@@ -313,7 +313,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 | Environment                                           | Consumer | Callback URL       |
 |--|-|--|
 | **Local Development**                                 | WikiEval Local Development | `http://localhost:5000/api/user/oauth/callback` |
-| **Production (Toolforge)**                            | WikiEval                   | `https://WikiEval.toolforge.org/oauth/callback` |
+| **Production (Toolforge)**                            | WikiEval                   | `https://wikieval.toolforge.org/oauth/callback` |
 
 **Benefits of separation:**
 - Test OAuth flows safely without affecting production
