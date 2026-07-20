@@ -37,14 +37,10 @@ system_bp = Blueprint('system', __name__)
 @system_bp.route('/api/cookie', methods=['GET'])
 def check_cookie():
     """
-    Check if user is authenticated via JWT cookie.
-
-    This endpoint is used by the frontend to verify if a user is currently
-    logged in. It reads the JWT token from the HTTP-only cookie and returns
-    the user's basic information if the token is valid.
-
+    Determine whether the current request is authenticated and provide the user's account details.
+    
     Returns:
-        JSON: User information if authenticated, error if not
+        A JSON response containing user information with status 200, or an authentication error with status 401.
     """
     try:
         # Verify the JWT token from the cookie
@@ -141,10 +137,13 @@ def index():
 @system_bp.route('/<path:filename>')
 def serve_static(filename):
     """
-    Serve static files from frontend directory.
-
-    In production, serves from frontend/dist directory (built Vue.js app).
-    In development, serves from frontend directory (Vite dev server handles Vue.js).
+    Serve a frontend asset, using the production build when available.
+    
+    Unknown production paths fall back to the frontend entry page for client-side routing.
+    API and OAuth paths return a 404 response instead of serving frontend content.
+    
+    Parameters:
+        filename (str): Frontend asset path to serve.
     """
     # Skip API routes to avoid conflict with API endpoints
     if filename.startswith('api/') or filename.startswith('oauth/'):
@@ -176,13 +175,11 @@ def serve_static(filename):
 @system_bp.route('/api/health', methods=['GET'])
 def health_check():
     """
-    Health check endpoint for monitoring and load balancers.
-
-    This endpoint can be used by monitoring systems to check if the
-    application is running and responding to requests.
-
+    Check application and database availability.
+    
     Returns:
-        JSON: Application status information
+        tuple: A JSON response reporting the application and database status, with
+            HTTP status 200 when the database is reachable or 503 otherwise.
     """
     try:
         db.session.execute(sql_text('SELECT 1'))
@@ -223,14 +220,11 @@ def oauth_callback_redirect():
 @jwt_required()
 def oauth_config_check():
     """
-    Diagnostic endpoint to check OAuth configuration.
-
-    This helps verify that OAuth is properly configured and shows
-    what callback URL will be used. Useful for troubleshooting.
-    Admin access required.
-
+    Provide administrators with the active OAuth configuration and callback URL.
+    
     Returns:
-        JSON: OAuth configuration details (without secrets)
+        JSON response containing OAuth configuration details without exposing
+        secret values, or an access-denied error for non-administrators.
     """
     user_id = get_jwt_identity()
     current_user = db.session.get(User, int(user_id))

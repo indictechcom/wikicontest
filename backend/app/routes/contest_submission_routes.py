@@ -44,19 +44,20 @@ contest_sub_bp = Blueprint("contest_sub", __name__)
 @validate_json_data(["article_link"])
 def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     """
-    Submit an entry to a contest
-
-    This endpoint accepts only the article URL and automatically fetches
-    article information (title, author, etc.) from MediaWiki API.
-
+    Create a contest submission for the authenticated user from an article URL.
+    
+    Fetches article metadata and metrics from MediaWiki, validates the article against
+    contest requirements, and optionally adds the contest's template and categories
+    using the user's OAuth credentials.
+    
     Args:
-        contest_id: Contest ID
-
-    Expected JSON data:
-        article_link: URL to the submitted article
-
+        contest_id: Identifier of the contest.
+        article_link: Article URL supplied in the request JSON body.
+    
     Returns:
-        JSON response with success message and submission ID
+        A JSON response containing the created submission details, or an error
+        response when the contest, article, validation, external API, or database
+        operation cannot be completed.
     """
     import requests
     from urllib.parse import urlparse
@@ -960,13 +961,13 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 @handle_errors
 def get_contest_submissions(contest_id):
     """
-    Get all submissions for a specific contest (admin, jury, or creator only)
-
-    Args:
-        contest_id: Contest ID
-
+    Retrieve all submissions for a contest for authorized users.
+    
+    Parameters:
+    	contest_id (int): The contest whose submissions are retrieved.
+    
     Returns:
-        JSON response with submissions data
+    	list: A JSON response containing submission details, submitting user information, and the contest name.
     """
     user = request.current_user
 

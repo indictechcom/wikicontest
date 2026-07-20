@@ -20,7 +20,11 @@ const api = axios.create({
   }
 })
 
-// Extract cookie value by name from document.cookie string
+/**
+ * Retrieves a cookie value by name.
+ * @param {string} name - The name of the cookie to retrieve.
+ * @return {string|null} The cookie value, or `null` if the cookie is not found.
+ */
 function getCookie(name) {
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)

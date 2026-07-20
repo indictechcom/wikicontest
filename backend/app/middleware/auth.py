@@ -21,10 +21,11 @@ from app.models.user import User
 
 def get_current_user():
     """
-    Get the current authenticated user from JWT token
-
+    Retrieve the authenticated user for the current request.
+    
     Returns:
-        User: Current user instance or None if not authenticated
+        User | None: The authenticated user, or None if the JWT is invalid,
+            missing, or the user cannot be loaded.
     """
     try:
         # Verify JWT token exists and is valid in current request
@@ -47,18 +48,25 @@ def get_current_user():
 
 def require_auth(f):
     """
-    Decorator to require authentication for a route
-
-    Args:
-        f: Function to decorate
-
+    Decorate a route handler to require a valid authenticated user.
+    
+    Parameters:
+        f: The route handler to decorate.
+    
     Returns:
-        Decorated function that requires authentication
+        A decorated route handler that returns HTTP 401 when the authenticated user is invalid.
     """
     @wraps(f)
     @jwt_required()
     def decorated_function(*args, **kwargs):
         # Fetch authenticated user from JWT token
+        """
+        Authenticate the request and provide the current user to the wrapped route handler.
+        
+        Returns:
+            The wrapped handler's response on success, or a 401 response if the
+            authenticated user cannot be found.
+        """
         user = get_current_user()
         if not user:
             # User not found in database (deleted user with valid token)
@@ -73,15 +81,25 @@ def require_auth(f):
 
 def require_role(roles):
     """
-    Decorator to require specific roles for a route
-
+    Create a decorator that restricts route access by user role.
+    
     Args:
-        roles: List of allowed roles or single role string
-
+        roles: A role name or iterable of permitted role names. Administrators
+            may bypass requirements other than ``superadmin``.
+    
     Returns:
-        Decorator function
+        A decorator that enforces authentication and role-based access.
     """
     def decorator(f):
+        """
+        Enforce authentication and role-based access for a route handler.
+        
+        Parameters:
+            f (callable): The route handler to protect.
+        
+        Returns:
+            callable: A wrapped route handler that allows access only to authenticated users with an allowed role.
+        """
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
@@ -122,15 +140,26 @@ def require_role(roles):
 
 def require_submission_permission(permission_type):
     """
-    Decorator to require specific submission permissions
-
-    Args:
-        permission_type: Type of permission ('owner', 'jury', 'view')
-
+    Create a decorator that restricts access to a submission based on a permission type.
+    
+    Parameters:
+        permission_type (str): Permission to enforce: ``'owner'``, ``'jury'``, or
+            ``'view'``.
+    
     Returns:
-        Decorator function
+        A decorator that authorizes access and attaches the authenticated user and
+        submission to the request context.
     """
     def decorator(f):
+        """
+        Create a route decorator that enforces a user's permission to access a submission.
+        
+        Parameters:
+            f (callable): Route handler to protect.
+        
+        Returns:
+            callable: A decorated route handler that authorizes access using the configured permission type.
+        """
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
@@ -181,15 +210,25 @@ def require_submission_permission(permission_type):
 
 def validate_json_data(required_fields):
     """
-    Decorator to validate JSON data in request
-
-    Args:
-        required_fields: List of required field names
-
+    Create a decorator that validates required fields in a JSON request body.
+    
+    Parameters:
+        required_fields: Field names that must be present in the request data.
+    
     Returns:
-        Decorator function
+        A decorator that attaches validated request data to `request.validated_data` and rejects invalid requests with an HTTP 400 response.
     """
     def decorator(f):
+        """
+        Validate the request body before invoking the wrapped route handler.
+        
+        Parameters:
+            f (callable): Route handler to invoke after validation.
+        
+        Returns:
+            callable: A wrapped route handler that stores validated JSON data in
+            `request.validated_data` and returns a 400 response when validation fails.
+        """
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Ensure request content-type is JSON
@@ -222,16 +261,23 @@ def validate_json_data(required_fields):
 
 def handle_errors(f):
     """
-    Decorator to handle common errors in route functions
-
-    Args:
-        f: Function to decorate
-
+    Handle errors raised by a route function and return appropriate JSON responses.
+    
+    Parameters:
+        f: The route function to wrap.
+    
     Returns:
-        Decorated function with error handling
+        A decorated function that returns a 400 response for ValueError exceptions and a 500 response for other exceptions.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        """
+        Execute the wrapped function and convert raised errors into HTTP error responses.
+        
+        Returns:
+            The wrapped function's result, or a 400 response for `ValueError` and a
+            500 response for other exceptions.
+        """
         try:
             # Execute the wrapped function
             return f(*args, **kwargs)

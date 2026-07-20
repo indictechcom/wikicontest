@@ -16,6 +16,18 @@ __all__ = ["validate_contest_submission_access"]
 
 
 def validate_contest_submission_access(contest_id, user, Contest) -> tuple:
+    """
+    Determine whether a user can access a contest's submission resources.
+    
+    Parameters:
+        contest_id: Identifier of the contest to access.
+        user: User requesting access.
+        Contest: Contest model used to load the contest.
+    
+    Returns:
+        tuple: The contest and `None` when access is granted; otherwise, `None`
+            and a Flask response with the appropriate error status.
+    """
     contest = db.session.get(Contest, contest_id)
 
     if not contest:

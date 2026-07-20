@@ -82,15 +82,13 @@ for _key in list(os.environ):
 
 def create_app():
     """
-    Application factory pattern for creating Flask app instances.
-
-    This function creates and configures the Flask application with all
-    necessary extensions and settings. Using the factory pattern makes
-    the application more testable and allows for different configurations
-    in different environments.
-
+    Create and configure a Flask application instance.
+    
+    Raises:
+        RuntimeError: If required secret keys are missing in production.
+    
     Returns:
-        Flask: Configured Flask application instance
+        Flask: The fully configured application instance.
     """
     # Initialize Flask application
     flask_app = Flask(__name__)
@@ -313,10 +311,10 @@ def not_found(_error):
 @app.errorhandler(500)
 def internal_error(_error):
     """
-    Handle 500 Internal Server errors.
-
-    This handler catches all unhandled exceptions and returns a generic
-    error response. It also rolls back any pending database transactions.
+    Handle internal server errors with a generic JSON response.
+    
+    Returns:
+        tuple: A JSON error response and HTTP status code 500.
     """
     db.session.rollback()
     try:

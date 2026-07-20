@@ -117,13 +117,13 @@ class User(BaseModel):
 
     def __init__(self, username, email, password, role="user"):
         """
-        Initialize a new User instance
-
-        Args:
-            username: Unique username
-            email: Unique email address
-            password: Plain text password (will be hashed)
-            role: User role (defaults to 'user')
+        Initialize a user with account credentials and a role.
+        
+        Parameters:
+            username: The user's unique username.
+            email: The user's unique email address.
+            password: The user's plaintext password, which is hashed before storage.
+            role: The user's role. Defaults to "user".
         """
         self.username = username
         self.email = email
@@ -138,10 +138,10 @@ class User(BaseModel):
 
     def set_password(self, password):
         """
-        Hash and set the user's password using bcrypt
-
-        Args:
-            password: Plain text password to hash
+        Hash and store the user's password.
+        
+        Parameters:
+            password (str): The plaintext password to hash.
         """
         # Generate secure bcrypt hash (includes salt automatically)
         self.password = generate_password_hash(password)
@@ -149,13 +149,13 @@ class User(BaseModel):
 
     def check_password(self, password):
         """
-        Check if provided password matches the user's password
-
-        Args:
-            password: Plain text password to check
-
+        Determine whether a plaintext password matches the stored password hash.
+        
+        Parameters:
+            password (str): The plaintext password to verify.
+        
         Returns:
-            bool: True if password matches, False otherwise
+            bool: `true` if the password matches, `false` otherwise.
         """
         # Verify password against stored hash (timing-safe comparison)
         return check_password_hash(self.password, password)
@@ -167,10 +167,12 @@ class User(BaseModel):
 
     def update_score(self, score_change):
         """
-        Update user's total score by adding/subtracting points
-
+        Update the user's total score by applying a positive or negative adjustment.
+        
         Args:
-            score_change: Amount to add (positive) or subtract (negative)
+            score_change: The number of points to add to or subtract from the user's score.
+        
+        The updated score is not committed to the database.
         """
         self.score += score_change
 
@@ -184,15 +186,10 @@ class User(BaseModel):
 
     def is_admin(self):
         """
-        Check if user has admin-level privileges
-
-        NOTE:
-        - Treats both 'admin' and 'superadmin' as admin-level users
-        - This simplifies permission checks: any code checking is_admin()
-          automatically grants access to superadmins as well
-
+        Determine whether the user has administrator-level privileges.
+        
         Returns:
-            bool: True if user is admin or superadmin, False otherwise
+            bool: `True` if the user's role is `"admin"` or `"superadmin"`, `False` otherwise.
         """
         # Both admin and superadmin share admin powers
         return self.role in ('admin', 'superadmin')
@@ -200,15 +197,10 @@ class User(BaseModel):
 
     def is_superadmin(self):
         """
-        Check if user has the superadmin role (highest privilege level)
-
-        Superadmin notes:
-        - Should be created and managed carefully (use sparingly)
-        - Use this when you explicitly need to target only superadmins
-        - For most permission checks, use is_admin() instead
-
+        Determine whether the user has the superadmin role.
+        
         Returns:
-            bool: True if user is superadmin, False otherwise
+            bool: `true` if the user's role is `"superadmin"`, `false` otherwise.
         """
         return self.role == 'superadmin'
 
@@ -240,13 +232,13 @@ class User(BaseModel):
 
     def is_jury_member(self, contest):
         """
-        Check if user is a jury member for a specific contest
-
-        Args:
-            contest: Contest instance to check
-
+        Determine whether the user is assigned to a contest's jury.
+        
+        Parameters:
+            contest: The contest whose jury membership to check.
+        
         Returns:
-            bool: True if user is jury member, False otherwise
+            bool: `true` if the user's username is listed as a jury member, `false` otherwise.
         """
         # No jury members assigned
         if not contest.jury_members:
@@ -261,29 +253,26 @@ class User(BaseModel):
 
     def is_contest_creator(self, contest):
         """
-        Check if user created a specific contest
-
-        Args:
-            contest: Contest instance to check
-
+        Determine whether the user created the specified contest.
+        
+        Parameters:
+            contest: Contest to check.
+        
         Returns:
-            bool: True if user created the contest, False otherwise
+            `true` if the user's username matches the contest creator, `false` otherwise.
         """
         return self.username == contest.created_by
 
 
     def is_contest_organizer(self, contest):
         """
-        Check if user is an organizer for a specific contest
-
-        Organizers have management permissions (edit, view submissions, etc.)
-        Creator is always included in organizers list
-
-        Args:
-            contest: Contest instance to check
-
+        Determine whether the user organizes a contest.
+        
+        Parameters:
+            contest: The contest to check.
+        
         Returns:
-            bool: True if user is organizer, False otherwise
+            bool: `true` if the user is listed as an organizer or is the contest creator when no organizers are listed, `false` otherwise.
         """
         if not contest:
             return False
@@ -307,20 +296,13 @@ class User(BaseModel):
 
     def can_access_submission(self, submission):
         """
-        Check if user can access (view/review) a specific submission
-
-        Access is granted to:
-        - Admins (universal access)
-        - Submission owner
-        - Jury members of the contest
-        - Contest creator
-        - Contest organizers
-
-        Args:
-            submission: Submission instance to check
-
+        Determine whether the user may view or review a submission.
+        
+        Parameters:
+            submission: The submission whose access permissions are being checked.
+        
         Returns:
-            bool: True if user can access submission, False otherwise
+            bool: `True` if the user has access, `False` otherwise.
         """
         # Admins have universal access to all submissions
         if self.is_admin():
@@ -351,10 +333,10 @@ class User(BaseModel):
 
     def to_dict(self):
         """
-        Convert user instance to dictionary for JSON serialization
-
+        Serialize the user’s public data for JSON responses.
+        
         Returns:
-            dict: User data (excludes password for security)
+            dict: User data excluding the password, with the creation timestamp in ISO format when available.
         """
         # Superadmins are automatically treated as trusted members
         is_trusted = bool(getattr(self, 'is_trusted_member', False))

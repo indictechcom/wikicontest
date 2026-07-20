@@ -32,15 +32,13 @@ contest_outreach_bp = Blueprint("contest_outreach", __name__)
 @handle_errors
 def get_contest_outreach_data(contest_id):
     """
-    Get Outreach Dashboard course data for a contest
-
-    Requires authentication - users must be logged in to view contest details.
-
-    Args:
-        contest_id: Contest ID
-
+    Retrieve course data from the Outreach Dashboard for a contest.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest.
+    
     Returns:
-        JSON response with Outreach Dashboard course data or error message
+        tuple: A JSON response containing the course data on success, or an error message with the corresponding HTTP status code.
     """
     contest = db.session.get(Contest, contest_id)
 
@@ -70,13 +68,14 @@ def get_contest_outreach_data(contest_id):
 @handle_errors
 def get_outreach_dashboard_users(contest_id):
     """
-    Fetch Outreach Dashboard course users data for a contest.
-
-    Args:
-        contest_id: ID of the contest
-
+    Fetch course user data from the Outreach Dashboard for a contest.
+    
+    Parameters:
+        contest_id: ID of the contest.
+    
     Returns:
-        JSON response with Outreach Dashboard course users data or error message
+        A JSON response containing course user data, or an error response if the
+        contest or Outreach Dashboard URL is unavailable or the request fails.
     """
     contest = db.session.get(Contest, contest_id)
 
@@ -106,13 +105,13 @@ def get_outreach_dashboard_users(contest_id):
 @handle_errors
 def get_outreach_dashboard_articles(contest_id):
     """
-    Fetch Outreach Dashboard course articles data for a contest.
-
-    Args:
-        contest_id: ID of the contest
-
+    Retrieve Outreach Dashboard course articles for a contest.
+    
+    Parameters:
+        contest_id: The contest identifier.
+    
     Returns:
-        JSON response with Outreach Dashboard course articles data or error message
+        A JSON response containing article data, or an error message with the corresponding HTTP status.
     """
     contest = db.session.get(Contest, contest_id)
 
@@ -142,13 +141,15 @@ def get_outreach_dashboard_articles(contest_id):
 @handle_errors
 def get_outreach_dashboard_uploads(contest_id):
     """
-    Fetch Outreach Dashboard course uploads data for a contest.
-
-    Args:
-        contest_id: ID of the contest
-
+    Fetches course upload data from the Outreach Dashboard for a contest.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest.
+    
     Returns:
-        JSON response with Outreach Dashboard course uploads data or error message
+        A JSON response containing upload data, or an error response with HTTP
+        status 404 when the contest is missing or 400 when the dashboard URL or
+        upstream data request is unavailable.
     """
     contest = db.session.get(Contest, contest_id)
 

@@ -20,6 +20,15 @@ __all__ = [
 
 
 def extract_template_name_from_url(template_url: str) -> Optional[str]:
+    """
+    Extract a template name from a wiki template URL.
+    
+    Parameters:
+    	template_url (str): URL of the wiki template page.
+    
+    Returns:
+    	Optional[str]: The template name without its namespace prefix, or `None` if the URL does not identify a supported template namespace.
+    """
     page_title = extract_page_title_from_url(template_url)
     if not page_title:
         return None
@@ -42,6 +51,15 @@ def extract_template_name_from_url(template_url: str) -> Optional[str]:
 
 
 def validate_template_link(template_url: str) -> Dict[str, Any]:
+    """
+    Validate a template URL and verify that its corresponding page exists.
+    
+    Parameters:
+    	template_url (str): URL of a wiki page in a supported Template namespace.
+    
+    Returns:
+    	Dict[str, Any]: Validation details including validity, template name, page existence, template status, and any error message.
+    """
     result = {
         'valid': False,
         'error': None,
@@ -114,6 +132,16 @@ def validate_template_link(template_url: str) -> Dict[str, Any]:
 
 
 def check_article_has_template(article_url: str, template_name: str) -> Dict[str, Any]:
+    """
+    Determine whether an article begins with the specified template.
+    
+    Parameters:
+    	article_url (str): URL of the article whose wikitext is checked.
+    	template_name (str): Name of the template to locate at the start of the article.
+    
+    Returns:
+    	Dict[str, Any]: Result containing whether the template was found, a truncated article-content preview, and an error message when fetching fails.
+    """
     result = {
         'has_template': False,
         'error': None,
@@ -142,6 +170,15 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
     ]
 
     def check_template_at_start(content: str) -> bool:
+        """
+        Determine whether the content begins with the specified template invocation.
+        
+        Parameters:
+            content (str): Wikitext content to inspect.
+        
+        Returns:
+            bool: `True` if the content starts with a recognized invocation of the template, `False` otherwise.
+        """
         for variation in template_variations:
             if content.startswith(variation):
                 return True

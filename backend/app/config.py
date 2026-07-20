@@ -227,13 +227,15 @@ config = {
 
 def get_config(environment=None):
     """
-    Get configuration class for the specified environment.
-
+    Selects the configuration class for the requested environment.
+    
     Args:
-        environment (str): Environment name ('development', 'testing', 'production')
-
+        environment (str, optional): Environment name. Defaults to the
+            ``FLASK_ENV`` value or ``"default"``.
+    
     Returns:
-        Config: Configuration class instance
+        type: The matching configuration class, or the default development
+            configuration when the environment is unknown.
     """
     # Auto-detect environment from FLASK_ENV if not explicitly provided
     if environment is None:

@@ -24,22 +24,17 @@ trusted_bp = Blueprint('trusted_member', __name__)
 @handle_errors
 def request_trusted_member():
     """
-    Request trusted member status (creator account request)
-
-    This endpoint handles creator account requests for users who logged in via MediaWiki OAuth.
-
-    Workflow:
-    1. If user has >= 300 edits: automatically grant trusted member status
-    2. If user has < 300 edits: require a reason and submit for superadmin review
-
-    Only users who logged in via MediaWiki OAuth can request creator accounts.
-    Superadmins don't need permission - they can create contests directly.
-
-    Expected JSON data (for users with < 300 edits):
-        reason: Explanation of why the user wants to be a creator (required if edit count < 300)
-
+    Request trusted member status based on MediaWiki edit history.
+    
+    Users with at least 300 edits are approved automatically. Users with fewer
+    edits, or whose edit count cannot be verified, must provide a reason for
+    superadmin review.
+    
+    Request body:
+        reason (str): Explanation required when automatic approval is unavailable.
+    
     Returns:
-        JSON response with success message
+        JSON response containing the approval or submission result.
     """
     user = request.current_user
 
@@ -159,12 +154,11 @@ def request_trusted_member():
 @handle_errors
 def get_trusted_member_requests():
     """
-    Get all pending trusted member requests (superadmin only)
-
-    Returns list of users who have requested trusted member status.
-
+    Retrieve pending trusted member requests for administrative review.
+    
     Returns:
-        JSON response with list of pending requests
+        A JSON response containing the pending requests and each user's identifying
+        information, account role, creation timestamp, and request reason.
     """
     # Get all users with pending requests
     requests = User.query.filter_by(trusted_member_request=True, is_trusted_member=False).all()
@@ -187,12 +181,11 @@ def get_trusted_member_requests():
 @handle_errors
 def get_trusted_members():
     """
-    Get all trusted members (superadmin only)
-
-    Returns list of all users who are trusted members.
-
+    List all trusted members, including superadmins.
+    
     Returns:
-        JSON response with list of trusted members
+        JSON response containing each member's ID, username, email, role,
+        superadmin status, and creation timestamp.
     """
     # Get all trusted members (excluding superadmins as they're automatically trusted)
     trusted_members = User.query.filter_by(is_trusted_member=True).all()
@@ -220,16 +213,13 @@ def get_trusted_members():
 @handle_errors
 def approve_trusted_member(user_id):
     """
-    Approve a trusted member request (superadmin only)
-
-    Approves a user's request to become a trusted member.
-    This allows them to create contests.
-
-    Args:
-        user_id: User ID to approve
-
+    Approve a user's request for trusted member status.
+    
+    Parameters:
+        user_id: ID of the user to approve.
+    
     Returns:
-        JSON response with success message
+        JSON response containing a success message, or an error response if the user does not exist or is a superadmin.
     """
     user = db.session.get(User, user_id)
 
@@ -259,16 +249,13 @@ def approve_trusted_member(user_id):
 @handle_errors
 def reject_trusted_member(user_id):
     """
-    Reject a trusted member request (superadmin only)
-
-    Rejects a user's request to become a trusted member.
-    The request flag is cleared, but they can request again later.
-
+    Rejects a user's pending trusted member request and records its rejected status.
+    
     Args:
-        user_id: User ID to reject
-
+        user_id: ID of the user whose request is being rejected.
+    
     Returns:
-        JSON response with success message
+        A JSON success response, or a 404 error if the user does not exist.
     """
     user = db.session.get(User, user_id)
 
@@ -291,16 +278,14 @@ def reject_trusted_member(user_id):
 @handle_errors
 def add_trusted_member(user_id):
     """
-    Manually add a user as trusted member (superadmin only)
-
-    Allows superadmin to directly add a user as trusted member
-    without requiring a request from the user.
-
+    Add a user to the trusted member group.
+    
     Args:
-        user_id: User ID to add as trusted member
-
+        user_id: ID of the user to add as a trusted member.
+    
     Returns:
-        JSON response with success message
+        JSON response containing a success message, or an error response if the user
+        is not found or is a superadmin.
     """
     user = db.session.get(User, user_id)
 
@@ -330,16 +315,14 @@ def add_trusted_member(user_id):
 @handle_errors
 def remove_trusted_member(user_id):
     """
-    Remove trusted member status from a user (superadmin only)
-
-    Removes a user's trusted member status.
-    They will no longer be able to create contests (unless they're superadmin).
-
-    Args:
-        user_id: User ID to remove from trusted members
-
+    Remove a user's trusted member status.
+    
+    Parameters:
+        user_id: ID of the user whose trusted member status should be removed.
+    
     Returns:
-        JSON response with success message
+        JSON response confirming the removal, or an error response if the user is
+        not found or is a superadmin.
     """
     user = db.session.get(User, user_id)
 

@@ -28,6 +28,13 @@ class MediaWikiClient:
         headers: Optional[Dict[str, str]] = None,
     ) -> None:
         # Lazy import to avoid circular dependency: app.utils -> app.services.mediawiki -> app.utils
+        """
+        Initialize the MediaWiki API client configuration.
+        
+        Parameters:
+            timeout (Optional[int]): Request timeout in seconds. Uses the application default when omitted.
+            headers (Optional[Dict[str, str]]): HTTP headers for API requests. Uses the application defaults when omitted.
+        """
         from app.utils import get_mediawiki_headers, MEDIAWIKI_API_TIMEOUT
         self.timeout = timeout if timeout is not None else MEDIAWIKI_API_TIMEOUT
         self.headers = headers if headers is not None else get_mediawiki_headers()
@@ -39,16 +46,18 @@ class MediaWikiClient:
         auth: Optional[Any] = None,
         timeout: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Make a GET request to the MediaWiki API.
-
-        Args:
-            api_url: Full API endpoint URL.
-            params: Query parameters for the request.
-            auth: Optional OAuth1 auth object.
-            timeout: Optional override for request timeout.
-
+        """
+        Execute a GET request against a MediaWiki API endpoint.
+        
+        Parameters:
+            api_url (str): Full MediaWiki API endpoint URL.
+            params (Optional[Dict[str, Any]]): Query parameters for the request.
+            auth (Optional[Any]): Optional authentication object.
+            timeout (Optional[int]): Optional request timeout override.
+        
         Returns:
-            Parsed JSON response dict, or None on failure.
+            Optional[Dict[str, Any]]: Parsed JSON response, or None if the request,
+            response, or MediaWiki API reports an error.
         """
         try:
             response = requests.get(
@@ -90,16 +99,18 @@ class MediaWikiClient:
         auth: Optional[Any] = None,
         timeout: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Make a POST request to the MediaWiki API.
-
-        Args:
-            api_url: Full API endpoint URL.
-            data: Form data for the request body.
-            auth: Optional OAuth1 auth object.
-            timeout: Optional override for request timeout.
-
+        """
+        Submit form data to a MediaWiki API endpoint.
+        
+        Parameters:
+            api_url (str): Full API endpoint URL.
+            data (Optional[Dict[str, Any]]): Form data for the request body.
+            auth (Optional[Any]): Optional authentication object.
+            timeout (Optional[int]): Optional request timeout override.
+        
         Returns:
-            Parsed JSON response dict, or None on failure.
+            Optional[Dict[str, Any]]: Parsed JSON response, or `None` if the request,
+            response, JSON, or MediaWiki API reports an error.
         """
         try:
             response = requests.post(

@@ -51,7 +51,9 @@ def db(app):
 
 @pytest.fixture(autouse=True)
 def _disable_rate_limiting(app):
-    """Disable flask-limiter for every test to avoid 429 interference."""
+    """
+    Disable rate limiting during a test and restore it afterward.
+    """
     with app.app_context():
         from app.extensions import limiter
         limiter.enabled = False
@@ -65,7 +67,12 @@ def _disable_rate_limiting(app):
 
 @pytest.fixture
 def client(app, db):
-    """Flask test client with in-memory SQLite and JWT cookies enabled."""
+    """
+    Create a Flask test client configured for application testing.
+    
+    Returns:
+    	FlaskClient: A client for sending requests to the Flask application.
+    """
     return app.test_client()
 
 
@@ -98,8 +105,10 @@ def auth_client(client):
 @pytest.fixture
 def admin_client(client):
     """
-    Create an admin user, log them in, and return the client with a valid
-    JWT access_token cookie.
+    Create an administrator user, authenticate it, and prepare the client for authenticated requests.
+    
+    Returns:
+        client: The client with an administrator's JWT access token cookie.
     """
     from app.models.user import User
 
@@ -165,14 +174,28 @@ _MEDIAWIKI_PARSE_RESPONSE = {
 @pytest.fixture
 def mock_mediawiki(monkeypatch):
     """
-    Monkeypatch requests.get / requests.post so no real HTTP calls are made
-    during tests. Returns a MagicMock that records call arguments for
-    assertions.
+    Replace `requests.get` and `requests.post` with recorded test doubles that return predefined MediaWiki responses.
+    
+    Parameters:
+    	monkeypatch: Pytest monkeypatch fixture used to replace the HTTP request functions.
+    
+    Returns:
+    	dict: A mapping containing the `get` and `post` mocks for asserting request calls.
     """
     mock_get = MagicMock()
     mock_post = MagicMock()
 
     def fake_get(url, **kwargs):
+        """
+        Return a mocked MediaWiki response based on the requested action and title.
+        
+        Parameters:
+            url: The requested URL recorded by the mock.
+            **kwargs: Request arguments, including optional MediaWiki query parameters.
+        
+        Returns:
+            A mock response containing revision, missing-page, parse, or not-found data.
+        """
         mock_get(url, **kwargs)
         params = kwargs.get("params", {})
         if not isinstance(params, dict):
@@ -202,6 +225,15 @@ def mock_mediawiki(monkeypatch):
         return resp
 
     def fake_post(url, **kwargs):
+        """Return a successful mock response for a MediaWiki POST request.
+        
+        Parameters:
+            url (str): The request URL.
+            **kwargs: Additional request arguments recorded by the mock.
+        
+        Returns:
+            MagicMock: A response with a 200 status code and a success result body.
+        """
         mock_post(url, **kwargs)
         resp = MagicMock()
         resp.status_code = 200

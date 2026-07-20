@@ -40,7 +40,10 @@ const state = reactive({
   theme: localStorage.getItem('theme') || 'light'
 })
 
-// Store composable function
+/**
+ * Provides reactive application state and actions for authentication, contests, dashboard access, and theme management.
+ * @returns {Object} The store state, computed values, and management actions.
+ */
 export function useStore() {
   // Computed properties
   const isAuthenticated = computed(() => !!state.currentUser)

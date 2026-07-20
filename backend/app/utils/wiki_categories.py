@@ -59,19 +59,16 @@ def extract_category_name_from_url(category_url: str) -> Optional[str]:
 
 def check_article_has_category(article_url: str, category_name: str) -> Dict[str, Any]:
     """
-    Check if an article has the specified category.
-
-    Searches the article wikitext for [[Category:CategoryName]] pattern.
-    Handles variations in spacing and formatting.
-
+    Determine whether an article belongs to a specified category.
+    
     Args:
-        article_url: Full URL to the wiki article.
-        category_name: Category name without 'Category:' prefix.
-
+        article_url: Full URL of the wiki article.
+        category_name: Category name without the `Category:` prefix.
+    
     Returns:
-        Dict with:
-        - 'has_category': bool indicating if category is present
-        - 'error': error message if check failed, None otherwise
+        A dictionary containing `has_category`, which is `True` when the
+        category is found, and `error`, which contains an error message if
+        the article content could not be retrieved or `None` otherwise.
     """
     result = {
         'has_category': False,
@@ -121,32 +118,22 @@ def crawl_category_articles(
     continue_from: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Crawl articles from a Wikipedia category using the MediaWiki API.
-
-    Uses the `list=categorymembers` API to fetch all pages in a category,
-    handling pagination via `cmcontinue` tokens.
-
+    Crawl main-namespace articles from a wiki category through the MediaWiki API.
+    
+    Pagination can resume from a continuation token returned by a previous call.
+    API response errors return the articles collected before the error; unexpected
+    exceptions return ``None``.
+    
     Args:
-        category_url:  Full URL to a Wikipedia category page.
-        limit:         Maximum number of articles to fetch in this call.
-        mw_uri:        Optional MediaWiki API base URI. Extracted from
-                       category_url when omitted.
-        continue_from: A ``cmcontinue`` token returned by a previous call.
-                       When provided the crawl resumes from that position
-                       instead of starting from the beginning of the category.
-                       Pass the value of ``next_continue`` from the previous
-                       response to implement "Import Next Batch" behaviour.
-
+        category_url: Full URL of the category page.
+        limit: Maximum number of articles to collect, capped at 5000.
+        mw_uri: MediaWiki API endpoint. Derived from ``category_url`` when omitted.
+        continue_from: Continuation token from a previous response.
+    
     Returns:
-        Dictionary with:
-            - "articles":      List of dicts with "title", "url", "page_id".
-            - "total":         Number of articles fetched in this call.
-            - "category":      Category name extracted from URL.
-            - "wiki_base":     Wiki base URL (e.g., "https://en.wikipedia.org").
-            - "has_more":      True if there are more articles beyond this batch.
-            - "next_continue": cmcontinue token to pass as ``continue_from``
-                               in the next call (None when has_more is False).
-        Or None if an error occurs.
+        A dictionary containing the articles, count, category name, wiki base URL,
+        and pagination fields ``has_more`` and ``next_continue``. Returns ``None``
+        when the category URL cannot be parsed or an unexpected exception occurs.
     """
     try:
         # Enforce maximum limit

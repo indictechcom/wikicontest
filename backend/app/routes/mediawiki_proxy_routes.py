@@ -29,25 +29,15 @@ mediawiki_proxy_bp = Blueprint('mediawiki_proxy', __name__)
 @mediawiki_proxy_bp.route('/api/mediawiki/article-info', methods=['GET'])
 def mediawiki_article_info():  # pylint: disable=too-many-return-statements
     """
-    Fetch comprehensive article information from MediaWiki API.
-
-    This endpoint fetches detailed information about a MediaWiki article including:
-    - Article title
-    - Author (creator) of the article
-    - Creation date
-    - Last revision date
-    - Page ID
-    - Word count
-    - And other metadata useful for judging
-
-    Query Parameters:
-        url (str): The full MediaWiki article URL
-
+    Retrieve metadata and revision details for a MediaWiki article.
+    
+    Parameters:
+        url (str): Full URL of the MediaWiki article.
+    
     Returns:
-        JSON: Article information including title, author, dates, etc.
-
-    Example:
-        GET /api/mediawiki/article-info?url=https://en.wikipedia.org/wiki/Article_Title
+        JSON response containing the article title, display title, URL, author,
+        creation timestamp, latest revision timestamp, byte count, reference
+        count, page ID, and wiki base URL.
     """
     # Get the article URL from query parameters
     article_url = request.args.get('url', '')
@@ -206,21 +196,15 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
 @mediawiki_proxy_bp.route('/api/mediawiki/preview', methods=['GET'])
 def mediawiki_preview():  # pylint: disable=too-many-return-statements
     """
-    Proxy endpoint for MediaWiki API article preview requests.
-
-    This endpoint acts as a proxy to fetch MediaWiki article content
-    from external MediaWiki sites. It solves CORS issues by making
-    the request from the backend server instead of the browser.
-
-    Query Parameters:
-        url (str): The full MediaWiki article URL to fetch preview for
-        page (str, optional): The page title (if URL parsing fails)
-
+    Fetch rendered HTML for a MediaWiki article preview.
+    
+    Parameters:
+        url (str): Full URL of the MediaWiki article.
+        page (str, optional): Page title to use instead of extracting it from the URL.
+    
     Returns:
-        JSON: MediaWiki API response with parsed article content
-
-    Example:
-        GET /api/mediawiki/preview?url=https://en.wikipedia.org/wiki/Userpage
+        JSON response containing the rendered HTML, resolved page title, requested page
+        title, and wiki base URL.
     """
     # Get the article URL from query parameters
     article_url = request.args.get('url', '')

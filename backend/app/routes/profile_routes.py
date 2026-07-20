@@ -23,10 +23,12 @@ profile_bp = Blueprint('profile', __name__)
 @handle_errors
 def get_dashboard():
     """
-    Get user dashboard data
-
+    Assemble the authenticated user's dashboard data.
+    
     Returns:
-        JSON response with user's dashboard information
+        A JSON response containing the user's total score, contest scores,
+        submissions grouped by contest, organized contests, jury contests, and
+        participated contests.
     """
     user = request.current_user
     # Get user's total score
@@ -141,10 +143,10 @@ def get_dashboard():
 @handle_errors
 def get_dashboard_access():
     """
-    Get which dashboards the current user can access.
-
+    Determine which contest dashboards the current user can access.
+    
     Returns:
-        JSON response with boolean flags for each dashboard type
+        JSON response containing participant, organizer, and jury access flags.
     """
     user = request.current_user
 
@@ -203,10 +205,10 @@ def get_all_users():
 @handle_errors
 def get_profile():
     """
-    Get current user's profile
-
+    Return the authenticated user's profile data.
+    
     Returns:
-        JSON response with user profile data
+        JSON response containing the user's serialized profile.
     """
     user = request.current_user
     return jsonify(user.to_dict()), 200
@@ -218,14 +220,13 @@ def get_profile():
 @validate_json_data(['username', 'email'])
 def update_profile():
     """
-    Update current user's profile
-
-    Expected JSON data:
-        username: New username
-        email: New email address
-
+    Update the current user's username and email address.
+    
+    Parameters:
+        No explicit parameters.
+    
     Returns:
-        JSON response with success message
+        A success message after the profile is updated, or an error response when the username or email is invalid or already in use.
     """
     user = request.current_user
     data = request.validated_data
@@ -271,14 +272,14 @@ def update_profile():
 @handle_errors
 def search_users():
     """
-    Search users by username (for autocomplete)
-
-    Query parameters:
-        q: Search query string
-        limit: Maximum results to return (default: 10)
-
+    Search for users whose usernames start with the provided query.
+    
+    Parameters:
+        q (str): Username prefix to search for; queries shorter than two characters return no users.
+        limit (int): Maximum number of matching users to return. Defaults to 10.
+    
     Returns:
-        JSON response with list of matching usernames
+        JSON response containing matching users' usernames and IDs.
     """
     query = request.args.get('q', '').strip()
     limit = request.args.get('limit', 10, type=int)
@@ -304,16 +305,13 @@ def search_users():
 @handle_errors
 def get_user_username(user_id):
     """
-    Get username for a specific user ID
-
-    This is a minimal endpoint that only returns the username,
-    not any sensitive information like email or password.
-
+    Retrieve a user's ID and username by user ID.
+    
     Args:
-        user_id: User ID
-
+        user_id: The ID of the user to retrieve.
+    
     Returns:
-        JSON response with username
+        A JSON response containing the user's ID and username, or a 404 error if the user does not exist.
     """
     user = db.session.get(User, user_id)
 

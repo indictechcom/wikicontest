@@ -24,16 +24,13 @@ auth_bp = Blueprint('auth', __name__)
 @validate_json_data(['username', 'email', 'password'])
 def register():
     """
-    Register a new user
-
-    Expected JSON data:
-        username: Unique username (3-20 chars, alphanumeric + underscore)
-        email: Valid email address
-        password: Password (min 6 chars)
-        role: Optional role (defaults to 'user')
-
+    Create a user account from validated registration data.
+    
+    The account may have the `user` or `admin` role; `user` is used when no
+    role is provided.
+    
     Returns:
-        JSON response with success message and user ID
+        A JSON response containing the creation result and user details.
     """
     data = request.validated_data
     username = data['username'].strip()
@@ -93,14 +90,11 @@ def register():
 @handle_errors
 def login():
     """
-    Login user and create JWT token
-
-    Expected JSON data:
-        email: User's email address
-        password: User's password
-
+    Authenticate a user and establish an authenticated session.
+    
     Returns:
-        JSON response with success message and JWT token in cookie
+        A JSON response containing the user's ID, username, and role, with a JWT
+        stored in an HTTP-only cookie.
     """
     # Get JSON data directly (not using validator for login to allow flexible error handling)
     data = request.get_json()
@@ -149,15 +143,10 @@ def login():
 @handle_errors
 def logout():
     """
-    Logout user and clear JWT token.
-
-    This works for both regular users and OAuth users.
-    It clears the JWT cookie and any OAuth session data.
-
-    Note: Does not require authentication - allows logout even if token is invalid.
-
+    Clear authentication cookies and OAuth session data.
+    
     Returns:
-        JSON response with success message
+        A JSON response with a logout confirmation message and HTTP status 200.
     """
     # Clear OAuth session data if present (for OAuth users)
     session.pop('request_token', None)

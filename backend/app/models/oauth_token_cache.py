@@ -44,7 +44,13 @@ class OAuthTokenCache(BaseModel):
 
     @classmethod
     def store(cls, token_key: str, token_secret: str) -> None:
-        """Store (or overwrite) a request token."""
+        """
+        Store or overwrite an OAuth request token and its secret.
+        
+        Parameters:
+        	token_key (str): The request token key.
+        	token_secret (str): The secret associated with the request token.
+        """
         entry = db.session.get(cls, token_key)
         if entry:
             entry.secret = token_secret
@@ -79,7 +85,12 @@ class OAuthTokenCache(BaseModel):
 
     @classmethod
     def cleanup_expired(cls) -> int:
-        """Delete all expired entries. Returns number of rows deleted."""
+        """
+        Delete all cache entries older than the maximum permitted age.
+        
+        Returns:
+        	int: The number of deleted entries.
+        """
         from sqlalchemy import delete  # noqa: C812 — local import to keep module top clean
         from datetime import timedelta  # noqa: C812
 
@@ -91,4 +102,5 @@ class OAuthTokenCache(BaseModel):
         return result.rowcount
 
     def __repr__(self) -> str:
+        """Return a concise string representation containing the first 10 characters of the token."""
         return f"<OAuthTokenCache {self.token[:10]}...>"
