@@ -23,13 +23,13 @@ export default defineConfig({
       output: {
         // Organize output files
         manualChunks: (id) => {
-        if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
-          return 'vue-vendor'
+          if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+            return 'vue-vendor'
+          }
+          if (id.includes('node_modules/axios')) {
+            return 'axios-vendor'
+          }
         }
-        if (id.includes('node_modules/axios')) {
-          return 'axios-vendor'
-        }
-      },
       }
     }
   },
