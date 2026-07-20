@@ -1,5 +1,5 @@
 """
-Utility package for WikiContest Application.
+Utility package for WikiEval Application.
 
 Re-exports all utility functions from submodules for backward compatibility.
 """

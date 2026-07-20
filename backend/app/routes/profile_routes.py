@@ -1,5 +1,5 @@
 """
-Profile & dashboard routes for WikiContest Application.
+Profile & dashboard routes for WikiEval Application.
 
 Handles user dashboard data, profile retrieval/update, user search, and
 username lookup. Extracted from the original monolithic user_routes.py.
@@ -23,10 +23,12 @@ profile_bp = Blueprint('profile', __name__)
 @handle_errors
 def get_dashboard():
     """
-    Get user dashboard data
-
+    Assemble the authenticated user's dashboard data.
+    
     Returns:
-        JSON response with user's dashboard information
+        A JSON response containing the username, total score, contest-wise
+        scores, submissions grouped by contest, organized contests, jury
+        contests, and participated contests.
     """
     user = request.current_user
     # Get user's total score
@@ -141,10 +143,10 @@ def get_dashboard():
 @handle_errors
 def get_dashboard_access():
     """
-    Get which dashboards the current user can access.
-
+    Determine which dashboard sections the authenticated user can access.
+    
     Returns:
-        JSON response with boolean flags for each dashboard type
+        A JSON response containing participant, organizer, and jury access flags.
     """
     user = request.current_user
 
@@ -189,10 +191,10 @@ def get_dashboard_access():
 @handle_errors
 def get_all_users():
     """
-    Get all users (admin only)
-
+    Retrieve all users as serialized profile data.
+    
     Returns:
-        JSON response with list of all users
+        A JSON response containing a list of all users.
     """
     users = User.query.all()
     return jsonify([user.to_dict() for user in users]), 200
@@ -203,10 +205,10 @@ def get_all_users():
 @handle_errors
 def get_profile():
     """
-    Get current user's profile
-
+    Return the authenticated user's profile data.
+    
     Returns:
-        JSON response with user profile data
+        JSON response containing the user's serialized profile.
     """
     user = request.current_user
     return jsonify(user.to_dict()), 200
@@ -218,14 +220,12 @@ def get_profile():
 @validate_json_data(['username', 'email'])
 def update_profile():
     """
-    Update current user's profile
-
-    Expected JSON data:
-        username: New username
-        email: New email address
-
+    Update the authenticated user's username and email address.
+    
+    Input values are trimmed, the email is lowercased, and both fields must be valid and unique.
+    
     Returns:
-        JSON response with success message
+        A success response when the profile is updated, or an error response when validation or uniqueness checks fail.
     """
     user = request.current_user
     data = request.validated_data
@@ -271,14 +271,14 @@ def update_profile():
 @handle_errors
 def search_users():
     """
-    Search users by username (for autocomplete)
-
-    Query parameters:
-        q: Search query string
-        limit: Maximum results to return (default: 10)
-
+    Search for users by a case-insensitive username prefix.
+    
+    Parameters:
+        q (str): Username prefix; queries shorter than two characters return no users.
+        limit (int): Maximum number of users to return. Defaults to 10.
+    
     Returns:
-        JSON response with list of matching usernames
+        JSON response containing matching usernames and user IDs.
     """
     query = request.args.get('q', '').strip()
     limit = request.args.get('limit', 10, type=int)
@@ -304,16 +304,13 @@ def search_users():
 @handle_errors
 def get_user_username(user_id):
     """
-    Get username for a specific user ID
-
-    This is a minimal endpoint that only returns the username,
-    not any sensitive information like email or password.
-
+    Retrieve a user's ID and username by user ID.
+    
     Args:
-        user_id: User ID
-
+        user_id: The ID of the user to retrieve.
+    
     Returns:
-        JSON response with username
+        A JSON response containing the user's ID and username, or a 404 error if the user does not exist.
     """
     user = db.session.get(User, user_id)
 

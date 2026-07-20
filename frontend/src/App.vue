@@ -3,9 +3,9 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container">
-        <!-- Left: WikiContest -->
+        <!-- Left: WikiEval -->
         <router-link class="navbar-brand" to="/">
-          WikiContest
+          WikiEval
         </router-link>
 
         <button class="navbar-toggler"
@@ -275,7 +275,7 @@ input {
   text-decoration: none !important;
 }
 
-/* Dark mode - WikiContest in white, no underline */
+/* Dark mode - WikiEval in white, no underline */
 [data-theme="dark"] .navbar-brand {
   color: #ffffff !important;
   text-decoration: none !important;

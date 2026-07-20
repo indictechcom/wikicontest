@@ -1,5 +1,5 @@
 """
-URL validation for WikiContest Application.
+URL validation for WikiEval Application.
 
 Provides SSRF protection for all outbound MediaWiki API requests.
 All functions that accept a user-supplied URL MUST call validate_wiki_url()
@@ -58,22 +58,15 @@ def _get_allowed_domains():
 
 def validate_wiki_url(article_url):
     """
-    Validate that a URL points to an allowed Wikimedia wiki domain.
-
-    This is the SSRF protection entry-point. Every function that accepts a
-    user-supplied URL and makes an outbound HTTP request MUST call this
-    function before constructing the request.
-
-    Args:
-        article_url: The full URL supplied by the user (e.g., from request
-            args or JSON body).
-
+    Validate that a user-supplied URL targets an approved Wikimedia wiki domain.
+    
+    Parameters:
+        article_url (str): URL to validate.
+    
     Returns:
-        tuple: (base_url, error_response_or_None)
-            - base_url (str): The scheme + netloc portion (e.g.,
-              "https://en.wikipedia.org") when validation passes.
-            - error_response_or_None: None on success, or a
-              (jsonify_response, status_code) tuple on failure.
+        tuple: `(base_url, None)` for a valid URL, or `(None, (response, 400))`
+            containing a JSON error response when validation fails. Valid URLs use
+            HTTP or HTTPS, may use port 80 or 443, and contain no credentials.
     """
     if not article_url or not isinstance(article_url, str):
         return None, (jsonify({"error": "A valid article URL is required"}), 400)

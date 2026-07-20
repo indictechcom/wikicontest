@@ -1,5 +1,5 @@
 """
-Article metrics functions for WikiContest Application.
+Article metrics functions for WikiEval Application.
 
 Provides helpers for counting references, images, infoboxes, and links
 in MediaWiki articles, plus parallel metric fetching for submissions.
@@ -30,6 +30,15 @@ __all__ = [
 
 
 def _count_footnotes_from_content(article_content: str) -> int:
+    """
+    Count reference tags in article wikitext.
+    
+    Parameters:
+    	article_content (str): Article wikitext to inspect.
+    
+    Returns:
+    	int: Number of opening `<ref` tag occurrences, or 0 when the content is empty.
+    """
     if not article_content:
         return 0
     ref_pattern = r'<ref\b'
@@ -38,6 +47,15 @@ def _count_footnotes_from_content(article_content: str) -> int:
 
 
 def _extract_article_content_from_revision(latest_rev: dict) -> str:
+    """
+    Extract article wikitext from a revision response.
+    
+    Parameters:
+    	latest_rev (dict): Revision data containing article content directly or in its main slot.
+    
+    Returns:
+    	str: The extracted article content, or an empty string when no content is available.
+    """
     slots = latest_rev.get("slots", {})
     if slots:
         main_slot = slots.get("main", {})
@@ -49,6 +67,16 @@ def _extract_article_content_from_revision(latest_rev: dict) -> str:
 
 
 def _fetch_footnotes_count(api_url: str, page_title: str) -> int:
+    """
+    Count `<ref>` tags in the latest available revision of an article.
+    
+    Parameters:
+    	api_url (str): MediaWiki API endpoint URL.
+    	page_title (str): Article title to query.
+    
+    Returns:
+    	int: Number of `<ref>` tags, or `0` if the article data cannot be retrieved.
+    """
     try:
         rev_params = {
             "action": "query",
@@ -93,6 +121,16 @@ def _fetch_footnotes_count(api_url: str, page_title: str) -> int:
 
 
 def get_detailed_reference_counts(article_url: str, wikitext=None) -> Dict[str, int]:
+    """
+    Count new and reused references in an article's wikitext.
+    
+    Parameters:
+    	article_url (str): URL of the article used to retrieve wikitext when `wikitext` is not provided.
+    	wikitext: Optional article wikitext to analyze.
+    
+    Returns:
+    	Dict[str, int]: Counts keyed by `"new"` for paired references and `"reused"` for self-closing references.
+    """
     if wikitext is None:
         wikitext = get_article_wikitext(article_url)
     if not wikitext:
@@ -135,6 +173,16 @@ def get_detailed_reference_counts(article_url: str, wikitext=None) -> Dict[str, 
 
 
 def get_article_image_count(article_url: str, wikitext=None) -> Optional[int]:
+    """
+    Count file and image inclusions in an article's wikitext.
+    
+    Parameters:
+        article_url (str): URL of the article.
+        wikitext (str, optional): Article wikitext to analyze. If omitted, it is fetched from the article URL.
+    
+    Returns:
+        int or None: Number of file and image inclusions, or None if the wikitext is unavailable or an error occurs.
+    """
     try:
         if wikitext is None:
             wikitext = get_article_wikitext(article_url)
@@ -150,6 +198,16 @@ def get_article_image_count(article_url: str, wikitext=None) -> Optional[int]:
 
 
 def get_article_infobox_count(article_url: str, wikitext=None) -> Optional[int]:
+    """
+    Count infobox templates in an article's wikitext.
+    
+    Parameters:
+    	article_url (str): URL of the article whose wikitext is analyzed.
+    	wikitext: Optional wikitext to analyze instead of fetching the article content.
+    
+    Returns:
+    	int: Number of infobox template occurrences, or `None` if the wikitext cannot be obtained or an error occurs.
+    """
     try:
         if wikitext is None:
             wikitext = get_article_wikitext(article_url)
@@ -165,6 +223,14 @@ def get_article_infobox_count(article_url: str, wikitext=None) -> Optional[int]:
 
 
 def get_article_reference_count(article_url: str) -> Optional[int]:
+    """Count an article's footnotes and external links.
+    
+    Parameters:
+        article_url (str): URL of the article to measure.
+    
+    Returns:
+        Optional[int]: Combined footnote and external link count, or `None` if the article cannot be queried.
+    """
     try:
         page_title = extract_page_title_from_url(article_url)
         if not page_title:
@@ -240,6 +306,15 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
 
 
 def get_article_incoming_links(article_url: str) -> Optional[int]:
+    """
+    Count non-redirecting incoming links to a wiki article.
+    
+    Parameters:
+    	article_url (str): URL of the article whose incoming links are counted.
+    
+    Returns:
+    	int: Number of incoming links, up to 10,000; `None` if the URL is invalid or the data cannot be retrieved.
+    """
     try:
         page_title = extract_page_title_from_url(article_url)
         if not page_title:
@@ -298,6 +373,15 @@ def get_article_incoming_links(article_url: str) -> Optional[int]:
 
 
 def get_article_outgoing_links(article_url: str) -> Optional[int]:
+    """
+    Count non-redirecting outgoing article links.
+    
+    Parameters:
+    	article_url (str): URL of the wiki article.
+    
+    Returns:
+    	int: Number of outgoing links, up to 10,000; `None` if the URL is invalid, the article is unavailable, or a request fails.
+    """
     try:
         page_title = extract_page_title_from_url(article_url)
         if not page_title:
@@ -366,12 +450,33 @@ def get_article_outgoing_links(article_url: str) -> Optional[int]:
 
 
 def fetch_article_metrics(article_link, contest_start_date=None):
+    """
+    Collect article reference, media, infobox, link, and optional historical size metrics.
+    
+    Parameters:
+        article_link: URL identifying the article.
+        contest_start_date: Date for the optional historical size metric.
+    
+    Returns:
+        Dictionary of metric names to values. Reference details are returned as
+        ``new_ref_count`` and ``reused_ref_count``; unavailable metrics have a
+        value of ``None``.
+    """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     try:
         from flask import copy_current_request_context
     except ImportError:
         def copy_current_request_context(fn):
+            """
+            Pass a callable through unchanged when request-context copying is unavailable.
+            
+            Parameters:
+                fn (callable): The callable to preserve.
+            
+            Returns:
+                callable: The original callable.
+            """
             return fn
 
     from app.utils import (
@@ -389,24 +494,65 @@ def fetch_article_metrics(article_link, contest_start_date=None):
     wikitext = get_article_wikitext(article_link)
 
     def _fetch_references():
+        """
+        Fetch the article's total reference count.
+        
+        Returns:
+        	int or None: The number of references, or None if the count cannot be retrieved.
+        """
         return get_article_reference_count(article_link)
 
     def _fetch_detailed_refs():
+        """
+        Fetch detailed counts of new and reused references for the article.
+        
+        Returns:
+        	dict[str, int]: Counts grouped by ``"new"`` and ``"reused"`` references.
+        """
         return get_detailed_reference_counts(article_link, wikitext=wikitext)
 
     def _fetch_images():
+        """
+        Count file and image inclusions for the article.
+        
+        Returns:
+            Optional[int]: The number of file and image inclusions, or None if unavailable.
+        """
         return get_article_image_count(article_link, wikitext=wikitext)
 
     def _fetch_infoboxes():
+        """
+        Fetch the number of infobox templates in the article.
+        
+        Returns:
+        	int or None: The infobox count, or None if the count cannot be determined.
+        """
         return get_article_infobox_count(article_link, wikitext=wikitext)
 
     def _fetch_incoming():
+        """
+        Fetch the number of incoming links for the article.
+        
+        Returns:
+        	int or None: The incoming-link count, or None if it cannot be fetched.
+        """
         return get_article_incoming_links(article_link)
 
     def _fetch_outgoing():
+        """Fetches the number of outgoing links for the article.
+        
+        Returns:
+            Optional[int]: The number of outgoing links, or ``None`` if unavailable.
+        """
         return get_article_outgoing_links(article_link)
 
     def _fetch_size_at_start():
+        """
+        Fetch the article size at the contest start date.
+        
+        Returns:
+            The article size at `contest_start_date`.
+        """
         return get_article_size_at_timestamp(article_link, contest_start_date)
 
     tasks = {

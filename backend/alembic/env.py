@@ -1,5 +1,5 @@
 """
-Alembic environment configuration for WikiContest Flask Application
+Alembic environment configuration for WikiEval Flask Application
 
 This file configures Alembic to work with the Flask application factory pattern.
 It automatically detects the database URL from the Flask app configuration.
@@ -47,20 +47,17 @@ target_metadata = db.metadata
 # Optional: Filter function to include/exclude objects from autogenerate
 def include_object(object, name, type_, reflected, compare_to):
     """
-    Optional function to filter which objects Alembic should consider.
+    Determine whether an object should be included in Alembic autogeneration.
     
-    This can be used to exclude certain tables or objects from migration generation.
-    By default, include all objects.
-    
-    Args:
-        object: The object being considered
-        name: Name of the object
-        type_: Type of object ('table', 'column', 'index', etc.)
-        reflected: Whether the object is from the database
-        compare_to: The object from the model metadata
+    Parameters:
+        object: The database or metadata object being evaluated.
+        name: The object's name.
+        type_: The object's type, such as ``table``, ``column``, or ``index``.
+        reflected: Whether the object was reflected from the database.
+        compare_to: The corresponding object from the model metadata.
     
     Returns:
-        bool: True to include, False to exclude
+        ``True`` to include the object in autogeneration; ``False`` to exclude it.
     """
     # Include all objects by default
     # You can add custom logic here to exclude specific tables/objects
@@ -77,10 +74,10 @@ def include_object(object, name, type_, reflected, compare_to):
 
 def get_url():
     """
-    Get the database URL from Flask app configuration.
+    Retrieve the database URL configured for the Flask application.
     
-    This function creates a Flask app instance and retrieves the database URL
-    from the app configuration, allowing Alembic to work with the Flask app factory pattern.
+    Returns:
+        str | None: The configured database URL, or `None` if it is not set.
     """
     # Create Flask app instance
     app = create_app()
@@ -91,16 +88,10 @@ def get_url():
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
+    """Run database migrations in offline mode without creating a database engine.
+    
+    Migration statements are emitted to the configured output using the application's
+    database URL.
     """
     url = get_url()
     config.set_main_option("sqlalchemy.url", url)
@@ -121,12 +112,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
+    """Run database migrations in online mode using an active database connection."""
     # Get database URL from Flask app
     url = get_url()
     configuration = config.get_section(config.config_ini_section, {})

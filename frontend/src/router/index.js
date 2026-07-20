@@ -1,7 +1,7 @@
 /**
  * Vue Router Configuration
  *
- * This file defines all routes for the WikiContest application.
+ * This file defines all routes for the WikiEval application.
  * Routes are protected based on authentication requirements.
  */
 
@@ -24,7 +24,10 @@ const OrganizerDashboard = () => import('../views/OrganizerDashboard.vue')
 // Store module reference for lazy loading to prevent circular dependencies
 let storeModule = null
 
-// Helper to build the OAuth login URL
+/**
+ * Builds the OAuth login endpoint URL for the current environment.
+ * @return {string} The OAuth login URL.
+ */
 function getLoginUrl() {
   const base = import.meta.env.DEV ? 'http://localhost:5000/api' : '/api'
   return `${base}/user/oauth/login`

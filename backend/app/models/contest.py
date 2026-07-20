@@ -1,5 +1,5 @@
 """
-Contest Model for WikiContest Application
+Contest Model for WikiEval Application
 Defines the Contest table and related functionality
 """
 
@@ -17,7 +17,7 @@ from app.models.contest_mixin import ContestMixin
 
 class Contest(BaseModel, ContestMixin):
     """
-    Contest model representing contests in the WikiContest platform
+    Contest model representing contests in the WikiEval platform
 
     Attributes:
         id: Primary key, auto-incrementing integer
@@ -135,13 +135,14 @@ class Contest(BaseModel, ContestMixin):
 
     def __init__(self, name, project_name, created_by, **kwargs):
         """
-        Initialize a new Contest instance
-
-        Args:
-            name: Name of the contest
-            project_name: Name of the associated project
-            created_by: Username of the creator
-            **kwargs: Additional contest attributes
+        Initialize a contest with required details and optional configuration.
+        
+        Parameters:
+            name: Contest name.
+            project_name: Associated project name.
+            created_by: Username of the contest creator.
+            **kwargs: Optional dates, scoring settings, submission requirements, links,
+                categories, rules, jury members, and organizers.
         """
         # Set required fields
         self.name = name
@@ -191,14 +192,13 @@ class Contest(BaseModel, ContestMixin):
 
     def validate_byte_count(self, byte_count):
         """
-        Validate if article byte count meets the contest's minimum requirement
-
-        Args:
-            byte_count: Article byte count to validate (can be None)
-
+        Determine whether an article meets the contest's minimum byte-count requirement.
+        
+        Parameters:
+            byte_count (int or None): The article's byte count, or None if it could not be determined.
+        
         Returns:
-            tuple: (is_valid: bool, error_message: str or None)
-                  Returns (True, None) if valid, (False, error_message) if invalid
+            tuple: A boolean indicating validity and an error message, or None when the article is valid.
         """
         # Handle case where MediaWiki API failed to fetch article size
         if byte_count is None:
@@ -219,17 +219,13 @@ class Contest(BaseModel, ContestMixin):
 
     def validate_reference_count(self, reference_count):
         """
-        Validate if article reference count meets the contest's minimum requirement.
-
-        Reference count includes both footnotes (<ref> tags) and external links (URLs)
-        from the article's latest revision.
-
-        Args:
-            reference_count: Article reference count to validate (can be None)
-
+        Validate whether an article meets the contest's minimum reference requirement.
+        
+        Parameters:
+            reference_count (int or None): Number of references in the article.
+        
         Returns:
-            tuple: (is_valid: bool, error_message: str or None)
-                  Returns (True, None) if valid, (False, error_message) if invalid
+            tuple: `(True, None)` if the requirement is met; otherwise, `(False, error_message)`.
         """
         # If no minimum requirement is set (min_reference_count = 0), always pass
         if self.min_reference_count == 0:
@@ -259,10 +255,10 @@ class Contest(BaseModel, ContestMixin):
 
     def is_active(self):
         """
-        Check if contest is currently active
-
+        Determine whether the contest is currently active.
+        
         Returns:
-            bool: True if contest is active, False otherwise
+        	bool: `True` if today falls between the contest's start and end dates, inclusive, `False` otherwise.
         """
         # Cannot be active without dates
         if not self.start_date or not self.end_date:
@@ -274,10 +270,10 @@ class Contest(BaseModel, ContestMixin):
 
     def is_upcoming(self):
         """
-        Check if contest is upcoming
-
+        Determine whether the contest is scheduled to start in the future.
+        
         Returns:
-            bool: True if contest is upcoming, False otherwise
+        	bool: `True` if the start date is after today, `False` otherwise.
         """
         # Cannot be upcoming without start date
         if not self.start_date:
@@ -289,10 +285,10 @@ class Contest(BaseModel, ContestMixin):
 
     def is_past(self):
         """
-        Check if contest is past
-
+        Determine whether the contest has ended.
+        
         Returns:
-            bool: True if contest is past, False otherwise
+        	bool: `True` if the end date is before today, `False` otherwise.
         """
         # Cannot be past without end date
         if not self.end_date:
@@ -304,10 +300,10 @@ class Contest(BaseModel, ContestMixin):
 
     def get_status(self):
         """
-        Get contest status
-
+        Determine the contest's lifecycle status from its start and end dates.
+        
         Returns:
-            str: Contest status ('current', 'upcoming', 'past', or 'unknown')
+            str: ``"current"``, ``"upcoming"``, ``"past"``, or ``"unknown"``.
         """
         # Determine status based on date checks
         if self.is_active():
@@ -325,20 +321,20 @@ class Contest(BaseModel, ContestMixin):
 
     def get_submission_count(self):
         """
-        Get number of submissions for this contest
-
+        Count the submissions associated with this contest.
+        
         Returns:
-            int: Number of submissions
+            int: The number of submissions.
         """
         # Count submissions using the dynamic relationship query
         return self.submissions.count()
 
     def get_leaderboard(self):
         """
-        Get leaderboard for this contest
-
+        Build a score-ranked leaderboard for the contest.
+        
         Returns:
-            list: List of users with their scores, sorted by score descending
+        	list: Dictionaries containing each user's ID, username, and total score, ordered by descending total score.
         """
         # Import here to avoid circular imports between models
         from app.models.user import User
@@ -374,23 +370,13 @@ class Contest(BaseModel, ContestMixin):
 
     def set_scoring_parameters(self, params):
         """
-        Set scoring parameters configuration with validation
+        Set the contest's scoring parameters and validate enabled parameter weights.
         
-        Overrides ContestMixin.set_scoring_parameters to add validation logic
-
-        Args:
-            params: Dict or None
-                {
-                    "enabled": true,
-                    "max_score": 100,
-                    "min_score": 0,
-                    "parameters": [
-                        {"name": "Quality", "weight": 40, "description": "..."},
-                        {"name": "Sources", "weight": 30, "description": "..."},
-                        {"name": "Neutrality", "weight": 20, "description": "..."},
-                        {"name": "Formatting", "weight": 10, "description": "..."}
-                    ]
-                }
+        Parameters:
+            params (dict or None): Scoring configuration, including parameter weights when multi-parameter scoring is enabled.
+        
+        Raises:
+            ValueError: If enabled parameter weights do not sum to 100.
         """
         # Invalidate scoring mode cache
         self._scoring_mode_cache = None
@@ -413,16 +399,16 @@ class Contest(BaseModel, ContestMixin):
     # Note: get_scoring_parameters is inherited from ContestMixin
 
     def set_automated_settings(self, settings):
-        """Override to invalidate scoring mode cache when automated settings change."""
+        """Update the contest's automated scoring settings."""
         self._scoring_mode_cache = None
         super().set_automated_settings(settings)
 
     def is_multi_parameter_scoring_enabled(self):
         """
-        Check if multi-parameter scoring is enabled for this contest
-
+        Determine whether multi-parameter scoring is enabled.
+        
         Returns:
-            bool: True if enabled, False otherwise
+        	bool: `True` if enabled, `False` otherwise.
         """
         params = self.get_scoring_parameters()
         if not isinstance(params, dict):
@@ -431,14 +417,13 @@ class Contest(BaseModel, ContestMixin):
 
     def calculate_weighted_score(self, parameter_scores):
         """
-        Calculate weighted score from individual parameter scores
-
-        Args:
-            parameter_scores: Dict mapping parameter names to scores (0-10)
-                            Example: {"Quality": 8, "Sources": 7, ...}
-
+        Calculate the contest score from weighted parameter scores.
+        
+        Parameters:
+            parameter_scores (dict): Mapping of parameter names to scores on a 0-10 scale.
+        
         Returns:
-            int: Final calculated score (clamped between min and max)
+            int: Weighted score clamped to the configured minimum and maximum, or the accepted mark when multi-parameter scoring is disabled.
         """
         # Fall back to simple scoring if multi-parameter is disabled
         if not self.is_multi_parameter_scoring_enabled():
@@ -474,13 +459,13 @@ class Contest(BaseModel, ContestMixin):
 
     def add_organizer(self, username):
         """
-        Add a user as organizer for this contest.
-
-        Args:
-            username: Username to add as organizer
-
+        Add a user to the contest's organizer list.
+        
+        Parameters:
+            username (str): Username to add as an organizer.
+        
         Returns:
-            tuple: (success: bool, error_message: str or None)
+            tuple: `(True, None)` on success, or `(False, error_message)` if the username is invalid or already an organizer.
         """
         username = username.strip()
         if not username:
@@ -499,13 +484,13 @@ class Contest(BaseModel, ContestMixin):
 
     def remove_organizer(self, username):
         """
-        Remove a user as organizer from this contest.
-
-        Args:
-            username: Username to remove as organizer
-
+        Remove an organizer while preserving the contest creator and at least one organizer.
+        
+        Parameters:
+            username (str): Username of the organizer to remove.
+        
         Returns:
-            tuple: (success: bool, error_message: str or None)
+            tuple: `(True, None)` if removed; otherwise, `(False, error_message)`.
         """
         username = username.strip()
         if not username:
@@ -532,13 +517,10 @@ class Contest(BaseModel, ContestMixin):
 
     def is_organizer(self, username):
         """
-        Check if a user is an organizer for this contest.
-
-        Args:
-            username: Username to check
-
+        Determine whether a username belongs to the contest's organizers.
+        
         Returns:
-            bool: True if user is an organizer, False otherwise
+            bool: `True` if the username is an organizer, `False` otherwise.
         """
         if not username:
             return False
@@ -548,15 +530,10 @@ class Contest(BaseModel, ContestMixin):
 
     def can_change_scoring_system(self):
         """
-        Determine if scoring system can be changed.
-
-        Rules:
-        - Cannot change if contest has any reviewed submissions
-        - Can change if contest is brand new (no submissions)
-        - Can change if only pending submissions exist
-
+        Determine whether the contest's scoring system can be changed.
+        
         Returns:
-            tuple: (can_change: bool, reason: str or None)
+            tuple: A boolean and an explanatory reason; the reason is `None` when changes are allowed.
         """
         from app.models.submission import Submission
 
@@ -580,10 +557,10 @@ class Contest(BaseModel, ContestMixin):
 
     def get_scoring_mode(self):
         """
-        Get the current scoring mode for this contest.
-
+        Determine which scoring mode is configured for the contest.
+        
         Returns:
-            str: 'simple', 'multi_parameter', or 'automated'
+        	str: The configured scoring mode: `"automated"`, `"multi_parameter"`, or `"simple"`.
         """
         if self._scoring_mode_cache is not None:
             return self._scoring_mode_cache
@@ -606,22 +583,16 @@ class Contest(BaseModel, ContestMixin):
 
     def evaluate_automated_submission(self, submission_data):
         """
-        Evaluate a submission against automated scoring criteria.
-
-        Checks eligibility first, then calculates score if eligible.
-
-        Args:
-            submission_data: Dict containing submission metadata:
-                - article_word_count: Article size in bytes
-                - incoming_links: Number of incoming links
-                - outgoing_links: Number of outgoing links
-                - ref_new_count: Number of new references
-                - ref_reused_count: Number of reused references
-                - image_count: Number of images
-                - infobox_count: Number of infoboxes
-
+        Evaluate a submission using the contest's automated eligibility and scoring criteria.
+        
+        Parameters:
+            submission_data (dict): Submission metrics, including article size, link counts,
+                reference counts, image count, and infobox count.
+        
         Returns:
-            tuple: (is_eligible: bool, final_score: float, reason: str, breakdown: dict or None)
+            tuple: A tuple of eligibility status, final score, reason, and scoring breakdown.
+                The breakdown is `None` when automated scoring is disabled or eligibility
+                requirements are not met.
         """
         automated = self.get_automated_settings()
         if not automated or not automated.get("enabled"):
@@ -740,7 +711,14 @@ class Contest(BaseModel, ContestMixin):
     # ------------------------------------------------------------------------
 
     def to_dict(self):
-        """Convert contest instance to dictionary for JSON serialization"""
+        """
+        Convert the contest to a JSON-serializable dictionary.
+        
+        Returns:
+            dict: Contest fields, configuration settings, organizer information,
+                serialized dates, scoring data, automated settings, submission count,
+                and status.
+        """
         #  Get scoring parameters with proper fallback
         scoring_params = self.get_scoring_parameters()
 
@@ -780,5 +758,5 @@ class Contest(BaseModel, ContestMixin):
         }
 
     def __repr__(self):
-        """String representation of Contest instance"""
+        """Provide a concise representation of the contest."""
         return f"<Contest {self.name}>"

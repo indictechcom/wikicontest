@@ -375,3 +375,134 @@ class TestUpdateStatusScorePropagation:
         refreshed = db.session.get(Submission, submission.id)
         assert refreshed.status == "pending"
 
+
+class TestEditSummaryBranding:
+    """
+    Regression tests for the WikiContest -> WikiEval rename: automated wiki
+    edits made during submission (template/category enforcement) must use
+    "WikiEval" in the edit summary, never the old project name.
+    """
+
+    def test_template_enforcement_edit_summary_uses_wikieval(
+        self, client, db, factories, mock_mediawiki, monkeypatch, app
+    ):
+        from app.routes import contest_submission_routes as routes_mod
+
+        user = factories.create_user(
+            username="brand_tmpl_user", email="brand_tmpl_user@example.com", is_trusted_member=True
+        )
+        user.oauth_token = "tok"
+        user.oauth_token_secret = "sec"
+        user.save()
+
+        contest = factories.create_contest(
+            created_by="brand_tmpl_user",
+            template_link="https://en.wikipedia.org/wiki/Template:ContestBanner",
+        )
+
+        monkeypatch.setattr(routes_mod, "extract_template_name_from_url", lambda url: "ContestBanner")
+        monkeypatch.setattr(
+            routes_mod, "check_article_has_template", lambda link, name: {"has_template": False}
+        )
+
+        captured = {}
+
+        def fake_prepend(**kwargs):
+            captured.update(kwargs)
+            return {"success": True}
+
+        monkeypatch.setattr(routes_mod, "prepend_template_to_article", fake_prepend)
+        monkeypatch.setitem(app.config, "CONSUMER_KEY", "test-consumer-key")
+        monkeypatch.setitem(app.config, "CONSUMER_SECRET", "test-consumer-secret")
+
+        client.post("/api/user/login", json={"email": user.email, "password": "TestPass123!"})
+        resp = client.post(
+            f"/api/contest/{contest.id}/submit",
+            json={"article_link": "https://en.wikipedia.org/wiki/Test_Article"},
+        )
+
+        assert resp.status_code == 201
+        assert "edit_summary" in captured
+        assert "WikiEval" in captured["edit_summary"]
+        assert "WikiContest" not in captured["edit_summary"]
+
+    def test_category_enforcement_edit_summary_uses_wikieval(
+        self, client, db, factories, mock_mediawiki, monkeypatch, app
+    ):
+        from app.routes import contest_submission_routes as routes_mod
+
+        user = factories.create_user(
+            username="brand_cat_user", email="brand_cat_user@example.com", is_trusted_member=True
+        )
+        user.oauth_token = "tok"
+        user.oauth_token_secret = "sec"
+        user.save()
+
+        contest = factories.create_contest(
+            created_by="brand_cat_user",
+            categories=["https://en.wikipedia.org/wiki/Category:ContestArticles"],
+        )
+
+        monkeypatch.setattr(routes_mod, "extract_category_name_from_url", lambda url: "ContestArticles")
+        monkeypatch.setattr(
+            routes_mod, "check_article_has_category", lambda link, name: {"has_category": False}
+        )
+
+        captured = {}
+
+        def fake_append(**kwargs):
+            captured.update(kwargs)
+            return {"success": True, "categories_added": ["ContestArticles"], "categories_skipped": []}
+
+        monkeypatch.setattr(routes_mod, "append_categories_to_article", fake_append)
+        monkeypatch.setitem(app.config, "CONSUMER_KEY", "test-consumer-key")
+        monkeypatch.setitem(app.config, "CONSUMER_SECRET", "test-consumer-secret")
+
+        client.post("/api/user/login", json={"email": user.email, "password": "TestPass123!"})
+        resp = client.post(
+            f"/api/contest/{contest.id}/submit",
+            json={"article_link": "https://en.wikipedia.org/wiki/Test_Article"},
+        )
+
+        assert resp.status_code == 201
+        assert "edit_summary" in captured
+        assert "WikiEval" in captured["edit_summary"]
+        assert "WikiContest" not in captured["edit_summary"]
+
+    def test_no_edit_attempted_without_oauth_tokens(self, client, db, factories, mock_mediawiki, monkeypatch):
+        """Sanity check: without OAuth tokens, no wiki edit (and thus no edit
+        summary) should be attempted, even if a template is configured."""
+        from app.routes import contest_submission_routes as routes_mod
+
+        user = factories.create_user(
+            username="no_oauth_user", email="no_oauth_user@example.com", is_trusted_member=True
+        )
+        # Explicitly no oauth_token / oauth_token_secret set on user.
+
+        contest = factories.create_contest(
+            created_by="no_oauth_user",
+            template_link="https://en.wikipedia.org/wiki/Template:ContestBanner",
+        )
+
+        monkeypatch.setattr(routes_mod, "extract_template_name_from_url", lambda url: "ContestBanner")
+        monkeypatch.setattr(
+            routes_mod, "check_article_has_template", lambda link, name: {"has_template": False}
+        )
+
+        called = {"count": 0}
+
+        def fake_prepend(**kwargs):
+            called["count"] += 1
+            return {"success": True}
+
+        monkeypatch.setattr(routes_mod, "prepend_template_to_article", fake_prepend)
+
+        client.post("/api/user/login", json={"email": user.email, "password": "TestPass123!"})
+        resp = client.post(
+            f"/api/contest/{contest.id}/submit",
+            json={"article_link": "https://en.wikipedia.org/wiki/Test_Article"},
+        )
+
+        assert resp.status_code == 201
+        assert called["count"] == 0
+

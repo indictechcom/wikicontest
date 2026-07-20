@@ -1,5 +1,5 @@
 """
-Submission Routes for WikiContest Application
+Submission Routes for WikiEval Application
 Handles submission management and review functionality
 """
 
@@ -42,10 +42,10 @@ submission_bp = Blueprint("submission", __name__)
 @handle_errors
 def get_all_submissions():
     """
-    Get all submissions (admin only)
-
+    Retrieve all submissions for an administrator.
+    
     Returns:
-        JSON response with all submissions
+        JSON response containing serialized submissions with submitter information.
     """
     user = request.current_user
 
@@ -69,13 +69,13 @@ def get_all_submissions():
 @handle_errors
 def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
     """
-    Get a specific submission by ID
-
-    Args:
-        submission_id: Submission ID
-
+    Retrieve a submission by its identifier.
+    
+    Parameters:
+        submission_id: The identifier of the submission to retrieve.
+    
     Returns:
-        JSON response with submission data
+        A JSON response containing the submission data and a 200 status code.
     """
     # Submission is pre-loaded by middleware and attached to request
     submission = request.current_submission
@@ -90,13 +90,13 @@ def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
 @handle_errors
 def get_user_submissions(user_id):
     """
-    Get all submissions by a specific user
-
-    Args:
-        user_id: User ID
-
+    Retrieve submissions belonging to a user, subject to access permissions.
+    
+    Parameters:
+        user_id: ID of the user whose submissions are requested.
+    
     Returns:
-        JSON response with user's submissions
+        JSON response containing the user's submissions ordered from newest to oldest.
     """
     current_user = request.current_user
 
@@ -124,16 +124,13 @@ def get_user_submissions(user_id):
 @handle_errors
 def get_contest_submissions(contest_id):
     """
-    Retrieve all submissions for a specific contest.
-
-    This endpoint returns submissions with basic information.
-    Access is restricted to admins, contest creators, and jury members.
-
-    Args:
-        contest_id: The ID of the contest to get submissions for
-
+    Retrieve all submissions associated with a contest.
+    
+    Parameters:
+        contest_id (int): The ID of the contest.
+    
     Returns:
-        JSON response containing list of submission data
+        JSON response containing the contest's submissions, ordered from newest to oldest.
     """
     user = request.current_user
 
@@ -166,10 +163,10 @@ def get_contest_submissions(contest_id):
 @handle_errors
 def get_pending_submissions():
     """
-    Get all pending submissions that the user can judge
-
+    List pending submissions that the current user is authorized to judge.
+    
     Returns:
-        JSON response with pending submissions
+        Response: A JSON array of serialized judgeable submissions.
     """
     user = request.current_user
 
@@ -195,10 +192,10 @@ def get_pending_submissions():
 @handle_errors
 def get_submission_stats():
     """
-    Get submission statistics for the current user
-
+    Summarize the current user's submission activity and scores.
+    
     Returns:
-        JSON response with submission statistics
+        JSON response containing submission counts by status, total score, and acceptance rate.
     """
     user = request.current_user
 
@@ -250,23 +247,17 @@ def get_submission_stats():
 @handle_errors
 def refresh_metadata(contest_id):
     """
-    Refresh article metadata for submissions in a contest.
-
-    Supports offset-based pagination so large contests can be processed in
-    multiple smaller batches without hitting server or MediaWiki API timeouts.
-
+    Refresh article metadata for submissions in a contest and evaluate submissions in automated contests.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest whose submissions are refreshed.
+    
     Query parameters:
-        offset     (int, default 0)  — how many submissions to skip before
-                                       starting this batch.
-        batch_size (int, default 50) — how many submissions to process in this
-                                       call. Capped at 100 to prevent timeouts.
-
-    Response includes pagination fields:
-        has_more    — True if there are more submissions after this batch.
-        next_offset — Pass this as `offset` in the next request.
-        total_count — Total number of submissions in the contest.
-
-    PR #198 Comment #11.
+        offset (int): Number of submissions to skip before processing.
+        batch_size (int): Number of submissions to process, limited to 50.
+    
+    Returns:
+        JSON response containing update counts and, for automated contests, pagination metadata.
     """
     user = request.current_user
 
@@ -296,62 +287,37 @@ def refresh_metadata(contest_id):
     # For simple / multi-parameter contests we preserve the original       #
     # behaviour: process every submission in a single request.             #
     # ------------------------------------------------------------------ #
-    if is_automated:
-        # IMPORTANT: Each article requires ~6 Wikipedia API calls in
-        # automated mode (revisions, refs, incoming/outgoing links,
-        # images, infoboxes).  A batch of 50 = ~300 network calls which
-        # can easily take 10+ minutes and appear "stuck".
-        # Default is 10 (≈60 calls, completes in under 60 s).
-        _DEFAULT_BATCH_SIZE = 10
-        _MAX_BATCH_SIZE = 50
+    # IMPORTANT: Each article requires ~6 Wikipedia API calls in
+    # automated mode (revisions, refs, incoming/outgoing links,
+    # images, infoboxes).  A batch of 50 = ~300 network calls which
+    # can easily take 10+ minutes and appear "stuck".
+    # Default is 10 (≈60 calls, completes in under 60 s).
+    _DEFAULT_BATCH_SIZE = 10
+    _MAX_BATCH_SIZE = 50
 
-        try:
-            offset = max(0, int(request.args.get("offset", 0)))
-        except (ValueError, TypeError):
-            offset = 0
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+    except (ValueError, TypeError):
+        offset = 0
 
-        try:
-            batch_size = min(
-                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
-                _MAX_BATCH_SIZE,
-            )
-        except (ValueError, TypeError):
-            batch_size = _DEFAULT_BATCH_SIZE
-
-        total_count = Submission.query.filter_by(contest_id=contest_id).count()
-
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .offset(offset)
-            .limit(batch_size)
-            .all()
+    try:
+        batch_size = min(
+            max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+            _MAX_BATCH_SIZE,
         )
-    else:
-        try:
-            offset = max(0, int(request.args.get("offset", 0)))
-        except (ValueError, TypeError):
-            offset = 0
+    except (ValueError, TypeError):
+        batch_size = _DEFAULT_BATCH_SIZE
 
-        try:
-            batch_size = min(
-                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
-                _MAX_BATCH_SIZE,
-            )
-        except (ValueError, TypeError):
-            batch_size = _DEFAULT_BATCH_SIZE
+    total_count = Submission.query.filter_by(contest_id=contest_id).count()
 
-        total_count = Submission.query.filter_by(contest_id=contest_id).count()
-
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .offset(offset)
-            .limit(batch_size)
-            .all()
-        )
+    submissions = (
+        Submission.query
+        .filter_by(contest_id=contest_id)
+        .order_by(Submission.id)
+        .offset(offset)
+        .limit(batch_size)
+        .all()
+    )
 
     if not submissions:
         return (
@@ -375,7 +341,17 @@ def refresh_metadata(contest_id):
     # --- Helper Functions for Metadata Refresh ---
 
     def fetch_article_info(article_link):
-        """Fetch article information from MediaWiki API"""
+        """
+        Fetch metadata for a submitted MediaWiki article.
+        
+        Parameters:
+            article_link (str): URL of the submitted article.
+        
+        Returns:
+            dict | None: Article metadata containing authorship, creation timestamp,
+                current size, page ID, and latest revision timestamp, or `None` when
+                the article or usable revision data cannot be retrieved.
+        """
         try:
             # Extract page title from URL using shared utility function
             page_title = extract_page_title_from_url(article_link)
@@ -385,7 +361,7 @@ def refresh_metadata(contest_id):
             # Parse the article URL to extract base URL
             base_url, error = validate_wiki_url(article_link)
             if error:
-                return error
+                return None
 
             # Build API request - get 2 revisions (newest and oldest)
             api_url = f"{base_url}/w/api.php"
@@ -454,11 +430,11 @@ def refresh_metadata(contest_id):
 
     def calculate_expansion_bytes(submission_item, article_info):
         """
-        Calculate expansion bytes relative to submission time.
-
-        Expansion bytes = current size - size at submission time (article_word_count)
-        This shows how much the article has grown or shrunk since it was submitted.
-        Only updates if there's an actual change in size.
+        Update the submission's article expansion bytes from its current and submission-time sizes.
+        
+        Parameters:
+            submission_item: Submission whose expansion value is updated.
+            article_info: Article metadata containing the current article size.
         """
         if not submission_item.article_link:
             return
@@ -704,17 +680,15 @@ def refresh_metadata(contest_id):
 @handle_errors
 def delete_submission(submission_id):
     """
-    Delete a specific submission by ID.
-
-    Only admins, jury members of the contest, and contest creators/organizers
-    are allowed to delete submissions.  When a submission is deleted its score
-    is subtracted from the submitter's total so the leaderboard stays accurate.
-
-    Args:
-        submission_id: Submission ID
-
+    Delete a submission and adjust the submitter's total score.
+    
+    Parameters:
+        submission_id: ID of the submission to delete.
+    
     Returns:
-        JSON response confirming deletion
+        JSON response confirming deletion, or an error response with status 404,
+        403, or 500 when the submission is missing, deletion is unauthorized, or
+        deletion fails.
     """
     user = request.current_user
 
@@ -761,6 +735,16 @@ def delete_submission(submission_id):
 @handle_errors
 @validate_json_data(["status"])
 def review_submission(submission_id):  # pylint: disable=too-many-return-statements
+    """
+    Review a submission and apply the configured scoring rules.
+    
+    Parameters:
+        submission_id (int): Identifier of the submission to review.
+    
+    Returns:
+        tuple: A JSON response containing the reviewed submission, or an error
+            response when permission, validation, or update checks fail.
+    """
     user = request.current_user
     data = request.validated_data
 

@@ -1,9 +1,9 @@
 """
-WikiContest Flask Application
+WikiEval Flask Application
 Main application entry point for the Python Flask backend
 
 This module initializes the Flask application with all necessary configurations,
-extensions, and route blueprints. It serves as the central hub for the WikiContest
+extensions, and route blueprints. It serves as the central hub for the WikiEval
 platform, handling both API endpoints and static file serving.
 
 Architecture:
@@ -13,7 +13,7 @@ Architecture:
 - Database integration with SQLAlchemy ORM
 - Comprehensive error handling and logging
 
-Author: WikiContest Development Team
+Author: WikiEval Development Team
 Version: 1.0.0
 """
 # pylint: disable=too-many-lines
@@ -82,15 +82,13 @@ for _key in list(os.environ):
 
 def create_app():
     """
-    Application factory pattern for creating Flask app instances.
-
-    This function creates and configures the Flask application with all
-    necessary extensions and settings. Using the factory pattern makes
-    the application more testable and allows for different configurations
-    in different environments.
-
+    Create and configure a Flask application instance.
+    
+    Raises:
+        RuntimeError: If required secret keys are missing in production.
+    
     Returns:
-        Flask: Configured Flask application instance
+        Flask: The fully configured application instance.
     """
     # Initialize Flask application
     flask_app = Flask(__name__)
@@ -103,7 +101,7 @@ def create_app():
 
     # Wrap with ProxyFix so Flask reads X-Forwarded-Proto / X-Forwarded-Host
     # from the Node.js frontend proxy. This ensures request.scheme == 'https'
-    # and request.host == 'wikicontest.toolforge.org', which is critical for:
+    # and request.host == 'wikieval.toolforge.org', which is critical for:
     #   - Building correct OAuth callback URLs
     #   - Setting session cookies with the right domain (frontend domain, not backend)
     flask_app.wsgi_app = ProxyFix(
@@ -145,11 +143,11 @@ def create_app():
             import secrets
             if not secret_key:
                 secret_key = secrets.token_urlsafe(48)
-                print("⚠️  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
+                print("WARNING: SECRET_KEY not set in environment. Generated temporary key.")
                 print("   Set SECRET_KEY in environment for production!")
             if not jwt_secret_key:
                 jwt_secret_key = secrets.token_urlsafe(48)
-                print("⚠️  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
+                print("WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
                 print("   Set JWT_SECRET_KEY in environment for production!")
     flask_app.config['SECRET_KEY'] = secret_key
     flask_app.config['JWT_SECRET_KEY'] = jwt_secret_key
@@ -197,7 +195,7 @@ def create_app():
     # Set to True if OAuth consumer was registered with "oob" (out-of-band) callback
     # Most web apps should use False and register with a proper callback URL
     flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').strip().lower() == 'true'
-    # Frontend URL for post-OAuth redirect (e.g. https://wikicontest.toolforge.org)
+    # Frontend URL for post-OAuth redirect (e.g. https://wikieval.toolforge.org)
     flask_app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', '')
     # Custom callback path for OAuth (e.g. /oauth/callback for Toolforge)
     # When set, overrides the default blueprint path (/api/user/oauth/callback)
@@ -313,10 +311,10 @@ def not_found(_error):
 @app.errorhandler(500)
 def internal_error(_error):
     """
-    Handle 500 Internal Server errors.
-
-    This handler catches all unhandled exceptions and returns a generic
-    error response. It also rolls back any pending database transactions.
+    Handle internal server errors with a generic JSON response.
+    
+    Returns:
+        tuple: A JSON error response and HTTP status code 500.
     """
     db.session.rollback()
     try:
@@ -346,7 +344,7 @@ if __name__ == '__main__':
     # Default to False for production safety
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     if debug_mode:
-        print("⚠️  WARNING: Debug mode is enabled. Disable in production!")
+        print("WARNING: Debug mode is enabled. Disable in production!")
     app.run(
         debug=debug_mode,  # Controlled by FLASK_DEBUG environment variable
         host='0.0.0.0',    # Allow connections from any IP

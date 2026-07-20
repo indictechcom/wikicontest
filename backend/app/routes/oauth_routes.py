@@ -1,5 +1,5 @@
 """
-OAuth routes for WikiContest Application.
+OAuth routes for WikiEval Application.
 
 Handles Wikimedia OAuth 1.0a login initiation and callback. Extracted from
 the original monolithic user_routes.py. Registered at /api/user along with
@@ -24,13 +24,11 @@ oauth_bp = Blueprint('oauth', __name__)
 @handle_errors
 def oauth_login():
     """
-    Initiate OAuth login with Wikimedia.
-
-    This route starts the OAuth 1.0a authentication flow with Wikimedia.
-    It uses the OAuth consumer credentials from the .env file.
-
+    Initiate the Wikimedia OAuth authentication flow.
+    
     Returns:
-        Redirect to Wikimedia OAuth authorization page
+        A redirect response to Wikimedia's authorization page, or a JSON error
+        response with status 500 if OAuth is not configured or initiation fails.
     """
     # --- Get OAuth Configuration ---
     # Get OAuth 1.0a configuration from app config (loaded from .env file)
@@ -171,17 +169,10 @@ def oauth_login():
 @handle_errors
 def oauth_callback():
     """
-    Handle OAuth callback from Wikimedia.
-
-    This route is called by Wikimedia after the user authorizes the application.
-    It exchanges the request token for an access token and creates/updates the user.
-
-    Query parameters:
-        oauth_verifier: Verification code from Wikimedia
-        oauth_token: Request token (should match session)
-
+    Handle Wikimedia's OAuth callback, authenticate or create the user, and redirect to the frontend with an authentication cookie.
+    
     Returns:
-        Redirect to frontend with success message or error
+        Response: A redirect response with an authentication cookie on success, or a JSON error response for invalid callback data or authentication failures.
     """
     # --- Get OAuth Configuration ---
     # Get OAuth 1.0a configuration from app config (loaded from .env file)
@@ -211,6 +202,14 @@ def oauth_callback():
 
     # Log session data for debugging (tokens masked to avoid log exposure)
     def _mask(value):
+        """Mask a sensitive value while preserving a small prefix and suffix for identification.
+        
+        Parameters:
+            value (str): The value to mask.
+        
+        Returns:
+            str: The original value when empty, a partially masked value when longer than eight characters, or "***" otherwise.
+        """
         if not value:
             return value
         return f"{value[:4]}...{value[-4:]}" if len(value) > 8 else "***"

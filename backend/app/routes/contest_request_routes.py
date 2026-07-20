@@ -1,5 +1,5 @@
 """
-Contest request routes for WikiContest Application.
+Contest request routes for WikiEval Application.
 """
 
 from datetime import datetime, timezone
@@ -30,16 +30,11 @@ contest_req_bp = Blueprint("contest_req", __name__)
 @validate_json_data(["name", "project_name", "jury_members"])
 def create_contest_request():
     """
-    Create a contest creation request (for non-privileged users)
-
-    Regular users who are not superadmin or trusted members can submit
-    requests to create contests. Superadmins can review and approve/reject
-    these requests.
-
-    Expected JSON data: Same as create_contest endpoint
-
+    Submit a contest creation request for review by a superadmin.
+    
     Returns:
-        JSON response with success message and request ID
+        A JSON response containing the submitted request ID, or an error message if
+        validation or persistence fails.
     """
     user = request.current_user
     data = request.validated_data
@@ -266,8 +261,9 @@ def create_contest_request():
             201,
         )
 
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         # Log error internally but don't expose details to client
+        current_app.logger.error("Error creating contest request: %s", exc)
         return jsonify({"error": "Failed to create contest request"}), 500
 
 
@@ -276,10 +272,10 @@ def create_contest_request():
 @handle_errors
 def get_contest_requests():
     """
-    Get all contest creation requests (superadmin only)
-
+    Retrieve all pending contest creation requests, ordered from newest to oldest.
+    
     Returns:
-        JSON response with list of contest requests
+        A JSON response containing the pending contest requests.
     """
     # Get all pending requests, ordered by creation date (newest first)
     requests = ContestRequest.query.filter_by(status='pending').order_by(
@@ -296,13 +292,13 @@ def get_contest_requests():
 @handle_errors
 def approve_contest_request(request_id):
     """
-    Approve a contest creation request and create the contest (superadmin only)
-
-    Args:
-        request_id: Contest request ID to approve
-
+    Approve a pending contest creation request and create the corresponding contest.
+    
+    Parameters:
+        request_id (int): Identifier of the contest request to approve.
+    
     Returns:
-        JSON response with success message and created contest ID
+        A JSON response containing the approval result, contest ID, and request ID.
     """
     user = request.current_user
     contest_request = db.session.get(ContestRequest, request_id)
@@ -370,16 +366,13 @@ def approve_contest_request(request_id):
 @handle_errors
 def reject_contest_request(request_id):
     """
-    Reject a contest creation request (superadmin only)
-
-    Args:
-        request_id: Contest request ID to reject
-
-    Expected JSON data (optional):
-        rejection_reason: Reason for rejection
-
+    Reject a pending contest creation request and record the review details.
+    
+    Parameters:
+        request_id (int): Identifier of the contest request to reject.
+    
     Returns:
-        JSON response with success message
+        A JSON response confirming rejection and containing the request ID.
     """
     user = request.current_user
     # Get JSON data if provided (rejection_reason is optional)

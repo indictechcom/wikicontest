@@ -1,5 +1,5 @@
 """
-MediaWiki API helper functions for WikiContest Application.
+MediaWiki API helper functions for WikiEval Application.
 
 Provides shared helpers for building MediaWiki API requests, parsing responses,
 and fetching article metadata (size, author, creation date, etc.).
@@ -33,6 +33,15 @@ MEDIAWIKI_API_TIMEOUT = 30
 
 
 def extract_page_title_from_url(article_url: str) -> Optional[str]:
+    """
+    Extract a MediaWiki page title from an article URL.
+    
+    Parameters:
+    	article_url (str): URL containing the article title.
+    
+    Returns:
+    	Optional[str]: The URL-decoded page title, or `None` if no title can be derived.
+    """
     if not article_url:
         return None
 
@@ -53,6 +62,15 @@ def extract_page_title_from_url(article_url: str) -> Optional[str]:
 
 
 def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:
+    """
+    Builds query parameters for retrieving a page's metadata and revisions from the MediaWiki API.
+    
+    Parameters:
+    	page_title (str): Title of the page to query.
+    
+    Returns:
+    	Dict[str, Any]: MediaWiki API query parameters for up to two revisions and page information.
+    """
     return {
         "action": "query",
         "titles": page_title,
@@ -68,15 +86,30 @@ def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:
 
 
 def get_mediawiki_headers() -> Dict[str, str]:
+    """
+    Build the HTTP headers used for MediaWiki API requests.
+    
+    Returns:
+        Dict[str, str]: A headers dictionary containing a WikiEval User-Agent value.
+    """
     return {
         "User-Agent": (
-            "WikiContest/1.0 (" + os.environ.get('FRONTEND_URL', 'https://wikicontest.toolforge.org') + "; "
-            "contact@wikicontest.org) Python/requests"
+            "WikiEval/1.0 (" + os.environ.get('FRONTEND_URL', 'https://wikieval.toolforge.org') + "; "
+            "contact@wikieval.org) Python/requests"
         )
     }
 
 
 def get_latest_revision_author(revisions: Iterable[Dict[str, Any]]) -> Optional[str]:
+    """
+    Determine the author of the latest revision.
+    
+    Parameters:
+        revisions (Iterable[Dict[str, Any]]): Revision records ordered with the latest first.
+    
+    Returns:
+        Optional[str]: The username, a formatted user ID, or None when no author information is available.
+    """
     revisions_list: List[Dict[str, Any]] = list(revisions or [])
     if not revisions_list:
         return None
@@ -95,6 +128,16 @@ def get_latest_revision_author(revisions: Iterable[Dict[str, Any]]) -> Optional[
 
 
 def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[int]:
+    """
+    Get an article's size at a specified timestamp.
+    
+    Parameters:
+        article_url (str): URL of the article.
+        when (datetime): Timestamp for the requested revision.
+    
+    Returns:
+        Optional[int]: Article size in bytes, or `None` when the page, revision, or size is unavailable.
+    """
     page_title = extract_page_title_from_url(article_url)
     if not page_title:
         return None
@@ -139,6 +182,15 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
 
 
 def get_article_wikitext(article_url: str) -> Optional[str]:
+    """
+    Retrieve the current wikitext content for a MediaWiki article.
+    
+    Parameters:
+        article_url (str): URL of the MediaWiki article.
+    
+    Returns:
+        str: The article's wikitext, or `None` if the article cannot be resolved or has no content.
+    """
     if not article_url:
         return None
 
@@ -190,6 +242,16 @@ def get_article_wikitext(article_url: str) -> Optional[str]:
 def get_mediawiki_user_edit_count(
     username: str, mw_uri: str = "https://meta.wikimedia.org/w/index.php"
 ) -> Optional[int]:
+    """
+    Retrieve a user's MediaWiki edit count.
+    
+    Parameters:
+        username (str): The MediaWiki username.
+        mw_uri (str): The MediaWiki URI used to construct the API endpoint.
+    
+    Returns:
+        Optional[int]: The user's edit count, or `None` if it cannot be retrieved.
+    """
     try:
         if mw_uri.endswith('/index.php'):
             api_url = mw_uri[: -len('/index.php')] + '/api.php'
@@ -261,6 +323,13 @@ def get_mediawiki_user_edit_count(
 
 
 def _log_warning(message: str, error: Exception) -> None:
+    """
+    Logs a warning message with the associated exception when logging is available.
+    
+    Parameters:
+    	message (str): The warning message.
+    	error (Exception): The exception associated with the warning.
+    """
     try:
         from flask import current_app
         current_app.logger.warning("%s: %s", message, str(error))

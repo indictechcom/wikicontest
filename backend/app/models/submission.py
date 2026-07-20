@@ -1,5 +1,5 @@
 """
-Submission Model for WikiContest Application
+Submission Model for WikiEval Application
 Defines the Submission table and related functionality
 """
 
@@ -206,29 +206,19 @@ class Submission(BaseModel):
         outgoing_links=None,
     ):
         """
-        Initialize a new Submission instance
-
-        Args:
-            user_id: ID of the user making the submission
-            contest_id: ID of the contest being submitted to
-            article_title: Title of the submitted article
-            article_link: URL to the submitted article
-            status: Initial status (defaults to 'pending')
-            article_author: Author from latest revision at submission time (optional, fetched from MediaWiki API)
-            article_created_at: When article was created (optional, fetched from MediaWiki API)
-            article_word_count: Word count/size of article in bytes (optional, fetched from MediaWiki API)
-            article_page_id: MediaWiki page ID (optional, fetched from MediaWiki API)
-            article_size_at_start: Article size in bytes at contest start (optional)
-            article_expansion_bytes: Bytes added between contest start and submission time (optional)
-            template_added: Whether template was automatically added to article (optional)
-            categories_added: List of category names that were automatically added (optional, stored as JSON)
-            category_error: Error message if category attachment failed (optional)
-            image_count: Number of images in the article (optional)
-            infobox_count: Number of infoboxes in the article (optional)
-            ref_new_count: Number of new references added to the article (optional)
-            ref_reused_count: Number of reused references in the article (optional)
-            incoming_links: Number of other mainspace articles that link to this article (optional)
-            outgoing_links: Number of mainspace articles this article links to (optional)
+        Initialize a submission with its identifiers, status, article metadata, and tracking information.
+        
+        Parameters:
+            user_id: ID of the submitting user.
+            contest_id: ID of the contest.
+            article_title: Title of the submitted article.
+            article_link: URL of the submitted article.
+            status: Initial submission status.
+            categories_added: Categories added to the article; lists are stored as JSON.
+            ref_new_count: Number of newly added references.
+            ref_reused_count: Number of reused references.
+            incoming_links: Number of incoming links.
+            outgoing_links: Number of outgoing links.
         """
         # Set required fields
         self.user_id = user_id
@@ -274,30 +264,30 @@ class Submission(BaseModel):
 
     def is_pending(self):
         """
-        Check if submission is pending
-
+        Determine whether the submission is pending.
+        
         Returns:
-            bool: True if submission is pending, False otherwise
+            bool: `True` if the submission is pending, `False` otherwise.
         """
         return self.status == "pending"
 
 
     def is_accepted(self):
         """
-        Check if submission is accepted
-
+        Determine whether the submission has been accepted.
+        
         Returns:
-            bool: True if submission is accepted, False otherwise
+            bool: `True` if the submission status is `"accepted"`, `False` otherwise.
         """
         return self.status == "accepted"
 
 
     def is_rejected(self):
         """
-        Check if submission is rejected
-
+        Determine whether the submission has been rejected.
+        
         Returns:
-            bool: True if submission is rejected, False otherwise
+            bool: `true` if the submission is rejected, `false` otherwise.
         """
         return self.status == "rejected"
 
@@ -308,10 +298,11 @@ class Submission(BaseModel):
 
     def get_categories_added(self):
         """
-        Get categories_added as list.
-
+        Get the categories added to the submission.
+        
         Returns:
-            list or None: List of category names that were added, or None if empty
+            list or None: The category names, `None` when no categories are stored, or
+                an empty list when the stored value is invalid JSON.
         """
         if not self.categories_added:
             return None
@@ -329,11 +320,10 @@ class Submission(BaseModel):
 
     def set_parameter_scores(self, scores):
         """
-        Set individual parameter scores
-
-        Args:
-            scores: Dict mapping parameter names to scores (0-10)
-                   Example: {"Quality": 8, "Sources": 7, ...}
+        Store parameter scores for the submission.
+        
+        Parameters:
+            scores (dict | None): Mapping of parameter names to scores, or None to clear the scores. Other values clear the stored scores.
         """
         if scores is None:
             self.parameter_scores = None
@@ -346,10 +336,10 @@ class Submission(BaseModel):
 
     def get_parameter_scores(self):
         """
-        Get individual parameter scores
-
+        Decode the stored per-parameter scores.
+        
         Returns:
-            dict or None: Parameter scores mapping
+        	dict or None: The decoded parameter scores mapping, or `None` if no scores are stored or the stored value is invalid JSON.
         """
         if not self.parameter_scores:
             return None
@@ -361,10 +351,10 @@ class Submission(BaseModel):
 
     def get_score_breakdown(self):
         """
-        Get score breakdown for automated scoring
-
+        Retrieve the points assigned to each scoring category.
+        
         Returns:
-            dict or None: Score breakdown with points per category
+            dict or None: The decoded score breakdown, or None when no valid breakdown is stored.
         """
         if not self.score_breakdown:
             return None
@@ -381,15 +371,10 @@ class Submission(BaseModel):
     @property
     def article_byte_count(self):
         """
-        Clearer alias for the article_word_count column.
-
-        HISTORICAL NOTE: The column is named 'article_word_count' but it stores
-        the article's size in BYTES as returned by the MediaWiki API 'size' field —
-        not a word count.  The column name is intentionally left unchanged in the
-        database to avoid a risky Alembic migration.  All NEW code should use this
-        alias instead of referencing article_word_count directly.
-
-        See PR #198 Comment #9 for full context.
+        Return the article's byte count.
+        
+        Returns:
+        	int: The article byte count.
         """
         return self.article_word_count
 
@@ -414,21 +399,23 @@ class Submission(BaseModel):
         commit=True,
     ):
         """
-        Update submission status and calculate score
-
-        Supports both simple scoring (fixed points) and multi-parameter scoring
-        (weighted average of individual parameter scores)
-
+        Update the submission status, score, review metadata, and submitter total.
+        
         Args:
-            new_status: New status ('accepted', 'rejected', 'pending')
-            reviewer: User instance who is reviewing
-            score: Manual score override (simple scoring only)
-            comment: Review comment/feedback
-            contest: Contest instance (fetched if not provided)
-            parameter_scores: Dict of parameter scores (multi-parameter scoring)
-
+            new_status: The new submission status.
+            reviewer: The user reviewing the submission.
+            score: Optional manual score for accepted submissions using simple scoring.
+            comment: Review comment or feedback.
+            contest: Contest providing scoring configuration; uses the submission's
+                contest when omitted.
+            parameter_scores: Per-parameter scores for multi-parameter scoring.
+            commit: Whether to commit the changes immediately.
+        
         Returns:
-            bool: True if status was changed, False if already at new_status
+            `True` if the status changed, `False` if it already matched `new_status`.
+        
+        Raises:
+            ValueError: If the submitter cannot be found when the score changes.
         """
         # No-op if status hasn't changed
         if self.status == new_status:
@@ -498,13 +485,13 @@ class Submission(BaseModel):
 
     def can_be_judged_by(self, user):
         """
-        Check if a user can judge this submission
-
-        Args:
-            user: User instance to check
-
+        Determine whether a user can judge the submission.
+        
+        Parameters:
+        	user: The user whose judging permission is checked.
+        
         Returns:
-            bool: True if user can judge submission, False otherwise
+        	bool: `true` if the user is an administrator or a jury member of the submission's contest, `false` otherwise.
         """
         # Admins have universal judging permission
         if user.is_admin():
@@ -518,13 +505,13 @@ class Submission(BaseModel):
 
     def can_be_deleted_by(self, user):
         """
-        Check if a user can delete this submission
-
-        Args:
-            user: User instance to check
-
+        Determine whether a user is authorized to delete this submission.
+        
+        Parameters:
+        	user: User whose deletion permissions are checked.
+        
         Returns:
-            bool: True if user can delete submission, False otherwise
+        	bool: `true` if the user is an administrator, jury member, or contest creator; `false` otherwise.
         """
         # Admin can delete all submissions
         if user.is_admin():
@@ -543,13 +530,13 @@ class Submission(BaseModel):
 
     def can_be_viewed_by(self, user):
         """
-        Check if a user can view this submission
-
-        Args:
-            user: User instance to check
-
+        Determine whether a user is allowed to view this submission.
+        
+        Parameters:
+        	user: User instance requesting access.
+        
         Returns:
-            bool: True if user can view submission, False otherwise
+        	bool: `true` if the user is an administrator, the submitter, a jury member, or a contest creator; `false` otherwise.
         """
         # Admins can view all submissions
         if user.is_admin():
@@ -576,13 +563,13 @@ class Submission(BaseModel):
 
     def to_dict(self, include_user_info=False):
         """
-        Convert submission instance to dictionary for JSON serialization
-
-        Args:
-            include_user_info: Whether to include user information
-
+        Serialize the submission and its associated article, review, and scoring metadata.
+        
+        Parameters:
+        	include_user_info (bool): Whether to include the submitter's username and email and the contest name.
+        
         Returns:
-            dict: Submission data
+        	dict: Serialized submission data, including optional submitter and contest details.
         """
         data = {
             "id": self.id,
@@ -652,5 +639,10 @@ class Submission(BaseModel):
 
 
     def __repr__(self):
-        """String representation of Submission instance"""
+        """
+        Describe the submission using its identifier and article title.
+        
+        Returns:
+            str: A formatted representation of the submission.
+        """
         return f"<Submission {self.id}: {self.article_title}>"

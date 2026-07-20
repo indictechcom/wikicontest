@@ -1,5 +1,5 @@
 """
-Contest CRUD routes for WikiContest Application.
+Contest CRUD routes for WikiEval Application.
 """
 
 import traceback
@@ -28,14 +28,14 @@ contest_crud_bp = Blueprint("contest_crud", __name__)
 @handle_errors
 def get_all_contests():
     """
-    Get all contests categorized by status (current, upcoming, past)
-
-    Query params:
-        page (int): Page number, default 1
-        per_page (int): Items per page, default 20, max 100
-
+    List contests grouped by their current, upcoming, or past status.
+    
+    Parameters:
+        page (int): Page number to retrieve.
+        per_page (int): Number of contests per page, capped at 100.
+    
     Returns:
-        JSON response with contests categorized by status
+        JSON response containing categorized contests and pagination metadata.
     """
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 20, type=int), 100)
@@ -79,15 +79,13 @@ def get_all_contests():
 @handle_errors
 def get_contest_by_id(contest_id):
     """
-    Get a specific contest by ID
-
-    Requires authentication - users must be logged in to view contest details.
-
-    Args:
-        contest_id: Contest ID
-
+    Retrieve a contest by its database identifier.
+    
+    Parameters:
+        contest_id (int): The contest's database identifier.
+    
     Returns:
-        JSON response with contest data
+        JSON response containing the contest data, or a 404 error if the contest does not exist.
     """
     contest = db.session.get(Contest, contest_id)
 
@@ -104,16 +102,14 @@ def get_contest_by_id(contest_id):
 @handle_errors
 def get_contest_by_name(name):
     """
-    Get a specific contest by name (slugified URL format)
-
-    Handles various name formats and special characters by normalizing slugs
-    Requires authentication - users must be logged in to view contest details.
-
-    Args:
-        name: Contest name in slug format (e.g., "my-contest-2024")
-
+    Retrieve a contest by its normalized slug.
+    
+    Parameters:
+        name (str): Contest slug to match against contest names.
+    
     Returns:
-        JSON response with contest data
+        tuple: The matching contest data with status 200, or an error response
+            with status 404 if no contest matches.
     """
     import re
 
@@ -150,22 +146,15 @@ def get_contest_by_name(name):
 @handle_errors
 def get_contest_leaderboard_detailed(contest_id):
     """
-    Get detailed leaderboard for a contest with user statistics
-
-    Supports filtering, sorting, and pagination of results
-
-    Query Parameters:
-        filter: 'reviewed', 'pending', or 'all' (default: 'all')
-        min_marks: Minimum marks threshold (optional)
-        sort_by: 'marks' or 'submissions' (default: 'marks')
-        page: Page number for pagination (default: 1)
-        per_page: Results per page (default: 50)
-
+    Build a ranked leaderboard for a contest with filtering, sorting, and pagination.
+    
+    Parameters:
+        contest_id (int): ID of the contest whose leaderboard should be retrieved.
+    
     Returns:
-        JSON response with:
-        - contest_stats: Overall contest statistics
-        - leaderboard: Ranked list of users with their stats
-        - pagination: Pagination metadata
+        JSON response containing contest details, aggregate contest statistics,
+        ranked user statistics, pagination metadata, and applied filters. Returns
+        a 404 response if the contest does not exist.
     """
     from sqlalchemy import func, case
 
@@ -304,32 +293,11 @@ def get_contest_leaderboard_detailed(contest_id):
 @validate_json_data(["name", "project_name", "jury_members"])
 def create_contest():
     """
-    Create a new contest with validation and initialization
-
-    Validates all required fields, jury members, dates, categories,
-    and scoring parameters before creating the contest
-
-    Only trusted members and superadmins can create contests.
-    Regular users can still submit and participate in contests.
-
-    Expected JSON data:
-        name: Name of the contest (required)
-        project_name: Name of the associated project (required)
-        jury_members: List of jury member usernames (required)
-        description: Optional description
-        start_date: Optional start date (YYYY-MM-DD)
-        end_date: Optional end date (YYYY-MM-DD)
-        rules: Optional rules object
-        marks_setting_accepted: Points for accepted submissions (default: 0)
-        marks_setting_rejected: Points for rejected submissions (default: 0)
-        min_byte_count: Minimum article byte count (required)
-        min_reference_count: Minimum reference count (default: 0)
-        categories: List of MediaWiki category URLs (optional)
-        scoring_parameters: Multi-parameter scoring config (optional)
-        organizers: Additional organizer usernames (optional)
-
+    Create a contest after validating its configuration and required participants.
+    
     Returns:
-        JSON response with success message and contest ID
+        A JSON response containing the new contest ID on success, or an error
+        response when authorization, validation, or persistence fails.
     """
     user = request.current_user
     data = request.validated_data
@@ -684,13 +652,13 @@ def create_contest():
 @handle_errors
 def delete_contest(contest_id):
     """
-    Delete a contest (admin or creator only)
-
-    Args:
-        contest_id: Contest ID
-
+    Delete a contest and its associated submissions when the current user has permission.
+    
+    Parameters:
+    	contest_id (int): ID of the contest to delete.
+    
     Returns:
-        JSON response with success message
+    	A JSON response indicating whether the contest was deleted or why the request failed.
     """
     user = request.current_user
     contest = db.session.get(Contest, contest_id)
@@ -718,6 +686,16 @@ def delete_contest(contest_id):
 @require_auth
 @handle_errors
 def update_contest(contest_id):
+    """
+    Update a contest's metadata, schedule, scoring, requirements, membership, and related settings.
+    
+    Parameters:
+        contest_id (int): Database identifier of the contest to update.
+    
+    Returns:
+        tuple: A JSON response containing the updated contest, or an error response with
+            the corresponding HTTP status code.
+    """
     user = request.current_user
     try:
         # Handle both JSON and non-JSON content types
@@ -1030,6 +1008,11 @@ def update_contest(contest_id):
             else:
                 # Validate automated scoring structure if enabled
                 if as_settings.get("enabled"):
+                    # Check if scoring system can be changed before enabling automated settings
+                    can_change, reason = contest.can_change_scoring_system()
+                    if not can_change:
+                        return jsonify({"error": reason}), 400
+
                     # Validate eligibility section
                     eligibility = as_settings.get("eligibility", {})
                     if not isinstance(eligibility, dict):

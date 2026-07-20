@@ -1,5 +1,5 @@
 """
-Contest category-crawl routes for WikiContest Application.
+Contest category-crawl routes for WikiEval Application.
 
 Handles importing articles from a MediaWiki category into a contest as pending
 submissions. Extracted from the original monolithic contest_routes.py.
@@ -47,7 +47,13 @@ contest_crawl_bp = Blueprint("contest_crawl", __name__)
 @validate_json_data(["category_url"])
 def crawl_category_for_contest(contest_id):
     """
-    Crawl articles from a Wikipedia category and create pending submissions.
+    Crawls a Wikipedia category and imports its articles as pending submissions for a contest.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest receiving the submissions.
+    
+    Returns:
+        tuple: A Flask JSON response and HTTP status code indicating the crawl result.
     """
     try:
         user = request.current_user

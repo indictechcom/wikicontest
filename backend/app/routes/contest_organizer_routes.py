@@ -1,5 +1,5 @@
 """
-Contest organizer routes for WikiContest Application.
+Contest organizer routes for WikiEval Application.
 """
 
 from datetime import datetime, timezone
@@ -26,15 +26,14 @@ contest_org_bp = Blueprint("contest_org", __name__)
 @handle_errors
 def get_contest_organizers(contest_id):
     """
-    Get all organizers for a specific contest
-
-    Returns list of organizer usernames.
-
-    Args:
-        contest_id: Contest ID
-
+    Retrieve the organizers and creator for a contest.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest.
+    
     Returns:
-        JSON response with list of organizer usernames
+        JSON response containing the contest ID, organizer usernames, and creator, with HTTP status 200.
+        Returns an error response with HTTP status 404 if the contest does not exist or 403 if access is denied.
     """
     user = request.current_user
 
@@ -68,18 +67,13 @@ def get_contest_organizers(contest_id):
 @validate_json_data(["username"])
 def add_contest_organizer(contest_id):
     """
-    Add a new organizer to a contest
-
-    Only creator and admins can add organizers.
-
-    Expected JSON data:
-        username: Username of the user to add as organizer
-
-    Args:
-        contest_id: Contest ID
-
+    Add an existing user as an organizer of a contest.
+    
+    Parameters:
+        contest_id (int): The ID of the contest.
+    
     Returns:
-        JSON response with success message
+        A response containing a success message and the updated organizer list.
     """
     user = request.current_user
     data = request.validated_data
@@ -130,17 +124,16 @@ def add_contest_organizer(contest_id):
 @handle_errors
 def remove_contest_organizer(contest_id, username):
     """
-    Remove an organizer from a contest
-
-    Only creator and admins can remove organizers.
-    Cannot remove creator.
-
-    Args:
-        contest_id: Contest ID
-        username: Username to remove
-
+    Remove an organizer from a contest.
+    
+    Parameters:
+        contest_id: ID of the contest.
+        username: Username of the organizer to remove.
+    
     Returns:
-        JSON response with success message
+        A JSON response containing a success message and the updated organizer
+        list, or an error response when the contest or organizer is unavailable
+        or the user lacks permission.
     """
     user = request.current_user
 

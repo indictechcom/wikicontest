@@ -1,5 +1,5 @@
 """
-Wiki editing utilities for WikiContest Application.
+Wiki editing utilities for WikiEval Application.
 
 Provides helpers for MediaWiki OAuth-based editing operations:
 fetching CSRF tokens, prepending templates, and appending categories.
@@ -33,6 +33,19 @@ def get_csrf_token(
     consumer_key: str,
     consumer_secret: str
 ) -> Optional[str]:
+    """
+    Retrieve a MediaWiki CSRF token using OAuth1 authentication.
+    
+    Parameters:
+        api_url (str): MediaWiki API endpoint.
+        oauth_token (str): OAuth resource owner token.
+        oauth_token_secret (str): OAuth resource owner token secret.
+        consumer_key (str): OAuth consumer key.
+        consumer_secret (str): OAuth consumer secret.
+    
+    Returns:
+        Optional[str]: The CSRF token, or None if the request or response is unsuccessful.
+    """
     try:
         from requests_oauthlib import OAuth1
     except ImportError:
@@ -95,6 +108,19 @@ def prepend_template_to_article(
     consumer_secret: str,
     edit_summary: Optional[str] = None
 ) -> Dict[str, Any]:
+    """
+    Prepend a MediaWiki template invocation to an article.
+    
+    Parameters:
+        article_url (str): URL of the article to edit.
+        template_name (str): Name of the template to prepend.
+        edit_summary (Optional[str]): Edit summary for the change. A default
+            WikiEval summary is used when omitted.
+    
+    Returns:
+        Dict[str, Any]: Result containing success status, error information,
+            the new revision ID, and the raw API response.
+    """
     result = {
         'success': False,
         'error': None,
@@ -137,7 +163,7 @@ def prepend_template_to_article(
     template_text = f"{{{{{template_name}}}}}\n\n"
 
     if not edit_summary:
-        edit_summary = f"Adding {{{{{template_name}}}}} contest template (via WikiContest)"
+        edit_summary = f"Adding {{{{{template_name}}}}} contest template (via WikiEval)"
 
     edit_params = {
         "action": "edit",
@@ -193,6 +219,21 @@ def append_categories_to_article(
     consumer_secret: str,
     edit_summary: Optional[str] = None
 ) -> Dict[str, Any]:
+    """
+    Append categories to a wiki article while skipping categories already present.
+    
+    Parameters:
+    	article_url (str): URL of the article to edit.
+    	category_names (list): Category names to append.
+    	oauth_token (str): OAuth resource owner token.
+    	oauth_token_secret (str): OAuth resource owner token secret.
+    	consumer_key (str): OAuth consumer key.
+    	consumer_secret (str): OAuth consumer secret.
+    	edit_summary (Optional[str]): Edit summary to use; a default is generated when omitted.
+    
+    Returns:
+    	Dict[str, Any]: Result containing the edit status, error information, added and skipped categories, new revision ID, and API response.
+    """
     result = {
         'success': False,
         'error': None,
@@ -261,10 +302,10 @@ def append_categories_to_article(
 
     if not edit_summary:
         if len(categories_to_add) == 1:
-            edit_summary = f"Adding [[Category:{categories_to_add[0]}]] contest category (via WikiContest submission)"
+            edit_summary = f"Adding [[Category:{categories_to_add[0]}]] contest category (via WikiEval submission)"
         else:
             category_list = ", ".join([f"[[Category:{name}]]" for name in categories_to_add])
-            edit_summary = f"Adding contest categories: {category_list} (via WikiContest submission)"
+            edit_summary = f"Adding contest categories: {category_list} (via WikiEval submission)"
 
     edit_params = {
         "action": "edit",

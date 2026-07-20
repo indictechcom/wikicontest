@@ -1,5 +1,5 @@
 """
-System & authentication routes for WikiContest Application.
+System & authentication routes for WikiEval Application.
 
 Holds the application-level endpoints that are not part of a feature
 blueprint (user/contest/submission): cookie/session checks, frontend
@@ -37,14 +37,11 @@ system_bp = Blueprint('system', __name__)
 @system_bp.route('/api/cookie', methods=['GET'])
 def check_cookie():
     """
-    Check if user is authenticated via JWT cookie.
-
-    This endpoint is used by the frontend to verify if a user is currently
-    logged in. It reads the JWT token from the HTTP-only cookie and returns
-    the user's basic information if the token is valid.
-
+    Validate the request authentication and return the associated user's account and trust status.
+    
     Returns:
-        JSON: User information if authenticated, error if not
+        A JSON response with user details and HTTP 200 when authenticated; otherwise, an
+        authentication error response with HTTP 401.
     """
     try:
         # Verify the JWT token from the cookie
@@ -120,10 +117,9 @@ def check_cookie():
 @system_bp.route('/')
 def index():
     """
-    Serve the main frontend page.
-
-    Serves the Vue.js application.
-    In production, serves from frontend/dist directory (built Vue.js app).
+    Serve the main frontend entry page.
+    
+    Serves the production build when available and otherwise uses the frontend development directory.
     """
     # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -141,10 +137,12 @@ def index():
 @system_bp.route('/<path:filename>')
 def serve_static(filename):
     """
-    Serve static files from frontend directory.
-
-    In production, serves from frontend/dist directory (built Vue.js app).
-    In development, serves from frontend directory (Vite dev server handles Vue.js).
+    Serve a frontend asset, using the production build when available.
+    
+    Unknown production paths fall back to the frontend entry page for client-side routing. API and OAuth paths return a 404 response instead of serving frontend content.
+    
+    Parameters:
+        filename (str): Frontend asset path to serve.
     """
     # Skip API routes to avoid conflict with API endpoints
     if filename.startswith('api/') or filename.startswith('oauth/'):
@@ -176,27 +174,25 @@ def serve_static(filename):
 @system_bp.route('/api/health', methods=['GET'])
 def health_check():
     """
-    Health check endpoint for monitoring and load balancers.
-
-    This endpoint can be used by monitoring systems to check if the
-    application is running and responding to requests.
-
+    Check application and database availability.
+    
     Returns:
-        JSON: Application status information
+        tuple: A JSON response reporting the application and database status, with
+            HTTP status 200 when the database is reachable or 503 otherwise.
     """
     try:
         db.session.execute(sql_text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
             'database': 'connected',
-            'message': 'WikiContest API is running',
+            'message': 'WikiEval API is running',
             'version': '1.0.0'
         }), 200
     except Exception:
         return jsonify({
             'status': 'unhealthy',
             'database': 'disconnected',
-            'message': 'WikiContest API is running',
+            'message': 'WikiEval API is running',
             'version': '1.0.0'
         }), 503
 
@@ -207,7 +203,7 @@ def oauth_callback_redirect():
     Redirect /oauth/callback to the blueprint handler at /api/user/oauth/callback.
 
     The Toolforge OAuth consumer is registered with callback URL
-    https://wikicontest.toolforge.org/oauth/callback, but the actual handler
+    https://wikieval.toolforge.org/oauth/callback, but the actual handler
     lives at /api/user/oauth/callback (the user_bp blueprint).
     This route bridges the two by forwarding all query parameters.
     """
@@ -223,14 +219,12 @@ def oauth_callback_redirect():
 @jwt_required()
 def oauth_config_check():
     """
-    Diagnostic endpoint to check OAuth configuration.
-
-    This helps verify that OAuth is properly configured and shows
-    what callback URL will be used. Useful for troubleshooting.
-    Admin access required.
-
+    Provide administrators with OAuth configuration details and the computed callback URL.
+    
     Returns:
-        JSON: OAuth configuration details (without secrets)
+        JSON response containing masked OAuth credentials, configuration values,
+        callback information, and registration instructions; or a 403 response
+        when the authenticated user is not an administrator.
     """
     user_id = get_jwt_identity()
     current_user = db.session.get(User, int(user_id))
@@ -244,7 +238,7 @@ def oauth_config_check():
 
     # Build callback URL based on environment
     # For local development: http://localhost:5000/api/user/oauth/callback
-    # For Toolforge: https://wikicontest.toolforge.org/oauth/callback
+    # For Toolforge: https://wikieval.toolforge.org/oauth/callback
     # (if OAUTH_CALLBACK_PATH is set)
     scheme = request.scheme
     host = request.host

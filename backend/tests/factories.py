@@ -1,5 +1,5 @@
 """
-Factory helpers for creating test data in WikiContest tests.
+Factory helpers for creating test data in WikiEval tests.
 
 Usage in a test:
     def test_something(db, factories):
@@ -25,7 +25,21 @@ def create_user(
     trusted_member_request=False,
     trusted_member_request_status=None,
 ):
-    """Create and persist a User."""
+    """
+    Create and persist a user with the specified account and trusted-member settings.
+    
+    Parameters:
+    	username (str): The user's username.
+    	email (str): The user's email address.
+    	password (str): The user's password.
+    	role (str): The user's application role.
+    	is_trusted_member (bool): Whether the user is a trusted member.
+    	trusted_member_request (bool): Whether the user has requested trusted-member status.
+    	trusted_member_request_status: The user's trusted-member request status.
+    
+    Returns:
+    	User: The persisted user.
+    """
     user = User(
         username=username,
         email=email,
@@ -58,7 +72,22 @@ def create_contest(
     automated_settings=None,
     allowed_submission_type="both",
 ):
-    """Create and persist a Contest."""
+    """
+    Create and persist a contest with the specified configuration.
+    
+    Parameters:
+        start_date: Contest start date; defaults to yesterday.
+        end_date: Contest end date; defaults to seven days from today.
+        jury_members: Jury members assigned to the contest.
+        categories: Categories associated with the contest.
+        organizers: Organizers associated with the contest.
+        scoring_parameters: Optional scoring configuration.
+        automated_settings: Optional automated-evaluation configuration.
+        allowed_submission_type: Types of submissions accepted by the contest.
+    
+    Returns:
+        The persisted Contest instance.
+    """
     if start_date is None:
         start_date = date.today() - timedelta(days=1)
     if end_date is None:
@@ -105,7 +134,21 @@ def create_submission(
     article_word_count=5000,
     article_page_id="12345",
 ):
-    """Create and persist a Submission."""
+    """
+    Create and persist a submission for a contest participant.
+    
+    Parameters:
+        user_id: Identifier of the submitting user.
+        contest_id: Identifier of the contest.
+        article_title: Title of the submitted article.
+        article_link: URL of the submitted article.
+        status: Initial submission status.
+        article_word_count: Number of words in the submitted article.
+        article_page_id: Identifier of the submitted article page.
+    
+    Returns:
+        The persisted submission.
+    """
     submission = Submission(
         user_id=user_id,
         contest_id=contest_id,

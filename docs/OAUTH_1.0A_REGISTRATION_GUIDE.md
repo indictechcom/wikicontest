@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document provides a technical, step-by-step guide for registering an OAuth 1.0a consumer application on Wikimedia Meta-Wiki for use with the WikiContest evaluation tool. It is based on the project's existing implementation (`backend/app/routes/user_routes.py`, `backend/app/config.py`, `docs/OAUTH_LOCAL_SETUP.md`) and the Wikimedia OAuth consumer registration form.
+This document provides a technical, step-by-step guide for registering an OAuth 1.0a consumer application on Wikimedia Meta-Wiki for use with the WikiEval evaluation tool. It is based on the project's existing implementation (`backend/app/routes/user_routes.py`, `backend/app/config.py`, `docs/OAUTH_LOCAL_SETUP.md`) and the Wikimedia OAuth consumer registration form.
 
 
 ## Pre-requisites
@@ -25,9 +25,9 @@ Fill in each field as described below.
 
 | Field | Value | Notes |
 |-------|-------|-------|
-| **Application name** | `WikiContest` or `WikiContest Evaluation Tool` | Must be unique across Wikimedia OAuth consumers. |
+| **Application name** | `WikiEval` or `WikiEval Evaluation Tool` | Must be unique across Wikimedia OAuth consumers. |
 | **Application description** | `A platform for hosting and participating in collaborative online Wikipedia article competitions, with automated evaluation and jury review workflows.` | Be specific about your tool's purpose. |
-| **OAuth "callback" URL** | `https://wikicontest.toolforge.org/oauth/callback` | **Must match exactly** the URL your application uses for OAuth callbacks. See Redirect URI section below. |
+| **OAuth "callback" URL** | `https://wikieval.toolforge.org/oauth/callback` | **Must match exactly** the URL your application uses for OAuth callbacks. See Redirect URI section below. |
 | **Contact email** | Your valid email address | Used by Wikimedia administrators for consumer approval communications. |
 | **Consumer version** | `1.0` | Leave at default unless you have a specific reason to change. |
 | **Owner-only** | `No` | Must be `No` to allow any Wikimedia user to authorize the application. |
@@ -46,7 +46,7 @@ Fill in each field as described below.
 
 After proposing the consumer, you will be taken to a grants selection screen. Wikimedia OAuth 1.0a uses "grants" instead of OAuth 2.0 "scopes." Select the following grants based on your application's needs.
 
-### Required Grants for WikiContest
+### Required Grants for WikiEval
 
 | Grant | Checkbox | Required | Purpose |
 |-------|----------|----------|---------|
@@ -97,9 +97,9 @@ In Wikimedia OAuth 1.0a, the "callback URL" serves the same purpose as the redir
 | Component | Value |
 |-----------|-------|
 | Protocol | `https://` |
-| Host | `wikicontest.toolforge.org` |
+| Host | `wikieval.toolforge.org` |
 | Path | `/oauth/callback` |
-| Full URL | `https://wikicontest.toolforge.org/oauth/callback` |
+| Full URL | `https://wikieval.toolforge.org/oauth/callback` |
 
 ### Custom Callback Path Override
 
@@ -243,7 +243,7 @@ OAUTH_CALLBACK_PATH=
 
 For production/Toolforge, add:
 ```env
-FRONTEND_URL=https://wikicontest.toolforge.org
+FRONTEND_URL=https://wikieval.toolforge.org
 ```
 
 
@@ -262,7 +262,7 @@ FRONTEND_URL=https://wikicontest.toolforge.org
 
 OAuth consumers are environment-specific because callback URLs are fixed and cannot be changed after registration. Maintain separate consumers for:
 - **Local Development**: `http://localhost:5000/api/user/oauth/callback`
-- **Production (Toolforge)**: `https://wikicontest.toolforge.org/oauth/callback`
+- **Production (Toolforge)**: `https://wikieval.toolforge.org/oauth/callback`
 
 ### OAuth 1.0a vs OAuth 2.0
 

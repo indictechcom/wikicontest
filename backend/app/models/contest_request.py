@@ -1,5 +1,5 @@
 """
-Contest Request Model for WikiContest Application
+Contest Request Model for WikiEval Application
 Defines the ContestRequest table for tracking contest creation requests from non-privileged users
 """
 
@@ -111,13 +111,15 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def __init__(self, user_id, name, project_name, **kwargs):
         """
-        Initialize a new ContestRequest instance
+        Initialize a pending contest creation request.
         
-        Args:
-            user_id: ID of user making the request
-            name: Name of the contest
-            project_name: Name of the associated project
-            **kwargs: Additional contest attributes
+        Parameters:
+            user_id: ID of the user submitting the request.
+            name: Contest name.
+            project_name: Name of the associated project.
+            **kwargs: Optional contest details and configuration, including dates,
+                submission limits, participant lists, categories, rules, scoring
+                parameters, and template link.
         """
         self.user_id = user_id
         self.name = name
@@ -157,10 +159,10 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def to_dict(self):
         """
-        Convert contest request instance to dictionary for JSON serialization
+        Serialize the contest request and its review metadata for API responses.
         
         Returns:
-            dict: Contest request data
+            dict: Contest request data with date values in ISO 8601 format and the requester's username when available.
         """
         return {
             "id": self.id,
@@ -191,5 +193,5 @@ class ContestRequest(BaseModel, ContestMixin):
         }
 
     def __repr__(self):
-        """String representation of ContestRequest instance"""
+        """Return a concise string representation identifying the contest request, its name, and submitting user."""
         return f"<ContestRequest {self.id}: {self.name} by user {self.user_id}>"

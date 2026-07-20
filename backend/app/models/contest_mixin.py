@@ -1,5 +1,5 @@
 """
-Contest Mixin for WikiContest Application
+Contest Mixin for WikiEval Application
 Contains shared methods for Contest and ContestRequest models
 This eliminates code duplication between the two models
 """
@@ -31,10 +31,10 @@ class ContestMixin:
 
     def set_rules(self, rules_dict):
         """
-        Set contest rules from dictionary
-
-        Args:
-            rules_dict: Dictionary containing contest rules
+        Store contest rules in a database-compatible JSON string.
+        
+        Parameters:
+            rules_dict (dict): Contest rules to store. Invalid values are stored as empty rules.
         """
         # Convert dictionary to JSON string for database storage
         if isinstance(rules_dict, dict):
@@ -46,10 +46,10 @@ class ContestMixin:
 
     def get_rules(self):
         """
-        Get contest rules as dictionary
-
+        Retrieve the stored contest rules.
+        
         Returns:
-            dict: Contest rules dictionary
+            object: The decoded rules, or an empty dictionary when no valid rules are stored.
         """
         if self.rules:
             try:
@@ -67,10 +67,10 @@ class ContestMixin:
 
     def set_jury_members(self, jury_list):
         """
-        Set jury members from list
-
-        Args:
-            jury_list: List of jury member usernames
+        Store jury member usernames as a comma-separated string.
+        
+        Parameters:
+            jury_list (list): Jury member usernames to store. Non-list values clear the stored members.
         """
         # Convert list to comma-separated string for database storage
         if isinstance(jury_list, list):
@@ -81,10 +81,10 @@ class ContestMixin:
 
     def get_jury_members(self):
         """
-        Get jury members as list
-
+        Retrieve the contest's jury member usernames.
+        
         Returns:
-            list: List of jury member usernames
+            list: Jury member usernames with surrounding whitespace removed.
         """
         if self.jury_members:
             # Parse comma-separated string back to list
@@ -103,10 +103,10 @@ class ContestMixin:
 
     def set_categories(self, categories_list):
         """
-        Set contest categories from list
-
-        Args:
-            categories_list: List of category URLs
+        Store contest categories in a database-compatible JSON string.
+        
+        Parameters:
+            categories_list (list): Category URLs to store. Non-list values are stored as an empty list.
         """
         # Convert list to JSON array string for database storage
         if isinstance(categories_list, list):
@@ -117,10 +117,10 @@ class ContestMixin:
 
     def get_categories(self):
         """
-        Get contest categories as list
-
+        Retrieve the contest categories.
+        
         Returns:
-            list: List of category URLs
+            list: The decoded categories, or an empty list when no valid categories are stored.
         """
         if self.categories:
             try:
@@ -138,10 +138,10 @@ class ContestMixin:
 
     def set_scoring_parameters(self, params):
         """
-        Set scoring parameters configuration
-
-        Args:
-            params: Dict or None containing scoring configuration
+        Store scoring parameters as a JSON string, or clear them when no valid configuration is provided.
+        
+        Parameters:
+            params (dict or None): Scoring configuration to store.
         """
         if params is None:
             self.scoring_parameters = None
@@ -154,10 +154,10 @@ class ContestMixin:
 
     def get_scoring_parameters(self):
         """
-        Get scoring parameters configuration
-
+        Retrieve the contest's scoring parameters configuration.
+        
         Returns:
-            dict or None: Scoring parameters configuration
+            dict or None: The decoded scoring parameters, or `None` when no configuration is stored or the stored JSON is invalid.
         """
         if not self.scoring_parameters:
             return None
@@ -174,28 +174,10 @@ class ContestMixin:
 
     def set_automated_settings(self, settings):
         """
-        Set automated scoring settings configuration
-
-        Args:
-            settings: Dict or None containing automated scoring configuration
-                {
-                    "enabled": true,
-                    "eligibility": {
-                        "min_edits": 100,
-                        "min_outgoing_links": 3
-                    },
-                    "evaluation": {
-                        "points_per_accepted": 10,
-                        "points_per_byte": 0.001,
-                        "points_per_incoming_link": 2,
-                        "points_per_outgoing_link": 1,
-                        "points_per_category": 1,
-                        "points_per_new_reference": 3,
-                        "points_per_reused_reference": 1,
-                        "points_per_infobox": 5,
-                        "points_per_image": 2
-                    }
-                }
+        Store automated scoring settings for the contest.
+        
+        Parameters:
+            settings (dict or None): Configuration to store, or None to clear the settings.
         """
         if settings is None:
             self.automated_settings = None
@@ -208,10 +190,10 @@ class ContestMixin:
 
     def get_automated_settings(self):
         """
-        Get automated scoring settings configuration
-
+        Retrieve the automated scoring settings configuration.
+        
         Returns:
-            dict or None: Automated scoring settings configuration
+            dict or None: The decoded settings dictionary, or `None` when no valid configuration is stored.
         """
         if not self.automated_settings:
             return None
@@ -228,11 +210,11 @@ class ContestMixin:
 
     def set_organizers(self, organizers_list, creator_username=None):
         """
-        Set organizers from list. Creator is always included if provided.
-
-        Args:
-            organizers_list: List of organizer usernames
-            creator_username: Username of creator (auto-added if provided)
+        Store organizer usernames as a comma-separated string.
+        
+        Parameters:
+            organizers_list: Organizer usernames to normalize and store. Non-list values are replaced with the creator username when available.
+            creator_username: Optional creator username to place first in the stored list.
         """
         if isinstance(organizers_list, list):
             # Remove duplicates and empty strings
@@ -268,10 +250,10 @@ class ContestMixin:
 
     def get_organizers(self):
         """
-        Get organizers as list of usernames.
-
+        Retrieve the contest's organizer usernames.
+        
         Returns:
-            list: List of organizer usernames
+            list: Organizer usernames with surrounding whitespace removed and empty entries excluded.
         """
         if self.organizers:
             # Parse comma-separated string back to list

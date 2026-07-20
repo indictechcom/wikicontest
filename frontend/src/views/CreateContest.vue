@@ -3,7 +3,7 @@
     <!-- Page header with Wikipedia primary color -->
     <div class="page-header py-2">
       <div class="container-fluid d-flex justify-content-between align-items-center">
-        <div class="text-white">WikiContest Tool</div>
+        <div class="text-white">WikiEval Tool</div>
         <button type="button"
 class="btn btn-secondary btn-sm"
 @click="goBack"
@@ -934,7 +934,7 @@ export default {
     const addJury = async (username) => {
       if (isCurrentUser(username)) {
         const confirmed = window.confirm(
-          '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
+          'WARNING: Self-Selection as Jury Member\n\n' +
           'You are about to select yourself as a jury member.\n\n' +
           'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
           'Are you sure you want to proceed with selecting yourself?'

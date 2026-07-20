@@ -1,5 +1,5 @@
 """
-WSGI entry point for WikiContest Flask application.
+WSGI entry point for WikiEval Flask application.
 
 This module provides the WSGI interface for production deployment
 with gunicorn on Toolforge Build Service.

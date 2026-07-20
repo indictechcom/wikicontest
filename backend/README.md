@@ -1,6 +1,6 @@
-# WikiContest Flask Backend
+# WikiEval Flask Backend
 
-A Python Flask backend application for the WikiContest platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
+A Python Flask backend application for the WikiEval platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
 
 ## Table of Contents
 
@@ -135,9 +135,9 @@ pip install -r requirements.txt
 Run the following SQL commands to create the database and user:
 
 ```sql
-CREATE DATABASE wikicontest;
-CREATE USER 'wikicontest_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON wikicontest.* TO 'wikicontest_user'@'localhost';
+CREATE DATABASE WikiEval;
+CREATE USER 'WikiEval_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON WikiEval.* TO 'WikiEval_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -149,7 +149,7 @@ Create a `.env` file in the backend directory with the following variables:
 
 ```env
 # Database Configuration
-DATABASE_URL=mysql+pymysql://wikicontest_user:your_password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://WikiEval_user:your_password@localhost/WikiEval
 
 # Security Keys
 SECRET_KEY=your_secret_key_here
@@ -590,7 +590,7 @@ Application logs are written to console by default.
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### Guidelines
 
@@ -604,7 +604,7 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 ## Additional Resources
 
