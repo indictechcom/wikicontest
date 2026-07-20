@@ -4,24 +4,33 @@ Pytest configuration and shared fixtures for WikiEval backend tests.
 Run with: cd backend && pytest
 """
 
+import importlib
 import os
 import sys
 
 # Ensure the backend package is importable when running pytest from the backend dir.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# MUST set testing env vars BEFORE importing app so the module-level
+# MUST set testing env var BEFORE importing app so the module-level
 # app = create_app() picks up TestingConfig.
 os.environ["FLASK_ENV"] = "testing"
-os.environ.pop("DATABASE_URL", None)
-os.environ.pop("SECRET_KEY", None)
-os.environ.pop("JWT_SECRET_KEY", None)
 
 import pytest
 from unittest.mock import MagicMock
 
 # Import the module-level app which already has all blueprints and routes.
+# app/__init__.py calls load_dotenv() at module level, which reloads the .env
+# file. We therefore pop the secret keys AFTER importing the app (so the
+# running app keeps its real secrets) and reload app.config so its class-level
+# defaults are recomputed with those env vars unset.
 from app import app as _app  # noqa: E402
+
+os.environ.pop("DATABASE_URL", None)
+os.environ.pop("SECRET_KEY", None)
+os.environ.pop("JWT_SECRET_KEY", None)
+
+import app.config as _config_module  # noqa: E402
+importlib.reload(_config_module)
 
 
 @pytest.fixture(scope="session")
