@@ -70,7 +70,7 @@ def add_contest_organizer(contest_id):
     Add an existing user as an organizer of a contest.
     
     Parameters:
-        contest_id: The ID of the contest.
+        contest_id (int): The ID of the contest.
     
     Returns:
         A response containing a success message and the updated organizer list.
@@ -126,14 +126,14 @@ def remove_contest_organizer(contest_id, username):
     """
     Remove an organizer from a contest.
     
-    Args:
+    Parameters:
         contest_id: ID of the contest.
         username: Username of the organizer to remove.
     
     Returns:
-        A JSON response containing the updated organizer list and a success
-        message, or an error response if the contest or organizer cannot be
-        found or the user lacks permission.
+        A JSON response containing a success message and the updated organizer
+        list, or an error response when the contest or organizer is unavailable
+        or the user lacks permission.
     """
     user = request.current_user
 

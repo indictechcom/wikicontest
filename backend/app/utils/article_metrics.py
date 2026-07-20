@@ -68,14 +68,14 @@ def _extract_article_content_from_revision(latest_rev: dict) -> str:
 
 def _fetch_footnotes_count(api_url: str, page_title: str) -> int:
     """
-    Count footnote references in the specified article revision.
+    Count `<ref>` tags in the latest available revision of an article.
     
     Parameters:
     	api_url (str): MediaWiki API endpoint URL.
     	page_title (str): Article title to query.
     
     Returns:
-    	int: Number of footnote references, or `0` if the article content cannot be retrieved.
+    	int: Number of `<ref>` tags, or `0` if the article data cannot be retrieved.
     """
     try:
         rev_params = {
@@ -125,8 +125,8 @@ def get_detailed_reference_counts(article_url: str, wikitext=None) -> Dict[str, 
     Count new and reused references in an article's wikitext.
     
     Parameters:
-    	article_url (str): URL of the article whose wikitext is counted.
-    	wikitext: Optional article wikitext. If omitted, the function fetches it using the article URL.
+    	article_url (str): URL of the article used to retrieve wikitext when `wikitext` is not provided.
+    	wikitext: Optional article wikitext to analyze.
     
     Returns:
     	Dict[str, int]: Counts keyed by `"new"` for paired references and `"reused"` for self-closing references.
@@ -202,8 +202,8 @@ def get_article_infobox_count(article_url: str, wikitext=None) -> Optional[int]:
     Count infobox templates in an article's wikitext.
     
     Parameters:
-    	article_url (str): URL of the article whose infoboxes should be counted.
-    	wikitext: Optional article wikitext to analyze instead of fetching it.
+    	article_url (str): URL of the article whose wikitext is analyzed.
+    	wikitext: Optional wikitext to analyze instead of fetching the article content.
     
     Returns:
     	int: Number of infobox template occurrences, or `None` if the wikitext cannot be obtained or an error occurs.
@@ -454,13 +454,13 @@ def fetch_article_metrics(article_link, contest_start_date=None):
     Collect article reference, media, infobox, link, and optional historical size metrics.
     
     Parameters:
-        article_link: URL or link identifying the article.
-        contest_start_date: Date used to calculate the article size at contest start.
+        article_link: URL identifying the article.
+        contest_start_date: Date for the optional historical size metric.
     
     Returns:
-        A dictionary containing the collected metrics. Failed metric lookups have a
-        value of None; reference details are provided as new_ref_count and
-        reused_ref_count.
+        Dictionary of metric names to values. Reference details are returned as
+        ``new_ref_count`` and ``reused_ref_count``; unavailable metrics have a
+        value of ``None``.
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -513,10 +513,10 @@ def fetch_article_metrics(article_link, contest_start_date=None):
 
     def _fetch_images():
         """
-        Fetches the image count for the article.
+        Count file and image inclusions for the article.
         
         Returns:
-            Optional[int]: The number of file or image inclusions, or None if unavailable.
+            Optional[int]: The number of file and image inclusions, or None if unavailable.
         """
         return get_article_image_count(article_link, wikitext=wikitext)
 

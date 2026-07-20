@@ -46,10 +46,10 @@ class ContestMixin:
 
     def get_rules(self):
         """
-        Retrieve the contest rules.
+        Retrieve the stored contest rules.
         
         Returns:
-            dict: The decoded contest rules, or an empty dictionary when no valid rules are stored.
+            object: The decoded rules, or an empty dictionary when no valid rules are stored.
         """
         if self.rules:
             try:
@@ -84,7 +84,7 @@ class ContestMixin:
         Retrieve the contest's jury member usernames.
         
         Returns:
-            list: Jury member usernames, or an empty list when none are stored.
+            list: Jury member usernames with surrounding whitespace removed.
         """
         if self.jury_members:
             # Parse comma-separated string back to list
@@ -177,7 +177,7 @@ class ContestMixin:
         Store automated scoring settings for the contest.
         
         Parameters:
-            settings (dict or None): Automated scoring configuration, or None to clear the settings.
+            settings (dict or None): Configuration to store, or None to clear the settings.
         """
         if settings is None:
             self.automated_settings = None
@@ -210,11 +210,11 @@ class ContestMixin:
 
     def set_organizers(self, organizers_list, creator_username=None):
         """
-        Store organizer usernames as a comma-separated string, ensuring the creator is included when available.
+        Store organizer usernames as a comma-separated string.
         
-        Args:
-            organizers_list: Organizer usernames to store.
-            creator_username: Optional creator username to include in the stored organizers.
+        Parameters:
+            organizers_list: Organizer usernames to normalize and store. Non-list values are replaced with the creator username when available.
+            creator_username: Optional creator username to place first in the stored list.
         """
         if isinstance(organizers_list, list):
             # Remove duplicates and empty strings

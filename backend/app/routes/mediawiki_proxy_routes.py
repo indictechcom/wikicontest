@@ -29,15 +29,12 @@ mediawiki_proxy_bp = Blueprint('mediawiki_proxy', __name__)
 @mediawiki_proxy_bp.route('/api/mediawiki/article-info', methods=['GET'])
 def mediawiki_article_info():  # pylint: disable=too-many-return-statements
     """
-    Retrieve metadata and revision details for a MediaWiki article.
-    
-    Parameters:
-        url (str): Full URL of the MediaWiki article.
+    Retrieve metadata, revision details, and reference counts for a MediaWiki article.
     
     Returns:
-        JSON response containing the article title, display title, URL, author,
-        creation timestamp, latest revision timestamp, byte count, reference
-        count, page ID, and wiki base URL.
+        A JSON response containing the article title, display title, URL, author,
+        creation and latest revision timestamps, revision size, reference count,
+        page ID, and wiki base URL.
     """
     # Get the article URL from query parameters
     article_url = request.args.get('url', '')
@@ -196,11 +193,11 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
 @mediawiki_proxy_bp.route('/api/mediawiki/preview', methods=['GET'])
 def mediawiki_preview():  # pylint: disable=too-many-return-statements
     """
-    Fetch rendered HTML for a MediaWiki article preview.
+    Fetch rendered HTML and title information for a MediaWiki article preview.
     
     Parameters:
-        url (str): Full URL of the MediaWiki article.
-        page (str, optional): Page title to use instead of extracting it from the URL.
+        url (str): Full MediaWiki article URL.
+        page (str, optional): Page title to render instead of extracting it from the URL.
     
     Returns:
         JSON response containing the rendered HTML, resolved page title, requested page

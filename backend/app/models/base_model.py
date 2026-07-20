@@ -29,7 +29,7 @@ class BaseModel(db.Model):
 
     def save(self):
         """
-        Persist the model instance and its changes to the database.
+        Persist the model instance and its pending changes to the database.
         """
         # Add instance to current session (marks as pending)
         db.session.add(self)

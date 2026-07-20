@@ -114,11 +114,12 @@ def prepend_template_to_article(
     Parameters:
         article_url (str): URL of the article to edit.
         template_name (str): Name of the template to prepend.
-        edit_summary (Optional[str]): Edit summary to use for the change.
+        edit_summary (Optional[str]): Edit summary for the change. A default
+            WikiEval summary is used when omitted.
     
     Returns:
-        Dict[str, Any]: Result containing the success status, error message,
-        new revision ID, and API response.
+        Dict[str, Any]: Result containing success status, error information,
+            the new revision ID, and the raw API response.
     """
     result = {
         'success': False,

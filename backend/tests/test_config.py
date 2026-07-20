@@ -88,6 +88,7 @@ class TestGetConfig:
         assert get_config("totally-unknown-env") is config_map["default"]
 
     def test_get_config_uses_flask_env_when_no_argument_given(self, monkeypatch):
+        """Verify that `get_config` uses the `FLASK_ENV` environment variable when no environment is provided."""
         monkeypatch.setenv("FLASK_ENV", "production")
         assert get_config() is ProductionConfig
 
@@ -106,10 +107,9 @@ class TestDatabaseUrlDerivation:
     @pytest.fixture
     def reloaded_config(self, monkeypatch):
         """
-        Yields a helper that reloads app.config after the caller has set
-        environment variables via monkeypatch, and guarantees the module is
-        reloaded back to its original state once the test (and monkeypatch's
-        automatic env cleanup) finishes.
+        Provide a helper for reloading `app.config` after environment changes.
+        
+        Reloads the module again during fixture teardown to refresh its configuration state.
         """
         import app.config as config_module
 

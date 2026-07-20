@@ -58,15 +58,15 @@ def _get_allowed_domains():
 
 def validate_wiki_url(article_url):
     """
-    Validate that a user-supplied URL targets an allowed Wikimedia wiki domain.
+    Validate that a user-supplied URL targets an approved Wikimedia wiki domain.
     
     Parameters:
-        article_url (str): Full URL supplied by the user.
+        article_url (str): URL to validate.
     
     Returns:
-        tuple: A `(base_url, None)` tuple when valid, where `base_url` contains
-            the URL scheme and host, or a `(None, (response, 400))` tuple
-            containing a JSON error response when validation fails.
+        tuple: `(base_url, None)` for a valid URL, or `(None, (response, 400))`
+            containing a JSON error response when validation fails. Valid URLs use
+            HTTP or HTTPS, may use port 80 or 443, and contain no credentials.
     """
     if not article_url or not isinstance(article_url, str):
         return None, (jsonify({"error": "A valid article URL is required"}), 400)

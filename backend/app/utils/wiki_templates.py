@@ -52,13 +52,13 @@ def extract_template_name_from_url(template_url: str) -> Optional[str]:
 
 def validate_template_link(template_url: str) -> Dict[str, Any]:
     """
-    Validate a template URL and verify that its corresponding page exists.
+    Validate a template URL and confirm that the corresponding wiki page exists.
     
     Parameters:
-    	template_url (str): URL of a wiki page in a supported Template namespace.
+    	template_url (str): HTTP or HTTPS URL for a page in a supported Template namespace.
     
     Returns:
-    	Dict[str, Any]: Validation details including validity, template name, page existence, template status, and any error message.
+    	Dict[str, Any]: Validation result containing validity, template name, page existence, template status, and an error message when validation fails.
     """
     result = {
         'valid': False,
@@ -171,13 +171,13 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
 
     def check_template_at_start(content: str) -> bool:
         """
-        Determine whether the content begins with the specified template invocation.
+        Determine whether the content begins with an invocation of the specified template.
         
         Parameters:
             content (str): Wikitext content to inspect.
         
         Returns:
-            bool: `True` if the content starts with a recognized invocation of the template, `False` otherwise.
+            bool: `True` if the content begins with a recognized template invocation, `False` otherwise.
         """
         for variation in template_variations:
             if content.startswith(variation):

@@ -26,11 +26,12 @@ def register():
     """
     Create a user account from validated registration data.
     
-    The account may have the `user` or `admin` role; `user` is used when no
-    role is provided.
+    The account role may be `user` or `admin`; `user` is used when no role is provided.
     
     Returns:
-        A JSON response containing the creation result and user details.
+        A JSON response with the created user's ID and username, and HTTP status
+        code 201 on success. Validation or persistence failures return an error
+        response with the corresponding HTTP status code.
     """
     data = request.validated_data
     username = data['username'].strip()

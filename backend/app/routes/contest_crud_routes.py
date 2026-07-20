@@ -28,11 +28,11 @@ contest_crud_bp = Blueprint("contest_crud", __name__)
 @handle_errors
 def get_all_contests():
     """
-    List contests grouped by current, upcoming, and past status.
+    List contests grouped by their current, upcoming, or past status.
     
     Parameters:
-        page (int): Page number, defaulting to 1.
-        per_page (int): Number of contests per page, capped at 100 and defaulting to 20.
+        page (int): Page number to retrieve.
+        per_page (int): Number of contests per page, capped at 100.
     
     Returns:
         JSON response containing categorized contests and pagination metadata.
@@ -82,7 +82,7 @@ def get_contest_by_id(contest_id):
     Retrieve a contest by its database identifier.
     
     Parameters:
-        contest_id (int): The contest identifier.
+        contest_id (int): The contest's database identifier.
     
     Returns:
         JSON response containing the contest data, or a 404 error if the contest does not exist.
@@ -102,14 +102,14 @@ def get_contest_by_id(contest_id):
 @handle_errors
 def get_contest_by_name(name):
     """
-    Retrieve a contest by its slugified name.
+    Retrieve a contest by its normalized slug.
     
     Parameters:
-        name (str): Contest name in slug format.
+        name (str): Contest slug to match against contest names.
     
     Returns:
-        tuple: The contest data with status 200, or an error response with
-            status 404 when no matching contest exists.
+        tuple: The matching contest data with status 200, or an error response
+            with status 404 if no contest matches.
     """
     import re
 
@@ -293,13 +293,11 @@ def get_contest_leaderboard_detailed(contest_id):
 @validate_json_data(["name", "project_name", "jury_members"])
 def create_contest():
     """
-    Create a contest after validating its required fields, participants, scheduling, scoring, and article requirements.
-    
-    Parameters:
-        None
+    Create a contest after validating its configuration and required participants.
     
     Returns:
-        A JSON response containing the new contest ID and a success message, or an error response when validation or creation fails.
+        A JSON response containing the new contest ID on success, or an error
+        response when authorization, validation, or persistence fails.
     """
     user = request.current_user
     data = request.validated_data
@@ -654,13 +652,13 @@ def create_contest():
 @handle_errors
 def delete_contest(contest_id):
     """
-    Delete a contest and its associated submissions when the user has permission.
+    Delete a contest and its associated submissions when the current user has permission.
     
     Parameters:
     	contest_id (int): ID of the contest to delete.
     
     Returns:
-    	A JSON response indicating success, or an error response if the contest is missing, access is denied, or deletion fails.
+    	A JSON response indicating whether the contest was deleted or why the request failed.
     """
     user = request.current_user
     contest = db.session.get(Contest, contest_id)
@@ -689,13 +687,13 @@ def delete_contest(contest_id):
 @handle_errors
 def update_contest(contest_id):
     """
-    Update a contest's metadata, scheduling, scoring configuration, requirements, and organizers.
+    Update a contest's metadata, schedule, scoring, requirements, membership, and related settings.
     
     Parameters:
         contest_id (int): Database identifier of the contest to update.
     
     Returns:
-        tuple: A JSON response containing the updated contest, or an error message with
+        tuple: A JSON response containing the updated contest, or an error response with
             the corresponding HTTP status code.
     """
     user = request.current_user

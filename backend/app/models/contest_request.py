@@ -111,13 +111,15 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def __init__(self, user_id, name, project_name, **kwargs):
         """
-        Initialize a contest creation request with its submitter, contest details, and optional configuration.
+        Initialize a pending contest creation request.
         
         Parameters:
             user_id: ID of the user submitting the request.
             name: Contest name.
             project_name: Name of the associated project.
-            **kwargs: Optional contest attributes, including dates, submission constraints, template link, rules, participants, categories, and scoring parameters.
+            **kwargs: Optional contest details and configuration, including dates,
+                submission limits, participant lists, categories, rules, scoring
+                parameters, and template link.
         """
         self.user_id = user_id
         self.name = name
@@ -157,10 +159,10 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def to_dict(self):
         """
-        Convert the contest request to a JSON-serializable dictionary.
+        Serialize the contest request and its review metadata for API responses.
         
         Returns:
-            dict: Contest request data with date fields serialized as ISO 8601 strings and the requester username included when available.
+            dict: Contest request data with date values in ISO 8601 format and the requester's username when available.
         """
         return {
             "id": self.id,
@@ -191,5 +193,5 @@ class ContestRequest(BaseModel, ContestMixin):
         }
 
     def __repr__(self):
-        """String representation of ContestRequest instance"""
+        """Return a concise string representation identifying the contest request, its name, and submitting user."""
         return f"<ContestRequest {self.id}: {self.name} by user {self.user_id}>"

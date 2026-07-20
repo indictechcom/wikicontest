@@ -215,6 +215,10 @@ class Submission(BaseModel):
             article_link: URL of the submitted article.
             status: Initial submission status.
             categories_added: Categories added to the article; lists are stored as JSON.
+            ref_new_count: Number of newly added references.
+            ref_reused_count: Number of reused references.
+            incoming_links: Number of incoming links.
+            outgoing_links: Number of outgoing links.
         """
         # Set required fields
         self.user_id = user_id
@@ -273,7 +277,7 @@ class Submission(BaseModel):
         Determine whether the submission has been accepted.
         
         Returns:
-            bool: `true` if the submission status is `"accepted"`, `false` otherwise.
+            bool: `True` if the submission status is `"accepted"`, `False` otherwise.
         """
         return self.status == "accepted"
 
@@ -332,10 +336,10 @@ class Submission(BaseModel):
 
     def get_parameter_scores(self):
         """
-        Return the submission's parameter scores.
+        Decode the stored per-parameter scores.
         
         Returns:
-        	dict or None: The decoded parameter scores mapping, or `None` when no scores are stored or the stored value is invalid JSON.
+        	dict or None: The decoded parameter scores mapping, or `None` if no scores are stored or the stored value is invalid JSON.
         """
         if not self.parameter_scores:
             return None
@@ -367,7 +371,10 @@ class Submission(BaseModel):
     @property
     def article_byte_count(self):
         """
-        Provide the article size in bytes.
+        Return the article's byte count.
+        
+        Returns:
+        	int: The article byte count.
         """
         return self.article_word_count
 
@@ -478,13 +485,13 @@ class Submission(BaseModel):
 
     def can_be_judged_by(self, user):
         """
-        Determine whether a user has permission to judge this submission.
+        Determine whether a user can judge the submission.
         
         Parameters:
-        	user: The user whose judging permissions are being checked.
+        	user: The user whose judging permission is checked.
         
         Returns:
-        	bool: `true` if the user is an administrator or a jury member for the contest, `false` otherwise.
+        	bool: `true` if the user is an administrator or a jury member of the submission's contest, `false` otherwise.
         """
         # Admins have universal judging permission
         if user.is_admin():
@@ -501,10 +508,10 @@ class Submission(BaseModel):
         Determine whether a user is authorized to delete this submission.
         
         Parameters:
-            user: User whose deletion permissions are checked.
+        	user: User whose deletion permissions are checked.
         
         Returns:
-            bool: `true` if the user is an administrator, jury member, or contest creator; `false` otherwise.
+        	bool: `true` if the user is an administrator, jury member, or contest creator; `false` otherwise.
         """
         # Admin can delete all submissions
         if user.is_admin():
@@ -523,13 +530,13 @@ class Submission(BaseModel):
 
     def can_be_viewed_by(self, user):
         """
-        Check if a user can view this submission
-
-        Args:
-            user: User instance to check
-
+        Determine whether a user is allowed to view this submission.
+        
+        Parameters:
+        	user: User instance requesting access.
+        
         Returns:
-            bool: True if user can view submission, False otherwise
+        	bool: `true` if the user is an administrator, the submitter, a jury member, or a contest creator; `false` otherwise.
         """
         # Admins can view all submissions
         if user.is_admin():
@@ -556,13 +563,13 @@ class Submission(BaseModel):
 
     def to_dict(self, include_user_info=False):
         """
-        Serialize the submission and its article, review, and scoring metadata for JSON responses.
+        Serialize the submission and its associated article, review, and scoring metadata.
         
-        Args:
-            include_user_info (bool): Whether to include submitter and contest details.
+        Parameters:
+        	include_user_info (bool): Whether to include the submitter's username and email and the contest name.
         
         Returns:
-            dict: Serialized submission data, including optional user and contest details.
+        	dict: Serialized submission data, including optional submitter and contest details.
         """
         data = {
             "id": self.id,

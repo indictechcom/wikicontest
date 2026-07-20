@@ -26,9 +26,9 @@ def get_dashboard():
     Assemble the authenticated user's dashboard data.
     
     Returns:
-        A JSON response containing the user's total score, contest scores,
-        submissions grouped by contest, organized contests, jury contests, and
-        participated contests.
+        A JSON response containing the username, total score, contest-wise
+        scores, submissions grouped by contest, organized contests, jury
+        contests, and participated contests.
     """
     user = request.current_user
     # Get user's total score
@@ -143,10 +143,10 @@ def get_dashboard():
 @handle_errors
 def get_dashboard_access():
     """
-    Determine which contest dashboards the current user can access.
+    Determine which dashboard sections the authenticated user can access.
     
     Returns:
-        JSON response containing participant, organizer, and jury access flags.
+        A JSON response containing participant, organizer, and jury access flags.
     """
     user = request.current_user
 
@@ -191,10 +191,10 @@ def get_dashboard_access():
 @handle_errors
 def get_all_users():
     """
-    Get all users (admin only)
-
+    Retrieve all users as serialized profile data.
+    
     Returns:
-        JSON response with list of all users
+        A JSON response containing a list of all users.
     """
     users = User.query.all()
     return jsonify([user.to_dict() for user in users]), 200
@@ -220,13 +220,12 @@ def get_profile():
 @validate_json_data(['username', 'email'])
 def update_profile():
     """
-    Update the current user's username and email address.
+    Update the authenticated user's username and email address.
     
-    Parameters:
-        No explicit parameters.
+    Input values are trimmed, the email is lowercased, and both fields must be valid and unique.
     
     Returns:
-        A success message after the profile is updated, or an error response when the username or email is invalid or already in use.
+        A success response when the profile is updated, or an error response when validation or uniqueness checks fail.
     """
     user = request.current_user
     data = request.validated_data
@@ -272,14 +271,14 @@ def update_profile():
 @handle_errors
 def search_users():
     """
-    Search for users whose usernames start with the provided query.
+    Search for users by a case-insensitive username prefix.
     
     Parameters:
-        q (str): Username prefix to search for; queries shorter than two characters return no users.
-        limit (int): Maximum number of matching users to return. Defaults to 10.
+        q (str): Username prefix; queries shorter than two characters return no users.
+        limit (int): Maximum number of users to return. Defaults to 10.
     
     Returns:
-        JSON response containing matching users' usernames and IDs.
+        JSON response containing matching usernames and user IDs.
     """
     query = request.args.get('q', '').strip()
     limit = request.args.get('limit', 10, type=int)

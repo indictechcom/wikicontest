@@ -20,18 +20,13 @@ from app.utils.mediawiki_helpers import (
 
 def extract_category_name_from_url(category_url: str) -> Optional[str]:
     """
-    Extract the category name from a Wiki category URL.
-
-    Supports URLs like:
-    - https://en.wikipedia.org/wiki/Category:Contest2025
-    - https://en.wikipedia.org/w/index.php?title=Category:Contest2025
-
-    Args:
-        category_url: Full URL to a Wiki category page.
-
+    Extracts a category name from a Wiki category URL.
+    
+    Parameters:
+        category_url (str): Full URL to a Wiki category page.
+    
     Returns:
-        Category name without 'Category:' prefix (e.g., 'Contest2025'),
-        or None if extraction fails.
+        Optional[str]: The category name without its namespace prefix, or None if the page title is unavailable or does not use a recognized category namespace.
     """
     page_title = extract_page_title_from_url(category_url)
     if not page_title:
@@ -66,9 +61,9 @@ def check_article_has_category(article_url: str, category_name: str) -> Dict[str
         category_name: Category name without the `Category:` prefix.
     
     Returns:
-        A dictionary containing `has_category`, which is `True` when the
-        category is found, and `error`, which contains an error message if
-        the article content could not be retrieved or `None` otherwise.
+        A dictionary with `has_category` set to `True` when the category is
+        found, and `error` containing an error message if the article content
+        could not be retrieved, or `None` otherwise.
     """
     result = {
         'has_category': False,

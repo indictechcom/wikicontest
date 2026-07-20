@@ -169,16 +169,10 @@ def oauth_login():
 @handle_errors
 def oauth_callback():
     """
-    Handle the OAuth callback from Wikimedia and authenticate the user.
-    
-    Parameters:
-        oauth_verifier (str): Verification value supplied by Wikimedia.
-        oauth_token (str): Request token supplied by Wikimedia.
+    Handle Wikimedia's OAuth callback, authenticate or create the user, and redirect to the frontend with an authentication cookie.
     
     Returns:
-        Response: Redirect response to the frontend with an authentication cookie,
-            or a JSON error response for invalid callback data or authentication
-            failures.
+        Response: A redirect response with an authentication cookie on success, or a JSON error response for invalid callback data or authentication failures.
     """
     # --- Get OAuth Configuration ---
     # Get OAuth 1.0a configuration from app config (loaded from .env file)

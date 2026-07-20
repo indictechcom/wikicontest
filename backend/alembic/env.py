@@ -74,10 +74,10 @@ def include_object(object, name, type_, reflected, compare_to):
 
 def get_url():
     """
-    Get the database URL from Flask app configuration.
+    Retrieve the database URL configured for the Flask application.
     
-    This function creates a Flask app instance and retrieves the database URL
-    from the app configuration, allowing Alembic to work with the Flask app factory pattern.
+    Returns:
+        str | None: The configured database URL, or `None` if it is not set.
     """
     # Create Flask app instance
     app = create_app()

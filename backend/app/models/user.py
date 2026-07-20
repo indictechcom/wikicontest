@@ -155,7 +155,7 @@ class User(BaseModel):
             password (str): The plaintext password to verify.
         
         Returns:
-            bool: `true` if the password matches, `false` otherwise.
+            bool: `True` if the password matches, `False` otherwise.
         """
         # Verify password against stored hash (timing-safe comparison)
         return check_password_hash(self.password, password)
@@ -169,10 +169,8 @@ class User(BaseModel):
         """
         Update the user's total score by applying a positive or negative adjustment.
         
-        Args:
+        Parameters:
             score_change: The number of points to add to or subtract from the user's score.
-        
-        The updated score is not committed to the database.
         """
         self.score += score_change
 
@@ -200,7 +198,7 @@ class User(BaseModel):
         Determine whether the user has the superadmin role.
         
         Returns:
-            bool: `true` if the user's role is `"superadmin"`, `false` otherwise.
+        	bool: `True` if the user's role is `"superadmin"`, `False` otherwise.
         """
         return self.role == 'superadmin'
 
@@ -211,13 +209,10 @@ class User(BaseModel):
 
     def can_create_contests(self):
         """
-        Check if user can create contests
-
-        Only trusted members and superadmins can create contests.
-        Regular users can still submit and participate in contests.
-
+        Determine whether the user may create contests.
+        
         Returns:
-            bool: True if user can create contests, False otherwise
+            bool: `True` for superadmins and trusted members, `False` otherwise.
         """
         # Superadmins are automatically allowed to create contests
         if self.is_superadmin():
@@ -238,7 +233,7 @@ class User(BaseModel):
             contest: The contest whose jury membership to check.
         
         Returns:
-            bool: `true` if the user's username is listed as a jury member, `false` otherwise.
+            bool: True if the user's username is listed among the contest's jury members, False otherwise.
         """
         # No jury members assigned
         if not contest.jury_members:
@@ -256,23 +251,23 @@ class User(BaseModel):
         Determine whether the user created the specified contest.
         
         Parameters:
-            contest: Contest to check.
+            contest: Contest whose creator is checked.
         
         Returns:
-            `true` if the user's username matches the contest creator, `false` otherwise.
+            `True` if the user's username matches the contest creator, `False` otherwise.
         """
         return self.username == contest.created_by
 
 
     def is_contest_organizer(self, contest):
         """
-        Determine whether the user organizes a contest.
+        Determine whether the user organizes the contest.
         
         Parameters:
             contest: The contest to check.
         
         Returns:
-            bool: `true` if the user is listed as an organizer or is the contest creator when no organizers are listed, `false` otherwise.
+            bool: `True` if the user is listed as an organizer or is the contest creator when no organizers are listed, and `False` otherwise.
         """
         if not contest:
             return False
@@ -333,10 +328,10 @@ class User(BaseModel):
 
     def to_dict(self):
         """
-        Serialize the user’s public data for JSON responses.
+        Serialize the user's data for JSON responses.
         
         Returns:
-            dict: User data excluding the password, with the creation timestamp in ISO format when available.
+        	dict: User data excluding the password, including trust information and the creation timestamp in ISO format when available. Superadmins are represented as trusted members.
         """
         # Superadmins are automatically treated as trusted members
         is_trusted = bool(getattr(self, 'is_trusted_member', False))

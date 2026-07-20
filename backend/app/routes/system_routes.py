@@ -37,10 +37,11 @@ system_bp = Blueprint('system', __name__)
 @system_bp.route('/api/cookie', methods=['GET'])
 def check_cookie():
     """
-    Determine whether the current request is authenticated and provide the user's account details.
+    Validate the request authentication and return the associated user's account and trust status.
     
     Returns:
-        A JSON response containing user information with status 200, or an authentication error with status 401.
+        A JSON response with user details and HTTP 200 when authenticated; otherwise, an
+        authentication error response with HTTP 401.
     """
     try:
         # Verify the JWT token from the cookie
@@ -116,10 +117,9 @@ def check_cookie():
 @system_bp.route('/')
 def index():
     """
-    Serve the main frontend page.
-
-    Serves the Vue.js application.
-    In production, serves from frontend/dist directory (built Vue.js app).
+    Serve the main frontend entry page.
+    
+    Serves the production build when available and otherwise uses the frontend development directory.
     """
     # Calculate workspace root (backend/app/ -> backend/ -> workspace/)
     workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -139,8 +139,7 @@ def serve_static(filename):
     """
     Serve a frontend asset, using the production build when available.
     
-    Unknown production paths fall back to the frontend entry page for client-side routing.
-    API and OAuth paths return a 404 response instead of serving frontend content.
+    Unknown production paths fall back to the frontend entry page for client-side routing. API and OAuth paths return a 404 response instead of serving frontend content.
     
     Parameters:
         filename (str): Frontend asset path to serve.
@@ -220,11 +219,12 @@ def oauth_callback_redirect():
 @jwt_required()
 def oauth_config_check():
     """
-    Provide administrators with the active OAuth configuration and callback URL.
+    Provide administrators with OAuth configuration details and the computed callback URL.
     
     Returns:
-        JSON response containing OAuth configuration details without exposing
-        secret values, or an access-denied error for non-administrators.
+        JSON response containing masked OAuth credentials, configuration values,
+        callback information, and registration instructions; or a 403 response
+        when the authenticated user is not an administrator.
     """
     user_id = get_jwt_identity()
     current_user = db.session.get(User, int(user_id))

@@ -52,12 +52,13 @@ class MediaWikiClient:
         Parameters:
             api_url (str): Full MediaWiki API endpoint URL.
             params (Optional[Dict[str, Any]]): Query parameters for the request.
-            auth (Optional[Any]): Optional authentication object.
-            timeout (Optional[int]): Optional request timeout override.
+            auth (Optional[Any]): Optional authentication credentials.
+            timeout (Optional[int]): Request timeout override.
         
         Returns:
-            Optional[Dict[str, Any]]: Parsed JSON response, or None if the request,
-            response, or MediaWiki API reports an error.
+            Optional[Dict[str, Any]]: Parsed JSON response, or None if the request fails,
+            returns a non-success status, contains invalid JSON, or reports a MediaWiki
+            API error.
         """
         try:
             response = requests.get(

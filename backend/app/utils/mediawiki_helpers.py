@@ -133,10 +133,10 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
     
     Parameters:
         article_url (str): URL of the article.
-        when (datetime): Timestamp at which to retrieve the article size.
+        when (datetime): Timestamp for the requested revision.
     
     Returns:
-        Optional[int]: The article size in bytes, or `None` if the page, revision, or size is unavailable.
+        Optional[int]: Article size in bytes, or `None` when the page, revision, or size is unavailable.
     """
     page_title = extract_page_title_from_url(article_url)
     if not page_title:
@@ -183,7 +183,7 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
 
 def get_article_wikitext(article_url: str) -> Optional[str]:
     """
-    Retrieve the current wikitext content for an article URL.
+    Retrieve the current wikitext content for a MediaWiki article.
     
     Parameters:
         article_url (str): URL of the MediaWiki article.

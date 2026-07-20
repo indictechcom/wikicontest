@@ -26,7 +26,12 @@ from app import app as _app  # noqa: E402
 
 @pytest.fixture(scope="session")
 def app():
-    """Return the module-level Flask app (already configured with TestingConfig)."""
+    """
+    Provide the configured Flask application used by tests.
+    
+    Returns:
+        Flask: The module-level Flask application.
+    """
     return _app
 
 
@@ -37,8 +42,10 @@ def app():
 @pytest.fixture(scope="function", autouse=True)
 def db(app):
     """
-    Create all tables before each test and drop them after.
-    Rolls back any pending transactions on teardown.
+    Manage the test database lifecycle for each test.
+    
+    Yields:
+    	db: The configured database object.
     """
     from app.database import db as _db
 
@@ -79,8 +86,10 @@ def client(app, db):
 @pytest.fixture
 def auth_client(client):
     """
-    Register a test user, log them in, and return the client with a valid
-    JWT access_token cookie already set.
+    Register and authenticate a standard test user for API requests.
+    
+    Returns:
+        The test client with authentication state established.
     """
     register_resp = client.post(
         "/api/user/register",
@@ -187,14 +196,13 @@ def mock_mediawiki(monkeypatch):
 
     def fake_get(url, **kwargs):
         """
-        Return a mocked MediaWiki response based on the requested action and title.
+        Provide a mocked response for MediaWiki query and parse requests.
         
         Parameters:
-            url: The requested URL recorded by the mock.
-            **kwargs: Request arguments, including optional MediaWiki query parameters.
+            kwargs: Request arguments containing optional MediaWiki action and title parameters.
         
         Returns:
-            A mock response containing revision, missing-page, parse, or not-found data.
+            A mocked response containing the matching fixture data, or a 404 response for unsupported requests.
         """
         mock_get(url, **kwargs)
         params = kwargs.get("params", {})

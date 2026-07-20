@@ -48,24 +48,24 @@ def get_current_user():
 
 def require_auth(f):
     """
-    Decorate a route handler to require a valid authenticated user.
+    Decorate a route handler to require an authenticated user.
     
     Parameters:
-        f: The route handler to decorate.
+        f: The route handler to protect.
     
     Returns:
-        A decorated route handler that returns HTTP 401 when the authenticated user is invalid.
+        A decorated route handler that returns a 401 response when the authenticated user cannot be found.
     """
     @wraps(f)
     @jwt_required()
     def decorated_function(*args, **kwargs):
         # Fetch authenticated user from JWT token
         """
-        Authenticate the request and provide the current user to the wrapped route handler.
+        Authenticate the request and make the current user available to the wrapped route handler.
         
         Returns:
-            The wrapped handler's response on success, or a 401 response if the
-            authenticated user cannot be found.
+            The wrapped handler's response, or a 401 response if the authenticated user
+            cannot be found.
         """
         user = get_current_user()
         if not user:
@@ -98,12 +98,23 @@ def require_role(roles):
             f (callable): The route handler to protect.
         
         Returns:
-            callable: A wrapped route handler that allows access only to authenticated users with an allowed role.
+            callable: A wrapped route handler that permits users with an allowed role,
+                or administrators for non-superadmin roles.
         """
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
             # Authenticate user first
+            """
+            Enforce authentication and role-based access for the wrapped request handler.
+            
+            Parameters:
+                *args: Positional arguments passed to the wrapped handler.
+                **kwargs: Keyword arguments passed to the wrapped handler.
+            
+            Returns:
+                The wrapped handler's response, or a 401 response for an invalid user or a 403 response when the user lacks permission.
+            """
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
@@ -164,6 +175,18 @@ def require_submission_permission(permission_type):
         @jwt_required()
         def decorated_function(*args, **kwargs):
             # Authenticate user
+            """
+            Authorize access to a submission before invoking the wrapped handler.
+            
+            Parameters:
+                *args: Positional arguments for the wrapped handler.
+                **kwargs: Keyword arguments for the wrapped handler, including
+                    ``submission_id``.
+            
+            Returns:
+                The wrapped handler's result, or an error response when authentication,
+                submission lookup, or permission checks fail.
+            """
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
@@ -232,6 +255,13 @@ def validate_json_data(required_fields):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             # Ensure request content-type is JSON
+            """
+            Validate the request body and provide the parsed data to the wrapped handler.
+            
+            Returns:
+                The wrapped handler's response, or a 400 response when the request body is
+                missing, not JSON, or lacks required fields.
+            """
             if not request.is_json:
                 return jsonify({'error': 'Request must be JSON'}), 400
 

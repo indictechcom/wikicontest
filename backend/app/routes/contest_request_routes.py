@@ -32,11 +32,9 @@ def create_contest_request():
     """
     Submit a contest creation request for review by a superadmin.
     
-    The request includes contest details, jury members, categories, scoring settings,
-    and other optional contest configuration.
-    
     Returns:
-        A JSON response containing a success message and the submitted request ID.
+        A JSON response containing the submitted request ID, or an error message if
+        validation or persistence fails.
     """
     user = request.current_user
     data = request.validated_data
@@ -299,7 +297,7 @@ def approve_contest_request(request_id):
         request_id (int): Identifier of the contest request to approve.
     
     Returns:
-        A JSON response containing the approval message, created contest ID, and request ID.
+        A JSON response containing the approval result, contest ID, and request ID.
     """
     user = request.current_user
     contest_request = db.session.get(ContestRequest, request_id)
@@ -367,10 +365,10 @@ def approve_contest_request(request_id):
 @handle_errors
 def reject_contest_request(request_id):
     """
-    Rejects a pending contest creation request and records the reviewer and optional reason.
+    Reject a pending contest creation request and record the review details.
     
-    Args:
-        request_id: Identifier of the contest request to reject.
+    Parameters:
+        request_id (int): Identifier of the contest request to reject.
     
     Returns:
         A JSON response confirming rejection and containing the request ID.

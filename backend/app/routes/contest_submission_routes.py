@@ -44,20 +44,18 @@ contest_sub_bp = Blueprint("contest_sub", __name__)
 @validate_json_data(["article_link"])
 def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     """
-    Create a contest submission for the authenticated user from an article URL.
+    Create a submission for the authenticated user from an article URL.
     
-    Fetches article metadata and metrics from MediaWiki, validates the article against
-    contest requirements, and optionally adds the contest's template and categories
+    Fetches article metadata and metrics, validates the article against contest
+    requirements, and optionally applies the contest's template and categories
     using the user's OAuth credentials.
     
     Args:
         contest_id: Identifier of the contest.
-        article_link: Article URL supplied in the request JSON body.
     
     Returns:
-        A JSON response containing the created submission details, or an error
-        response when the contest, article, validation, external API, or database
-        operation cannot be completed.
+        A JSON response containing the submission details, or an error response
+        when validation or submission creation fails.
     """
     import requests
     from urllib.parse import urlparse
@@ -961,13 +959,13 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 @handle_errors
 def get_contest_submissions(contest_id):
     """
-    Retrieve all submissions for a contest for authorized users.
+    Retrieve submissions for a contest after validating the current user's access.
     
     Parameters:
-    	contest_id (int): The contest whose submissions are retrieved.
+        contest_id (int): Identifier of the contest whose submissions are retrieved.
     
     Returns:
-    	list: A JSON response containing submission details, submitting user information, and the contest name.
+        tuple: A JSON response containing submission details, submitter information, and the contest name, with HTTP status 200.
     """
     user = request.current_user
 

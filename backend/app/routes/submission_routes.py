@@ -45,7 +45,7 @@ def get_all_submissions():
     Retrieve all submissions for an administrator.
     
     Returns:
-        JSON response containing the submissions with submitter information.
+        JSON response containing serialized submissions with submitter information.
     """
     user = request.current_user
 
@@ -90,13 +90,13 @@ def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
 @handle_errors
 def get_user_submissions(user_id):
     """
-    Get all submissions by a specific user
-
-    Args:
-        user_id: User ID
-
+    Retrieve submissions belonging to a user, subject to access permissions.
+    
+    Parameters:
+        user_id: ID of the user whose submissions are requested.
+    
     Returns:
-        JSON response with user's submissions
+        JSON response containing the user's submissions ordered from newest to oldest.
     """
     current_user = request.current_user
 
@@ -166,7 +166,7 @@ def get_pending_submissions():
     List pending submissions that the current user is authorized to judge.
     
     Returns:
-        list: A JSON response containing the judgeable pending submissions.
+        Response: A JSON array of serialized judgeable submissions.
     """
     user = request.current_user
 
@@ -192,7 +192,7 @@ def get_pending_submissions():
 @handle_errors
 def get_submission_stats():
     """
-    Get submission counts, total score, and acceptance rate for the current user.
+    Summarize the current user's submission activity and scores.
     
     Returns:
         JSON response containing submission counts by status, total score, and acceptance rate.
@@ -247,14 +247,14 @@ def get_submission_stats():
 @handle_errors
 def refresh_metadata(contest_id):
     """
-    Refreshes article metadata for submissions in a contest and optionally evaluates automated submissions.
+    Refresh article metadata for submissions in a contest and evaluate submissions in automated contests.
     
     Parameters:
         contest_id (int): Identifier of the contest whose submissions are refreshed.
     
     Query parameters:
         offset (int): Number of submissions to skip before processing.
-        batch_size (int): Maximum number of submissions to process, capped at 50.
+        batch_size (int): Number of submissions to process, limited to 50.
     
     Returns:
         JSON response containing update counts and, for automated contests, pagination metadata.
@@ -367,15 +367,15 @@ def refresh_metadata(contest_id):
 
     def fetch_article_info(article_link):
         """
-        Fetch article metadata from the MediaWiki API for a submission link.
+        Fetch metadata for a submitted MediaWiki article.
         
         Parameters:
             article_link (str): URL of the submitted article.
         
         Returns:
-            dict | None: Article metadata, including author, creation timestamp,
-                current size, page ID, and latest revision timestamp; `None` when
-                the article cannot be retrieved or has no usable revision data.
+            dict | None: Article metadata containing authorship, creation timestamp,
+                current size, page ID, and latest revision timestamp, or `None` when
+                the article or usable revision data cannot be retrieved.
         """
         try:
             # Extract page title from URL using shared utility function
@@ -455,11 +455,11 @@ def refresh_metadata(contest_id):
 
     def calculate_expansion_bytes(submission_item, article_info):
         """
-        Update the submission's article expansion bytes using its current and submission-time sizes.
+        Update the submission's article expansion bytes from its current and submission-time sizes.
         
         Parameters:
             submission_item: Submission whose expansion value is updated.
-            article_info: Article metadata containing the current size.
+            article_info: Article metadata containing the current article size.
         """
         if not submission_item.article_link:
             return
@@ -705,14 +705,15 @@ def refresh_metadata(contest_id):
 @handle_errors
 def delete_submission(submission_id):
     """
-    Delete a submission and adjust the submitter's total score accordingly.
+    Delete a submission and adjust the submitter's total score.
     
-    Args:
+    Parameters:
         submission_id: ID of the submission to delete.
     
     Returns:
-        JSON response confirming deletion, or an error response if the submission
-        is missing, the user lacks permission, or deletion fails.
+        JSON response confirming deletion, or an error response with status 404,
+        403, or 500 when the submission is missing, deletion is unauthorized, or
+        deletion fails.
     """
     user = request.current_user
 

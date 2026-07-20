@@ -24,17 +24,17 @@ trusted_bp = Blueprint('trusted_member', __name__)
 @handle_errors
 def request_trusted_member():
     """
-    Request trusted member status based on MediaWiki edit history.
+    Request trusted-member status using the user's MediaWiki edit history.
     
-    Users with at least 300 edits are approved automatically. Users with fewer
-    edits, or whose edit count cannot be verified, must provide a reason for
+    A user with at least 300 edits is approved automatically. Otherwise, or when
+    the edit count cannot be verified, a non-empty reason is required for
     superadmin review.
     
     Request body:
-        reason (str): Explanation required when automatic approval is unavailable.
+        reason (str): Explanation for the request when automatic approval is unavailable.
     
     Returns:
-        JSON response containing the approval or submission result.
+        JSON response describing whether the request was approved or submitted for review.
     """
     user = request.current_user
 
@@ -154,11 +154,11 @@ def request_trusted_member():
 @handle_errors
 def get_trusted_member_requests():
     """
-    Retrieve pending trusted member requests for administrative review.
+    Retrieve pending trusted-member requests for administrative review.
     
     Returns:
-        A JSON response containing the pending requests and each user's identifying
-        information, account role, creation timestamp, and request reason.
+        A JSON response containing each request's user ID, username, email, role,
+        creation timestamp, request timestamp, and reason.
     """
     # Get all users with pending requests
     requests = User.query.filter_by(trusted_member_request=True, is_trusted_member=False).all()
@@ -213,13 +213,13 @@ def get_trusted_members():
 @handle_errors
 def approve_trusted_member(user_id):
     """
-    Approve a user's request for trusted member status.
+    Approve a user's request for trusted-member status.
     
     Parameters:
         user_id: ID of the user to approve.
     
     Returns:
-        JSON response containing a success message, or an error response if the user does not exist or is a superadmin.
+        JSON response containing a success message, or an error response if the user is not found or is a superadmin.
     """
     user = db.session.get(User, user_id)
 
@@ -249,13 +249,13 @@ def approve_trusted_member(user_id):
 @handle_errors
 def reject_trusted_member(user_id):
     """
-    Rejects a user's pending trusted member request and records its rejected status.
+    Reject a user's pending trusted-member request.
     
-    Args:
-        user_id: ID of the user whose request is being rejected.
+    Parameters:
+    	user_id (int): ID of the user whose request is being rejected.
     
     Returns:
-        A JSON success response, or a 404 error if the user does not exist.
+    	JSON response confirming rejection, or a 404 error if the user does not exist.
     """
     user = db.session.get(User, user_id)
 
@@ -315,14 +315,13 @@ def add_trusted_member(user_id):
 @handle_errors
 def remove_trusted_member(user_id):
     """
-    Remove a user's trusted member status.
+    Remove a user's trusted-member status.
     
     Parameters:
-        user_id: ID of the user whose trusted member status should be removed.
+        user_id: ID of the user whose trusted-member status is removed.
     
     Returns:
-        JSON response confirming the removal, or an error response if the user is
-        not found or is a superadmin.
+        A confirmation response, or an error response if the user is not found or is a superadmin.
     """
     user = db.session.get(User, user_id)
 
