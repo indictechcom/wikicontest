@@ -43,12 +43,30 @@ data-bs-target="#navbarNav">
             <!-- Theme Toggle Button - Always visible -->
             <li class="nav-item me-2">
               <button class="btn btn-outline-secondary theme-toggle"
-type="button"
-@click="toggleTheme"
-                :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'">
-                <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
-              </button>
-            </li>
+  type="button"
+  @click="toggleTheme"
+                      :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'">
+                      <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
+                </button>
+              </li>
+              <li class="nav-item me-2 d-none d-lg-inline">
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/43/?projects=Tool-wikicontest&subscribers=Agamyasamuel"
+  target="_blank"
+  rel="noopener noreferrer"
+                  class="nav-link text-muted small py-1"
+  title="Report a bug">
+                  <i class="fas fa-bug me-1"></i>Report a bug
+                </a>
+              </li>
+              <li class="nav-item d-none d-lg-inline">
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/102/?projects=Tool-wikicontest&subscribers=Agamyasamuel"
+  target="_blank"
+  rel="noopener noreferrer"
+                  class="nav-link text-muted small py-1"
+  title="Request a feature">
+                  <i class="fas fa-lightbulb me-1"></i>Request a feature
+                </a>
+              </li>
             <!-- Show login button when not authenticated -->
             <template v-if="!isAuthenticated">
               <li class="nav-item">
