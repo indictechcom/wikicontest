@@ -16,39 +16,8 @@ data-bs-target="#navbarNav">
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-          <!-- Middle: Navigation Links (Centered) -->
-          <ul class="navbar-nav mx-auto">
-            <li class="nav-item">
-              <router-link class="nav-link" to="/">Home</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" to="/contests">Contests</router-link>
-            </li>
-            <li class="nav-item" v-if="dashboardAccess?.organizer">
-              <router-link class="nav-link" to="/organizer/dashboard">Organizer</router-link>
-            </li>
-            <li class="nav-item" v-if="dashboardAccess?.jury">
-              <router-link class="nav-link" to="/jury/dashboard">Jury</router-link>
-            </li>
-            <li class="nav-item" v-if="isSuperadmin">
-              <router-link class="nav-link" to="/manage-trusted-members">Manage Trusted Members</router-link>
-            </li>
-            <li class="nav-item" v-if="isAuthenticated">
-              <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
-            </li>
-          </ul>
-
-          <!-- Right: Theme Toggle and Login/User Menu -->
-          <ul class="navbar-nav">
-            <!-- Theme Toggle Button - Always visible -->
-            <li class="nav-item me-2">
-              <button class="btn btn-outline-secondary theme-toggle"
-  type="button"
-  @click="toggleTheme"
-                      :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'">
-                      <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
-                </button>
-              </li>
+          <!-- Right: Login/User Menu -->
+          <ul class="navbar-nav ms-auto">
               <li class="nav-item me-2 d-none d-lg-inline">
                 <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/43/?projects=Tool-wikicontest&subscribers=Agamyasamuel"
   target="_blank"
@@ -71,9 +40,9 @@ data-bs-target="#navbarNav">
             <template v-if="!isAuthenticated">
               <li class="nav-item">
                 <a :href="`${getApiBaseUrl()}/user/oauth/login`"
-class="btn btn-login-brand"
+ class="btn btn-login-brand"
                   style="text-decoration: none; display: inline-block;"
-title="Log in using Wikimedia OAuth 1.0a">
+ title="Log in using Wikimedia OAuth 1.0a">
                   <i class="fab fa-wikipedia-w me-2"></i>Log in
                 </a>
               </li>
@@ -83,20 +52,35 @@ title="Log in using Wikimedia OAuth 1.0a">
               <li class="nav-item">
                 <div class="dropdown">
                   <button class="btn btn-outline-secondary dropdown-toggle"
-type="button"
-id="userDropdown"
+ type="button"
+ id="userDropdown"
                     data-bs-toggle="dropdown">
                     <i class="fas fa-user me-1"></i>{{ currentUser?.username || 'User' }}
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
+                    <li><router-link class="dropdown-item" to="/">Home</router-link></li>
+                    <li><router-link class="dropdown-item" to="/contests">Contests</router-link></li>
+                    <li v-if="isAuthenticated">
+                      <router-link class="dropdown-item" to="/dashboard">Dashboard</router-link>
+                    </li>
+                    <li v-if="dashboardAccess?.organizer">
+                      <router-link class="dropdown-item" to="/organizer/dashboard">Organizer</router-link>
+                    </li>
+                    <li v-if="dashboardAccess?.jury">
+                      <router-link class="dropdown-item" to="/jury/dashboard">Jury</router-link>
+                    </li>
+                    <li v-if="isSuperadmin">
+                      <router-link class="dropdown-item" to="/manage-trusted-members">
+                        Manage Trusted Members
+                      </router-link>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
                     <li>
                       <router-link class="dropdown-item" to="/profile">
                         <i class="fas fa-user me-2"></i>Profile
                       </router-link>
                     </li>
-                    <li>
-                      <hr class="dropdown-divider" />
-                    </li>
+                    <li><hr class="dropdown-divider" /></li>
                     <li>
                       <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
                         <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -106,6 +90,30 @@ id="userDropdown"
                 </div>
               </li>
             </template>
+            <!-- Show theme switcher for all users -->
+            <li class="nav-item">
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle"
+ type="button"
+ id="themeDropdown"
+                  data-bs-toggle="dropdown"
+                  title="Switch theme">
+                  <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="#" @click.prevent="setTheme('light')">
+                      <i class="fas fa-sun me-2"></i>Light mode
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="#" @click.prevent="setTheme('dark')">
+                      <i class="fas fa-moon me-2"></i>Dark mode
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -148,9 +156,9 @@ export default {
       return String(role).toLowerCase() === 'superadmin'
     })
 
-    // Toggle between light and dark theme
-    const toggleTheme = () => {
-      store.toggleTheme()
+    // Set theme to light or dark mode
+    const setTheme = (mode) => {
+      store.setTheme(mode)
     }
 
     // Return appropriate API base URL based on environment
@@ -215,7 +223,7 @@ export default {
       currentUser,
       theme,
       dashboardAccess,
-      toggleTheme,
+      setTheme,
       handleLogout,
       getApiBaseUrl,
       isSuperadmin
@@ -403,24 +411,6 @@ input {
 }
 
 /* Theme Toggle Button - professional */
-.theme-toggle {
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  border: 1px solid var(--wiki-border);
-  background-color: transparent;
-  color: var(--wiki-text);
-}
-
-.theme-toggle:hover {
-  background: var(--wiki-hover-bg);
-  border-color: var(--wiki-primary);
-  color: var(--wiki-primary);
-}
-
-[data-theme="dark"] .theme-toggle:hover {
-  background: var(--wiki-hover-bg);
-}
-
 .dropdown-menu {
   border-radius: 4px;
   padding: 0.25rem 0;
