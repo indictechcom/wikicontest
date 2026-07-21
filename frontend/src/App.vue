@@ -19,7 +19,7 @@ data-bs-target="#navbarNav">
           <!-- Right: Login/User Menu -->
           <ul class="navbar-nav ms-auto">
               <li class="nav-item me-2 d-none d-lg-inline">
-                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/43/?projects=Tool-wikicontest&subscribers=Agamyasamuel"
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/43/?title=Bug:%20WikiEval%20&projects=Tool-wikicontest&subscribers=Agamyasamuel"
   target="_blank"
   rel="noopener noreferrer"
                   class="nav-link text-muted small py-1"
@@ -28,7 +28,7 @@ data-bs-target="#navbarNav">
                 </a>
               </li>
               <li class="nav-item d-none d-lg-inline">
-                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/102/?projects=Tool-wikicontest&subscribers=Agamyasamuel"
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/102/?title=Feature%20Request:%20WikiEval%20&projects=Tool-wikicontest&subscribers=Agamyasamuel"
   target="_blank"
   rel="noopener noreferrer"
                   class="nav-link text-muted small py-1"
