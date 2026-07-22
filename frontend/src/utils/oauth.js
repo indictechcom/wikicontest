@@ -29,8 +29,8 @@ export function processOAuthCallback(store, router) {
         const authenticated = await store.checkAuth()
         if (authenticated) {
           showAlert('Successfully logged in with Wikimedia!', 'success')
-          // Clean up URL and redirect to dashboard
-          router.replace('/dashboard')
+          // Clean up URL and redirect to contests page
+          router.replace('/contests')
         } else {
           // Auth check failed, redirect to home page
           // User can try OAuth login again from there
