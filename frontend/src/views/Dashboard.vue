@@ -19,45 +19,45 @@
     <div v-else-if="dashboardData">
 
       <!-- Summary Stats Row (4 cards) -->
-      <div class="row mb-4">
+      <div class="row mb-4 g-3">
         <div class="col-6 col-md-3">
-          <div class="card text-center h-100">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Total Score</h5>
-              <h2 class="text-primary">{{ dashboardData.total_score || 0 }}</h2>
+              <h6 class="stat-label">Total Score</h6>
+              <h3 class="stat-value">{{ dashboardData.total_score || 0 }}</h3>
             </div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center h-100">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Contests Joined</h5>
-              <h2 class="text-success">{{ dashboardData.participated_contests?.length || 0 }}</h2>
+              <h6 class="stat-label">Contests Joined</h6>
+              <h3 class="stat-value">{{ dashboardData.participated_contests?.length || 0 }}</h3>
             </div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center h-100">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Contests Organized</h5>
-              <h2 class="text-warning">{{ dashboardData.organized_contests?.length || 0 }}</h2>
+              <h6 class="stat-label">Contests Organized</h6>
+              <h3 class="stat-value">{{ dashboardData.organized_contests?.length || 0 }}</h3>
             </div>
           </div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="card text-center h-100">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Jury Assignments</h5>
-              <h2 class="text-info">{{ dashboardData.jury_contests?.length || 0 }}</h2>
+              <h6 class="stat-label">Jury Assignments</h6>
+              <h3 class="stat-value">{{ dashboardData.jury_contests?.length || 0 }}</h3>
             </div>
           </div>
         </div>
       </div>
 
-      <h4 class="mb-3">Recent Submissions</h4>
       <div class="row mb-4">
-        <div class="col-12 col-md-6">
-          <div class="card h-100">
+        <div class="col-12 col-md-6 d-flex flex-column">
+          <h4 class="section-title">Recent Submissions</h4>
+          <div class="card flex-grow-1">
             <div class="card-body p-0">
               <div v-if="dashboardData.submissions_by_contest?.length > 0" class="scroll-area">
                 <div class="scroll-inner">
@@ -78,7 +78,7 @@
                         <button v-if="submission.reviewed_at"
 class="btn btn-sm btn-info feedback-btn"
                           @click.stop="openFeedbackModal(submission)"
-title="View Feedback">
+ title="View Feedback">
                           <i class="fas fa-comment-dots"></i>
                         </button>
                       </div>
@@ -86,14 +86,18 @@ title="View Feedback">
                   </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-submissions px-3 py-3">No submissions yet.</p>
+              <div v-else class="empty-state-inline">
+                <i class="fas fa-inbox empty-icon"></i>
+                <p class="empty-text">No submissions yet</p>
+                <p class="empty-subtext">Your submitted articles will appear here</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="col-12 col-md-6">
-          <h4 class="mb-3">Contest Scores</h4>
-          <div class="card h-100">
+        <div class="col-12 col-md-6 d-flex flex-column">
+          <h4 class="section-title">Contest Scores</h4>
+          <div class="card flex-grow-1">
             <div class="card-body p-0">
               <div v-if="dashboardData.contest_wise_scores?.length > 0" class="scroll-area">
                 <div class="scroll-inner">
@@ -105,13 +109,17 @@ title="View Feedback">
                   </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-scores px-3 py-3">No scores yet.</p>
+              <div v-else class="empty-state-inline">
+                <i class="fas fa-chart-bar empty-icon"></i>
+                <p class="empty-text">No scores yet</p>
+                <p class="empty-subtext">Scores from contests will appear here</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <h4 class="mb-3">Participated Contests</h4>
+      <h4 class="section-title">Participated Contests</h4>
       <div class="card contests-table-card">
         <div class="card-body p-0">
           <div v-if="dashboardData.participated_contests?.length > 0" class="table-responsive">
@@ -129,7 +137,7 @@ title="View Feedback">
                 <tr v-for="contest in paginatedParticipated"
 :key="contest.id"
                   @click="viewContest(contest.id)"
-class="table-row-clickable">
+ class="table-row-clickable">
                   <td>
                     <div class="contest-name-cell">
                       <i class="fas fa-trophy contest-icon"></i>
@@ -181,10 +189,13 @@ class="table-row-clickable">
             </div>
           </div>
 
-          <div v-else class="text-center py-5 px-3">
-            <div class="empty-state">
-              <i class="fas fa-inbox empty-icon"></i>
-              <p class="text-muted mb-0 no-contests">You haven't participated in any contests yet.</p>
+          <div v-else class="empty-state-block">
+            <div class="empty-state-content">
+              <div class="empty-state-icon">
+                <i class="fas fa-inbox"></i>
+              </div>
+              <p class="empty-state-title">No participated contests yet</p>
+              <p class="empty-state-desc">Browse contests and join one to see your participation history here</p>
             </div>
           </div>
         </div>
@@ -521,7 +532,7 @@ h2.page-header {
   color: #ffffff !important;
 }
 
-h4 {
+.section-title {
   color: var(--wiki-dark);
   font-size: 1.25rem;
   font-weight: 600;
@@ -529,25 +540,75 @@ h4 {
   letter-spacing: -0.01em;
 }
 
-[data-theme="dark"] h4 {
+[data-theme="dark"] .section-title {
+  color: #ffffff !important;
+}
+
+/* Stat Cards */
+.stat-card {
+  border-radius: 8px;
+  border: 1px solid var(--wiki-border);
+  background-color: var(--wiki-card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-top: 3px solid var(--wiki-primary);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.08);
+  border-color: var(--wiki-primary);
+}
+
+[data-theme="dark"] .stat-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border-top-color: #006699;
+}
+
+[data-theme="dark"] .stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: #006699;
+}
+
+.stat-label {
+  color: var(--wiki-text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .stat-label {
+  color: #b8b8b8 !important;
+}
+
+.stat-value {
+  color: var(--wiki-dark);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+[data-theme="dark"] .stat-value {
   color: #ffffff !important;
 }
 
 .card {
-  border-radius: 4px;
+  border-radius: 8px;
   border: 1px solid var(--wiki-border);
   background-color: var(--wiki-card-bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme="dark"] .card {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
   border-color: var(--wiki-primary);
-  box-shadow: 0 2px 8px rgba(0, 102, 153, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 102, 153, 0.08);
 }
 
 [data-theme="dark"] .card:hover {
@@ -555,45 +616,103 @@ h4 {
 }
 
 .card-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
-.card-title {
+/* Empty States */
+.empty-state-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.empty-state-inline .empty-icon {
+  font-size: 2rem;
+  color: var(--wiki-text-muted);
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.empty-state-inline .empty-text {
   color: var(--wiki-text-muted);
   font-weight: 500;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-[data-theme="dark"] .card-title {
-  color: #b8b8b8 !important;
-}
-
-h2.text-primary,
-h2.text-success,
-h2.text-warning,
-h2.text-info {
-  font-size: 2.5rem !important;
-  font-weight: 700;
+  font-size: 0.95rem;
   margin: 0;
 }
 
-[data-theme="dark"] h2.text-primary {
-  color: #006699 !important;
+.empty-state-inline .empty-subtext {
+  color: var(--wiki-text-muted);
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin: 0;
 }
 
-[data-theme="dark"] h2.text-success {
-  color: #339966 !important;
+[data-theme="dark"] .empty-state-inline .empty-icon,
+[data-theme="dark"] .empty-state-inline .empty-text,
+[data-theme="dark"] .empty-state-inline .empty-subtext {
+  color: #b8b8b8 !important;
 }
 
-[data-theme="dark"] h2.text-warning {
-  color: #ffc107 !important;
+.empty-state-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(0, 102, 153, 0.02) 0%, rgba(0, 102, 153, 0.04) 100%);
+  border-radius: 0 0 8px 8px;
 }
 
-[data-theme="dark"] h2.text-info {
-  color: #17a2b8 !important;
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 360px;
+}
+
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 102, 153, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--wiki-primary);
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .empty-state-icon {
+  background: rgba(0, 102, 153, 0.15);
+  color: #5db8e6 !important;
+}
+
+.empty-state-title {
+  color: var(--wiki-dark);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+[data-theme="dark"] .empty-state-title {
+  color: #ffffff !important;
+}
+
+.empty-state-desc {
+  color: var(--wiki-text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .empty-state-desc {
+  color: #b8b8b8 !important;
 }
 
 /* Contest Management Card */
