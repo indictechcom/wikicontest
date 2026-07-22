@@ -135,7 +135,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     article_title = None
     article_author = None
     article_created_at = None
-    article_word_count = None
+    article_byte_count = None
     article_page_id = None
     article_size_at_start = None
     article_expansion_bytes = None
@@ -219,7 +219,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                 latest_revision = revisions[0]
 
                                 # Get word count from latest revision (most current size)
-                                article_word_count = latest_revision.get("size", 0)
+                                article_byte_count = latest_revision.get("size", 0)
 
                                 # Get latest revision (newest) for author at submission time
                                 # Use shared utility function to extract author from latest revision
@@ -256,7 +256,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                 try:
                                     current_app.logger.info(
                                         f"Fetched article info: title={article_title}, "
-                                        f"author={article_author}, word_count={article_word_count}, "
+                                        f"author={article_author}, word_count={article_byte_count}, "
                                         f"created={article_created_at}, "
                                         f"revisions_count={len(revisions)}"
                                     )
@@ -309,7 +309,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                                 latest_rev = rev_revisions[0]
 
                                                 # Get word count from latest revision (most current size)
-                                                article_word_count = latest_rev.get(
+                                                article_byte_count = latest_rev.get(
                                                     "size", 0
                                                 )
 
@@ -481,8 +481,8 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             article_size_at_start = size_at_start  # Store the size at contest start
 
             # Get article size at submission time
-            # Use the current article_word_count if available, otherwise query API
-            size_at_submission = article_word_count
+            # Use the current article_byte_count if available, otherwise query API
+            size_at_submission = article_byte_count
             if size_at_submission is None:
                 size_at_submission = get_article_size_at_timestamp(
                     article_link, submission_datetime
@@ -526,10 +526,10 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     # --- Validate Article Requirements ---
     # Validate article byte count against contest requirements
     # This check happens after fetching article information from MediaWiki API
-    # article_word_count is actually the byte count (size) from MediaWiki API
+    # article_byte_count is actually the byte count (size) from MediaWiki API
     # min_byte_count is always required, so always validate
     is_valid_byte_count, byte_count_error = contest.validate_byte_count(
-        article_word_count
+        article_byte_count
     )
     if not is_valid_byte_count:
         return jsonify({"error": byte_count_error}), 400
@@ -873,7 +873,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             status="pending",
             article_author=article_author,
             article_created_at=article_created_at,
-            article_word_count=article_word_count,
+            article_byte_count=article_byte_count,
             article_page_id=article_page_id,
             article_size_at_start=article_size_at_start,
             article_expansion_bytes=article_expansion_bytes,
@@ -895,7 +895,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             current_app.logger.info(
                 f"Submission saved: id={submission.id}, "
                 f"author={submission.article_author}, "
-                f"word_count={submission.article_word_count}"
+                f"byte_count={submission.article_byte_count}"
             )
         except Exception:  # pylint: disable=broad-exception-caught
             # Logging failure shouldn't break the flow
@@ -909,7 +909,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                     "contest_id": contest_id,
                     "article_title": article_title,
                     "article_author": article_author,
-                    "article_word_count": article_word_count,
+                    "article_byte_count": article_byte_count,
                     "article_created_at": article_created_at,
                     "article_expansion_bytes": article_expansion_bytes,
                     "template_added": template_added,

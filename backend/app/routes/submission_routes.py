@@ -211,13 +211,9 @@ def get_submission_stats():
         user_id=user.id, status="pending"
     ).count()
 
-    # Get total score from all submissions
-    total_score = (
-        db.session.query(db.func.sum(Submission.score))
-        .filter_by(user_id=user.id)
-        .scalar()
-        or 0
-    )
+    # Get total score from the user's denormalized score column
+    # (kept consistent via Submission.update_status() delta-based updates)
+    total_score = user.score
 
     return (
         jsonify(
@@ -444,9 +440,8 @@ def refresh_metadata(contest_id):
             # This is the current/latest size of the article from the API
             current_size = article_info.get("current_size")
 
-            # Get original size at submission time (article_word_count)
-            # This is the size when the article was submitted
-            original_size_at_submission = submission_item.article_word_count
+            # Get original size at submission time (article_byte_count)
+            original_size_at_submission = submission_item.article_byte_count
 
             # Calculate expansion bytes: current size - size at submission time
             # This shows the change since submission (can be positive or negative)
@@ -503,10 +498,10 @@ def refresh_metadata(contest_id):
                 else:
                     submission.article_created_at = None
 
-            # For crawler-imported submissions (no article_word_count), fetch it from API
+            # For crawler-imported submissions (no article_byte_count), fetch it from API
             # This is needed for automated evaluation
-            if not submission.article_word_count and info.get("current_size"):
-                submission.article_word_count = info["current_size"]
+            if not submission.article_byte_count and info.get("current_size"):
+                submission.article_byte_count = info["current_size"]
 
             if info.get("article_page_id"):
                 submission.article_page_id = info["article_page_id"]
@@ -568,7 +563,7 @@ def refresh_metadata(contest_id):
 
                     # Evaluate submission against automated criteria
                     submission_data = {
-                        "article_word_count": submission.article_word_count,
+                        "article_word_count": submission.article_byte_count,
                         "incoming_links": incoming,
                         "outgoing_links": outgoing,
                         "ref_new_count": submission.ref_new_count,
