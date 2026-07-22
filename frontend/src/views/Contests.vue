@@ -29,18 +29,18 @@
       <!-- Show Re-request Contest Creator Rights button for users whose request was rejected -->
       <button
         v-else-if="isAuthenticated && requestStatus === 'rejected'"
-        class="btn btn-secondary"
+        class="btn btn-outline-primary"
         @click="showRequestTrustedMemberModal"
       >
-        <i class="fas fa-redo me-2"></i>Re-request Contest Creator Rights
+        <i class="fas fa-redo me-2"></i>Apply Again
       </button>
       <!-- Show Request Contest Creator Rights button for users who have never requested -->
       <button
         v-else-if="isAuthenticated && canRequest"
-        class="btn btn-secondary"
+        class="btn btn-outline-primary"
         @click="showRequestTrustedMemberModal"
       >
-        <i class="fas fa-user-plus me-2"></i>Request Contest Creator Rights
+        <i class="fas fa-user-plus me-2"></i>Request Creator Access
       </button>
     </div>
 
