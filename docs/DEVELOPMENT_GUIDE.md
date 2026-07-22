@@ -1,6 +1,6 @@
-# WikiContest Development Guide
+# WikiEval Development Guide
 
-Comprehensive technical guide for developers working on the WikiContest platform, covering architecture, coding standards, best practices, and development workflows.
+Comprehensive technical guide for developers working on the WikiEval platform, covering architecture, coding standards, best practices, and development workflows.
 
 
 
@@ -11,20 +11,31 @@ Comprehensive technical guide for developers working on the WikiContest platform
 The backend follows a modular Flask architecture with clear separation of concerns:
 ```
 backend/
-├── app.py                     # Application factory and main entry point
-├── config.py                  # Environment-based configuration management
-├── utils.py                   # Reusable utility functions
-├── database.py                # Database initialization and connection
-├── models/                    # SQLAlchemy data models
-│   ├── user.py                # User model with authentication methods
-│   ├── contest.py             # Contest model with status methods
-│   └── submission.py          # Submission model for contest entries
-├── routes/                    # API route blueprints
-│   ├── user_routes.py         # User authentication and management
-│   ├── contest_routes.py      # Contest CRUD operations
-│   └── submission_routes.py   # Submission handling
-└── middleware/                # Authentication and security middleware
-    └── auth.py                # JWT authentication decorators
+├── main.py                    # Application entry point
+├── app/
+│   ├── __init__.py            # Application factory
+│   ├── config.py              # Environment-based configuration
+│   ├── database.py            # SQLAlchemy database instance
+│   ├── models/                # SQLAlchemy ORM models
+│   │   ├── __init__.py
+│   │   ├── base_model.py      # Base model with common methods
+│   │   ├── user.py            # User model
+│   │   ├── contest.py         # Contest model
+│   │   ├── submission.py      # Submission model
+│   │   └── ...
+│   ├── routes/                # API route blueprints
+│   │   ├── user_routes.py     # User authentication and management
+│   │   ├── contest_routes.py  # Contest CRUD operations
+│   │   └── submission_routes.py # Submission handling
+│   ├── middleware/            # Authentication and security middleware
+│   │   └── auth.py            # JWT and permission handling
+│   └── utils/                 # Utility functions
+│       ├── __init__.py
+│       ├── validation.py
+│       └── ...
+├── alembic/                   # Database migration environment
+├── scripts/                   # Utility scripts
+└── ...
 ```
 
 **Key Architectural Principles:**
@@ -36,21 +47,28 @@ backend/
 
 ### Frontend Architecture
 
-The frontend uses vanilla JavaScript with modular function organization:
+The frontend is a Vue.js 3 single-page application using the Composition API:
 ```javascript
-// Global state management
-let currentUser = null;
-let currentContests = { current: [], upcoming: [], past: [] };
+// Global state management via composables
+import { useStore } from '@/store'
 
-// Function organization by feature:
-// - Utility functions (showAlert, formatDate, etc.)
-// - API communication functions
-// - Authentication functions
-// - Contest management functions
-// - UI management functions
+const store = useStore()
+
+// Reactive state
+const currentUser = store.user
+const currentContests = store.contests
+
+// API communication via centralized service
+import api from '@/services/api'
+const contests = await api.get('/contest')
 ```
 
-**Modern Alternative:** Vue.js 3 implementation available with component-based architecture, reactive state management, and Vue Router.
+**Key Architectural Principles:**
+- Component-based UI with Vue 3 Composition API
+- Centralized API service layer (`src/services/api.js`)
+- Composable state management (`src/store/index.js`)
+- Vue Router for client-side navigation
+- Vite for build tooling and HMR
 
 
 
@@ -59,7 +77,7 @@ let currentContests = { current: [], upcoming: [], past: [] };
 ### Prerequisites
 
 - **Python:** 3.8 or higher
-- **Database:** MySQL 8.0+ or PostgreSQL 12+
+- **Database:** MySQL 8.0+ or SQLite (development)
 - **Version Control:** Git
 - **Code Editor:** VS Code (recommended)
 - **Node.js:** 16+ (for Vue.js frontend)
@@ -69,12 +87,13 @@ let currentContests = { current: [], upcoming: [], past: [] };
 #### Step 1: Clone and Setup Backend
 ```bash
 git clone <repository-url>
-cd wikicontest
+cd WikiEval
 
 # Backend setup
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
@@ -84,32 +103,33 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Edit .env with your configuration
-nano .env
 ```
 
 **Required environment variables:**
 ```env
-DATABASE_URL=mysql+pymysql://user:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://user:password@localhost/WikiEval
 SECRET_KEY=your-secret-key
 JWT_SECRET_KEY=your-jwt-secret-key
-CONSUMER_KEY=your-oauth-consumer-key
-CONSUMER_SECRET=your-oauth-consumer-secret
 ```
+
+For OAuth configuration, see [OAUTH_LOCAL_SETUP.md](OAUTH_LOCAL_SETUP.md).
+
 
 #### Step 3: Initialize Database
 ```bash
-python init_db.py
+# Apply Alembic migrations
+python -m alembic upgrade head
 ```
 
 #### Step 4: Run Development Server
 ```bash
-python app.py
+python main.py
 ```
 
 #### Step 5: Access Application
 
 - **Backend API:** http://localhost:5000/api
-- **Frontend:** http://localhost:5000 (served by Flask)
+- **Frontend (Vite dev server):** http://localhost:5173
 - **Vue.js Dev Server (if using Vue):** http://localhost:5173
 
 
@@ -133,10 +153,10 @@ from typing import Optional, Dict, Any
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     """
     Retrieve a user by their email address.
-    
+
     Args:
         email: The user's email address
-        
+
     Returns:
         User dictionary if found, None otherwise
     """
@@ -148,12 +168,15 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
 
 **Use decorators for route functions:**
 ```python
-from utils import handle_errors
+from app.middleware.auth import require_auth, get_current_user
+from app.utils import create_success_response, create_error_response
+from app.utils.validation import validate_json
 
 @user_bp.route('/login', methods=['POST'])
-@handle_errors
+@validate_json
 def login():
     """Handle user login."""
+    data = request.get_json()
     # Function implementation
     pass
 ```
@@ -189,10 +212,10 @@ try:
     # Multiple database operations
     user = User(username='test', email='test@example.com')
     db.session.add(user)
-    
+
     contest = Contest(title='New Contest', created_by=user.id)
     db.session.add(contest)
-    
+
     db.session.commit()
 except Exception:
     db.session.rollback()
@@ -220,87 +243,67 @@ return create_error_response(
 
 ### JavaScript Frontend Standards
 
-#### 1. Function Documentation
+#### 1. Component Documentation
 
 **Use JSDoc format:**
-```javascript
+```vue
+<script setup>
 /**
- * Create a new contest and add it to the platform.
- * 
- * This function validates the contest data, sends it to the API,
- * and updates the UI with the newly created contest.
- * 
- * @param {string} title - Contest title
- * @param {string} description - Contest description
- * @param {Date} startDate - Contest start date
- * @param {Date} endDate - Contest end date
- * @returns {Promise<Object>} Created contest data
- * @throws {Error} If validation fails or API request fails
- * 
+ * Contest listing page with filtering and search.
+ *
  * @example
- * const contest = await createContest(
- *   'Edit-a-thon 2024',
- *   'Annual editing contest',
- *   new Date('2024-01-01'),
- *   new Date('2024-12-31')
- * );
+ * <Contests />
  */
-async function createContest(title, description, startDate, endDate) {
-    // Validation
-    if (!title || !description) {
-        throw new Error('Title and description are required');
-    }
-    
-    // Implementation
-    const response = await apiRequest('/contest/', {
-        method: 'POST',
-        body: JSON.stringify({ title, description, startDate, endDate })
-    });
-    
-    return response;
-}
+const contests = ref([])
+const loading = ref(false)
+</script>
 ```
 
 #### 2. Error Handling
 
-**Consistent async error handling:**
+**Consistent async error handling in composables:**
 ```javascript
-try {
-    const result = await apiRequest('/endpoint');
-    showAlert('Operation successful', 'success');
-    return result;
-} catch (error) {
-    showAlert(error.message, 'error');
-    console.error('Operation failed:', error);
-    throw error; // Re-throw if caller needs to handle it
+// src/composables/useContests.js
+export function useContests() {
+  const loading = ref(false)
+  const error = ref(null)
+
+  async function fetchContests() {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.get('/contest')
+      return response.data
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { fetchContests, loading, error }
 }
 ```
 
 #### 3. State Management
 
-**Update global state consistently:**
+**Use composable store pattern:**
 ```javascript
-// Update authentication state
-function updateUserState(userData) {
-    currentUser = {
-        id: userData.userId,
-        username: userData.username,
-        email: userData.email,
-        role: userData.role
-    };
-    
-    // Persist to localStorage if needed
-    localStorage.setItem('user', JSON.stringify(currentUser));
-    
-    // Update UI
-    updateAuthUI();
-}
+// src/store/index.js
+export function useStore() {
+  const user = ref(null)
+  const contests = ref([])
 
-// Clear state on logout
-function clearUserState() {
-    currentUser = null;
-    localStorage.removeItem('user');
-    updateAuthUI();
+  function setUser(userData) {
+    user.value = userData
+  }
+
+  function clearUser() {
+    user.value = null
+  }
+
+  return { user, contests, setUser, clearUser }
 }
 ```
 
@@ -312,29 +315,27 @@ function clearUserState() {
 
 #### Step 1: Create a New Model
 
-**File: `models/new_feature.py`**
+**File: `app/models/new_feature.py`**
 ```python
-from database import db
+from app.database import db
 from datetime import datetime
 
 class NewFeature(db.Model):
     """Model for new feature entities."""
-    
+
     __tablename__ = 'new_features'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     status = db.Column(db.String(20), default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
+
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref='new_features')
-    
+
     def to_dict(self):
-        """Convert model to dictionary."""
         return {
             'id': self.id,
             'name': self.name,
@@ -344,25 +345,24 @@ class NewFeature(db.Model):
             'updated_at': self.updated_at.isoformat(),
             'user_id': self.user_id
         }
-    
+
     def __repr__(self):
         return f'<NewFeature {self.name}>'
 ```
 
 #### Step 2: Create Route Blueprint
 
-**File: `routes/new_feature_routes.py`**
+**File: `app/routes/new_feature_routes.py`**
 ```python
 from flask import Blueprint, request
-from models.new_feature import NewFeature
-from middleware.auth import require_auth, get_current_user
-from utils import create_success_response, create_error_response, handle_errors
-from database import db
+from app.models.new_feature import NewFeature
+from app.middleware.auth import require_auth, get_current_user
+from app.utils import create_success_response, create_error_response
+from app.database import db
 
 new_feature_bp = Blueprint('new_feature', __name__)
 
 @new_feature_bp.route('/', methods=['GET'])
-@handle_errors
 def get_all_features():
     """Retrieve all features."""
     features = NewFeature.query.all()
@@ -373,104 +373,35 @@ def get_all_features():
 
 @new_feature_bp.route('/', methods=['POST'])
 @require_auth
-@handle_errors
 def create_feature():
     """Create a new feature instance."""
     current_user = get_current_user()
     data = request.get_json()
-    
-    # Validation
+
     if not data.get('name'):
         return create_error_response('Name is required', 400)
-    
-    # Create instance
+
     new_feature = NewFeature(
         name=data['name'],
         description=data.get('description'),
         user_id=current_user['id']
     )
-    
+
     db.session.add(new_feature)
     db.session.commit()
-    
+
     return create_success_response(
         'Feature created successfully',
         new_feature.to_dict(),
         201
     )
-
-@new_feature_bp.route('/<int:feature_id>', methods=['GET'])
-@handle_errors
-def get_feature(feature_id):
-    """Retrieve a specific feature by ID."""
-    feature = NewFeature.query.get(feature_id)
-    
-    if not feature:
-        return create_error_response('Feature not found', 404)
-    
-    return create_success_response(
-        'Feature retrieved successfully',
-        feature.to_dict()
-    )
-
-@new_feature_bp.route('/<int:feature_id>', methods=['PUT'])
-@require_auth
-@handle_errors
-def update_feature(feature_id):
-    """Update a feature."""
-    current_user = get_current_user()
-    feature = NewFeature.query.get(feature_id)
-    
-    if not feature:
-        return create_error_response('Feature not found', 404)
-    
-    # Authorization check
-    if feature.user_id != current_user['id'] and current_user['role'] != 'admin':
-        return create_error_response('Unauthorized', 403)
-    
-    data = request.get_json()
-    
-    # Update fields
-    if 'name' in data:
-        feature.name = data['name']
-    if 'description' in data:
-        feature.description = data['description']
-    if 'status' in data:
-        feature.status = data['status']
-    
-    db.session.commit()
-    
-    return create_success_response(
-        'Feature updated successfully',
-        feature.to_dict()
-    )
-
-@new_feature_bp.route('/<int:feature_id>', methods=['DELETE'])
-@require_auth
-@handle_errors
-def delete_feature(feature_id):
-    """Delete a feature."""
-    current_user = get_current_user()
-    feature = NewFeature.query.get(feature_id)
-    
-    if not feature:
-        return create_error_response('Feature not found', 404)
-    
-    # Authorization check
-    if feature.user_id != current_user['id'] and current_user['role'] != 'admin':
-        return create_error_response('Unauthorized', 403)
-    
-    db.session.delete(feature)
-    db.session.commit()
-    
-    return create_success_response('Feature deleted successfully')
 ```
 
 #### Step 3: Register Blueprint
 
-**File: `app.py`**
+**File: `app/__init__.py`**
 ```python
-from routes.new_feature_routes import new_feature_bp
+from app.routes.new_feature_routes import new_feature_bp
 
 # Register blueprint
 app.register_blueprint(new_feature_bp, url_prefix='/api/new-feature')
@@ -478,176 +409,76 @@ app.register_blueprint(new_feature_bp, url_prefix='/api/new-feature')
 
 #### Step 4: Create Database Migration
 ```bash
-# Add to init_db.py or create migration
-python init_db.py
+# Generate migration
+python -m alembic revision --autogenerate -m "Add new_feature table"
+
+# Apply migration
+python -m alembic upgrade head
 ```
 
 ### Frontend Feature Development
 
 #### Step 1: Add API Functions
 
-**File: `frontend/app.js`** (or appropriate Vue component)
+**File: `frontend/src/services/new-feature.js`**
 ```javascript
-/**
- * Retrieve all features from the API.
- * 
- * @returns {Promise<Array>} Array of feature objects
- */
-async function getAllFeatures() {
-    try {
-        const response = await apiRequest('/new-feature/');
-        return response.data;
-    } catch (error) {
-        showAlert('Failed to load features', 'error');
-        throw error;
-    }
+import api from './api'
+
+export async function getAllFeatures() {
+    const response = await api.get('/new-feature/')
+    return response.data
 }
 
-/**
- * Create a new feature instance.
- * 
- * @param {string} name - Feature name
- * @param {string} description - Feature description
- * @returns {Promise<Object>} Created feature data
- */
-async function createNewFeature(name, description) {
-    try {
-        const response = await apiRequest('/new-feature/', {
-            method: 'POST',
-            body: JSON.stringify({ name, description })
-        });
-        
-        showAlert('Feature created successfully!', 'success');
-        return response.data;
-    } catch (error) {
-        showAlert(error.message, 'error');
-        throw error;
-    }
+export async function createNewFeature(name, description) {
+    const response = await api.post('/new-feature/', {
+        name,
+        description
+    })
+    return response.data
 }
 
-/**
- * Update an existing feature.
- * 
- * @param {number} featureId - Feature ID
- * @param {Object} updates - Fields to update
- * @returns {Promise<Object>} Updated feature data
- */
-async function updateFeature(featureId, updates) {
-    try {
-        const response = await apiRequest(`/new-feature/${featureId}`, {
-            method: 'PUT',
-            body: JSON.stringify(updates)
-        });
-        
-        showAlert('Feature updated successfully!', 'success');
-        return response.data;
-    } catch (error) {
-        showAlert(error.message, 'error');
-        throw error;
-    }
+export async function updateFeature(featureId, updates) {
+    const response = await api.put(`/new-feature/${featureId}`, updates)
+    return response.data
 }
 
-/**
- * Delete a feature.
- * 
- * @param {number} featureId - Feature ID
- * @returns {Promise<void>}
- */
-async function deleteFeature(featureId) {
-    if (!confirm('Are you sure you want to delete this feature?')) {
-        return;
-    }
-    
-    try {
-        await apiRequest(`/new-feature/${featureId}`, {
-            method: 'DELETE'
-        });
-        
-        showAlert('Feature deleted successfully!', 'success');
-    } catch (error) {
-        showAlert(error.message, 'error');
-        throw error;
-    }
+export async function deleteFeature(featureId) {
+    await api.delete(`/new-feature/${featureId}`)
 }
 ```
 
-#### Step 2: Add UI Functions
+#### Step 2: Add Vue Components
+
+**File: `frontend/src/views/NewFeature.vue`**
+```vue
+<template>
+  <div class="new-feature">
+    <h1>New Feature</h1>
+    <button @click="createFeature">Create Feature</button>
+  </div>
+</template>
+
+<script setup>
+import { useStore } from '@/store'
+import { createNewFeature } from '@/services/new-feature'
+
+const store = useStore()
+
+async function createFeature() {
+    await createNewFeature('Feature Name', 'Description')
+}
+</script>
+```
+
+#### Step 3: Add Routes
+
+**File: `frontend/src/router/index.js`**
 ```javascript
-/**
- * Display the create feature modal.
- */
-function showCreateFeatureModal() {
-    const modal = document.getElementById('createFeatureModal');
-    const modalInstance = new bootstrap.Modal(modal);
-    
-    // Clear previous input
-    document.getElementById('featureName').value = '';
-    document.getElementById('featureDescription').value = '';
-    
-    modalInstance.show();
-}
-
-/**
- * Handle create feature form submission.
- */
-async function handleCreateFeature() {
-    const nameInput = document.getElementById('featureName');
-    const descriptionInput = document.getElementById('featureDescription');
-    
-    const name = nameInput.value.trim();
-    const description = descriptionInput.value.trim();
-    
-    // Validation
-    if (!name) {
-        showAlert('Feature name is required', 'error');
-        return;
-    }
-    
-    try {
-        await createNewFeature(name, description);
-        
-        // Close modal
-        const modal = document.getElementById('createFeatureModal');
-        bootstrap.Modal.getInstance(modal).hide();
-        
-        // Refresh features list
-        await loadFeatures();
-    } catch (error) {
-        // Error already handled in createNewFeature
-    }
-}
-
-/**
- * Load and display all features.
- */
-async function loadFeatures() {
-    const container = document.getElementById('featuresContainer');
-    
-    try {
-        const features = await getAllFeatures();
-        
-        if (features.length === 0) {
-            container.innerHTML = '<p class="text-muted">No features found.</p>';
-            return;
-        }
-        
-        container.innerHTML = features.map(feature => `
-            <div class="card mb-3">
-                <div class="card-body">
-                    <h5 class="card-title">${feature.name}</h5>
-                    <p class="card-text">${feature.description || 'No description'}</p>
-                    <button class="btn btn-sm btn-primary" onclick="editFeature(${feature.id})">
-                        Edit
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteFeature(${feature.id})">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        container.innerHTML = '<p class="text-danger">Failed to load features.</p>';
-    }
+{
+    path: '/new-feature',
+    name: 'NewFeature',
+    component: () => import('@/views/NewFeature.vue'),
+    meta: { requiresAuth: true }
 }
 ```
 
@@ -663,13 +494,13 @@ async function loadFeatures() {
 ```python
 import unittest
 from app import create_app
-from database import db
-from models.new_feature import NewFeature
-from models.user import User
+from app.database import db
+from app.models.new_feature import NewFeature
+from app.models.user import User
 
 class TestNewFeature(unittest.TestCase):
     """Test cases for NewFeature model and routes."""
-    
+
     def setUp(self):
         """Set up test environment."""
         self.app = create_app('testing')
@@ -677,8 +508,7 @@ class TestNewFeature(unittest.TestCase):
         self.app_context = self.app.app_context()
         self.app_context.push()
         db.create_all()
-        
-        # Create test user
+
         self.test_user = User(
             username='testuser',
             email='test@example.com'
@@ -686,109 +516,40 @@ class TestNewFeature(unittest.TestCase):
         self.test_user.set_password('password123')
         db.session.add(self.test_user)
         db.session.commit()
-    
+
     def tearDown(self):
         """Clean up test environment."""
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
-    
+
     def test_create_new_feature(self):
         """Test feature creation."""
-        # Login first
         response = self.client.post('/api/user/login',
             json={'email': 'test@example.com', 'password': 'password123'}
         )
         self.assertEqual(response.status_code, 200)
-        
-        # Create feature
+
         response = self.client.post('/api/new-feature/',
             json={'name': 'Test Feature', 'description': 'Test description'}
         )
-        
+
         self.assertEqual(response.status_code, 201)
-        self.assertIn('Feature created successfully', response.json['message'])
-        self.assertEqual(response.json['data']['name'], 'Test Feature')
-    
+
     def test_get_all_features(self):
         """Test retrieving all features."""
-        # Create test features
         feature1 = NewFeature(name='Feature 1', user_id=self.test_user.id)
         feature2 = NewFeature(name='Feature 2', user_id=self.test_user.id)
         db.session.add_all([feature1, feature2])
         db.session.commit()
-        
-        # Get features
+
         response = self.client.get('/api/new-feature/')
-        
+
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json['data']), 2)
-    
-    def test_update_feature(self):
-        """Test feature update."""
-        # Create feature
-        feature = NewFeature(name='Original Name', user_id=self.test_user.id)
-        db.session.add(feature)
-        db.session.commit()
-        
-        # Login
-        self.client.post('/api/user/login',
-            json={'email': 'test@example.com', 'password': 'password123'}
-        )
-        
-        # Update feature
-        response = self.client.put(f'/api/new-feature/{feature.id}',
-            json={'name': 'Updated Name'}
-        )
-        
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json['data']['name'], 'Updated Name')
 
 if __name__ == '__main__':
     unittest.main()
-```
-
-#### Integration Tests
-```python
-def test_complete_feature_workflow(self):
-    """Test complete feature creation workflow."""
-    # Register user
-    response = self.client.post('/api/user/register',
-        json={
-            'username': 'newuser',
-            'email': 'newuser@example.com',
-            'password': 'password123'
-        }
-    )
-    self.assertEqual(response.status_code, 201)
-    
-    # Login
-    response = self.client.post('/api/user/login',
-        json={'email': 'newuser@example.com', 'password': 'password123'}
-    )
-    self.assertEqual(response.status_code, 200)
-    
-    # Create feature
-    response = self.client.post('/api/new-feature/',
-        json={'name': 'New Feature', 'description': 'Test'}
-    )
-    self.assertEqual(response.status_code, 201)
-    feature_id = response.json['data']['id']
-    
-    # Retrieve feature
-    response = self.client.get(f'/api/new-feature/{feature_id}')
-    self.assertEqual(response.status_code, 200)
-    self.assertEqual(response.json['data']['name'], 'New Feature')
-    
-    # Update feature
-    response = self.client.put(f'/api/new-feature/{feature_id}',
-        json={'description': 'Updated description'}
-    )
-    self.assertEqual(response.status_code, 200)
-    
-    # Delete feature
-    response = self.client.delete(f'/api/new-feature/{feature_id}')
-    self.assertEqual(response.status_code, 200)
 ```
 
 ### Frontend Testing
@@ -812,15 +573,6 @@ def test_complete_feature_workflow(self):
 - [ ] Loading indicators appear during API calls
 - [ ] Navigation works correctly
 
-#### Browser Testing
-
-Test in multiple browsers to ensure compatibility:
--  Chrome (latest version)
--  Firefox (latest version)
--  Safari (latest version)
--  Edge (latest version)
--  Mobile browsers (iOS Safari, Chrome Mobile)
-
 
 
 ## Deployment Process
@@ -840,30 +592,15 @@ Test in multiple browsers to ensure compatibility:
 
 #### 2. Production Configuration
 
-**File: `config.py`**
-```python
-class ProductionConfig(Config):
-    """Production environment configuration."""
-    DEBUG = False
-    TESTING = False
-    
-    # Security settings
-    JWT_COOKIE_SECURE = True  # Require HTTPS for cookies
-    JWT_COOKIE_CSRF_PROTECT = True
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_POOL_SIZE = 10
-    SQLALCHEMY_MAX_OVERFLOW = 20
-    
-    # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '').split(',')
-    
-    # Logging
-    LOG_LEVEL = 'INFO'
+Set production environment variables in `.env`:
+```env
+FLASK_ENV=production
+FLASK_DEBUG=False
+DATABASE_URL=mysql+pymysql://user:pass@host:port/db
+SECRET_KEY=<generate-secure-key>
+JWT_SECRET_KEY=<generate-secure-key>
+JWT_COOKIE_SECURE=True
+JWT_COOKIE_SAMESITE=None
 ```
 
 #### 3. Deployment Steps
@@ -879,13 +616,13 @@ pip install -r requirements.txt
 pip install gunicorn
 
 # 3. Run database migrations
-python init_db.py
+python -m alembic upgrade head
 
-# 4. Collect static files (if using separate static file server)
-# (Optional, depending on deployment setup)
+# 4. Build frontend
+cd frontend && npm run build
 
 # 5. Start production server
-gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 app:app
+gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 main:app
 
 # Or use a process manager like systemd or supervisord
 ```
@@ -899,6 +636,11 @@ gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 app:app
 - [ ] API endpoints return expected responses
 - [ ] Error logging is functional
 - [ ] SSL/HTTPS is working correctly
+
+
+## Deployment
+
+For production deployment to Wikimedia Toolforge, see [TOOLFORGE_DEPLOYMENT.md](TOOLFORGE_DEPLOYMENT.md).
 
 
 
@@ -942,7 +684,7 @@ def protected_route():
 **Debugging:**
 ```python
 # Test database connection
-from database import db
+from app.database import db
 from app import create_app
 
 app = create_app()
@@ -959,17 +701,17 @@ with app.app_context():
 **Problem:** CORS error or "Network request failed"
 
 **Solution:**
-- Check CORS configuration in `app.py`
+- Check CORS configuration in `app/__init__.py`
 - Verify API URL is correct in frontend
 - Ensure backend server is running
 - Check browser console for specific error messages
 
 **Configuration:**
 ```python
-# app.py
+# app/__init__.py
 from flask_cors import CORS
 
-CORS(app, 
+CORS(app,
      origins=['http://localhost:5173', 'https://your-domain.com'],
      supports_credentials=True,
      allow_headers=['Content-Type', 'X-CSRF-TOKEN'])
@@ -1025,8 +767,8 @@ def login():
 // Use browser developer tools
 
 // Console logging
-console.log('Current user:', currentUser);
-console.log('API response:', response);
+console.log('Current user:', currentUser)
+console.log('API response:', response)
 
 // Network tab
 // - Check request/response details
@@ -1036,7 +778,7 @@ console.log('API response:', response);
 // Breakpoints
 debugger; // Pause execution here
 
-// Vue DevTools (if using Vue.js)
+// Vue DevTools
 // - Inspect component state
 // - Track events
 // - Time-travel debugging
@@ -1098,23 +840,21 @@ debugger; // Pause execution here
 
 ## Contributing
 
-###
+### Guidelines
 
-**Guidelines**
-
-   - Fork the repository and create a feature branch
-   - Write tests for new functionality
-   - Follow coding standards outlined in this guide
-   - Document your changes in code comments and this guide if needed
-   - Submit a pull request with a clear description
+- Fork the repository and create a feature branch
+- Write tests for new functionality
+- Follow coding standards outlined in this guide
+- Document your changes in code comments and this guide if needed
+- Submit a pull request with a clear description
 
 **Pull Request Checklist**
 
-   -  Code follows project coding standards
-   -  All tests pass
-   -  New tests added for new functionality
-   -  Documentation updated if needed
-   -  No sensitive data in commits
-   -   Commits are well-organized with clear messages
+- Code follows project coding standards
+- All tests pass
+- New tests added for new functionality
+- Documentation updated if needed
+- No sensitive data in commits
+- Commits are well-organized with clear messages
 
-This development guide provides the foundation for contributing to the WikiContest platform. For specific questions, refer to inline code comments or create an issue in the repository.
+This development guide provides the foundation for contributing to the WikiEval platform. For specific questions, refer to inline code comments or create an issue in the repository.

@@ -1,5 +1,5 @@
 /**
- * Vite Configuration for WikiContest Frontend
+ * Vite Configuration for WikiEval Frontend
  *
  * This configuration sets up the Vue.js build process with Vite.
  * The build output will be in the 'dist' directory, which Flask will serve.
@@ -17,14 +17,18 @@ export default defineConfig({
     // Generate source maps for debugging
     sourcemap: false,
     // Optimize for production
-    minify: 'terser',
+    minify: 'esbuild',
     // Rollup options
     rollupOptions: {
       output: {
         // Organize output files
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router'],
-          'axios-vendor': ['axios']
+        manualChunks: (id) => {
+          if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+            return 'vue-vendor'
+          }
+          if (id.includes('node_modules/axios')) {
+            return 'axios-vendor'
+          }
         }
       }
     }

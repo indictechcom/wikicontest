@@ -1,7 +1,7 @@
 <template>
-  <div class="profile-container">
+  <div class="container profile-container">
 
-    <h2 class="page-title">Your Profile</h2>
+    <h2 class="page-header">Your Profile</h2>
 
     <transition name="fade-scale">
 
@@ -72,7 +72,7 @@
           </div>
 
           <!-- Request Trusted Member Button -->
-          <div v-if="canRequest" class="info-item">
+          <div v-if="isAuthenticated && canRequest" class="info-item">
             <button
               class="btn btn-primary w-100"
               @click="requestTrustedMember"
@@ -130,18 +130,37 @@ export default {
     const store = useStore()
     const route = useRoute()
     const currentUser = computed(() => store.currentUser)
+    const isAuthenticated = computed(() => store.isAuthenticated)
 
     // Direct profile data state (bypasses store cache)
     const directProfileData = ref(null)
 
+    // Safely serialize a value to JSON, tolerating circular references
+    // (Vue reactive proxies/computed refs contain circular structures that
+    //  plain JSON.stringify would throw on).
+    const safeStringify = (value) => {
+      const seen = new WeakSet()
+      try {
+        return JSON.stringify(value, (key, val) => {
+          if (typeof val === 'object' && val !== null) {
+            if (seen.has(val)) return '[Circular]'
+            seen.add(val)
+          }
+          return val
+        }, 2)
+      } catch (e) {
+        return String(value)
+      }
+    }
+
     // Refresh user data from backend to get latest role information
     const refreshUserData = async () => {
-      console.log('🔄 Refreshing user data...')
+      console.log('Refreshing user data...')
       try {
         // First, try to fetch fresh data directly from /user/profile endpoint
         // This bypasses any cached data in the store
         const profileResponse = await api.get('/user/profile')
-        console.log('🔄 Direct profile response:', JSON.stringify(profileResponse, null, 2))
+        console.log('Direct profile response:', JSON.stringify(profileResponse, null, 2))
         directProfileData.value = profileResponse
 
         // Update the store with fresh data from profile endpoint
@@ -155,8 +174,8 @@ export default {
             trusted_member_request: profileResponse.trusted_member_request,
             trusted_member_request_status: profileResponse.trusted_member_request_status
           }
-          console.log('🔄 Store updated with profile data')
-          console.log('🔄 Updated is_trusted_member in store:', profileResponse.is_trusted_member)
+          console.log('Store updated with profile data')
+          console.log('Updated is_trusted_member in store:', profileResponse.is_trusted_member)
         }
 
         // Also force auth check to fetch latest data from database
@@ -165,32 +184,31 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 300))
 
         // Log refreshed data for debugging
-        console.log('🔄 After refresh - currentUser:', JSON.stringify(currentUser.value, null, 2))
-        console.log('🔄 After refresh - role:', currentUser.value?.role)
-        console.log('🔄 After refresh - is_trusted_member:', currentUser.value?.is_trusted_member)
+        console.log('After refresh - currentUser:', safeStringify(currentUser.value))
+        console.log('After refresh - role:', currentUser.value?.role)
+        console.log('After refresh - is_trusted_member:', currentUser.value?.is_trusted_member)
       } catch (error) {
-        console.error('🔄 Error refreshing user data:', error)
+        console.error('Error refreshing user data:', error)
       }
     }
 
     // Refresh user data when profile page loads
     onMounted(async () => {
-      console.log('📄 Profile page mounted')
-      console.log('📄 Current user before refresh:', JSON.stringify(currentUser.value, null, 2))
-      console.log('📄 Current user role before refresh:', currentUser.value?.role)
+      console.log('Profile page mounted')
+      console.log('Current user before refresh:', safeStringify(currentUser.value))
 
       // Refresh to ensure latest role data
       await refreshUserData()
 
       // Debug logging to verify role is loaded correctly
-      console.log('📄 Profile mounted - currentUser after refresh:', JSON.stringify(currentUser.value, null, 2))
-      console.log('📄 Profile mounted - currentUser.role after refresh:', currentUser.value?.role)
-      console.log('📄 Store currentUser:', JSON.stringify(store.currentUser, null, 2))
-      console.log('📄 Store state.currentUser:', JSON.stringify(store.state?.currentUser, null, 2))
+      console.log('Profile mounted - currentUser after refresh:', safeStringify(currentUser.value))
+      console.log('Profile mounted - currentUser.role after refresh:', currentUser.value?.role)
+      console.log('Store currentUser:', safeStringify(store.currentUser))
+      console.log('Store state.currentUser:', safeStringify(store.state?.currentUser))
 
       // Final verification of role value
       if (currentUser.value) {
-        console.log('📄 FINAL ROLE CHECK:')
+        console.log('FINAL ROLE CHECK:')
         console.log('  - currentUser.value.role:', currentUser.value.role)
         console.log('  - typeof:', typeof currentUser.value.role)
         console.log('  - String value:', String(currentUser.value.role))
@@ -201,21 +219,21 @@ export default {
 
     // Refresh when route is activated for keep-alive scenarios
     onActivated(async () => {
-      console.log('📄 Profile page activated - refreshing data')
+      console.log('Profile page activated - refreshing data')
       await refreshUserData()
     })
 
     // Watch for route changes to refresh when navigating to profile
     watch(() => route.path, async (newPath) => {
       if (newPath === '/profile') {
-        console.log('📄 Route changed to profile - refreshing data')
+        console.log('Route changed to profile - refreshing data')
         await refreshUserData()
       }
     }, { immediate: false })
 
     // Watch for role changes to log updates
     watch(() => currentUser.value?.role, (newRole, oldRole) => {
-      console.log('📄 Role changed:', { oldRole, newRole })
+      console.log('Role changed:', { oldRole, newRole })
       // Special check for known superadmin user
       if (currentUser.value?.username === 'Adityakumar0545' && newRole !== 'superadmin') {
         console.error(' [ERROR] Adityakumar0545 role is not superadmin! Current:', newRole)
@@ -224,7 +242,7 @@ export default {
 
     // Watch store state directly for immediate role updates
     watch(() => store.state?.currentUser?.role, (newRole) => {
-      console.log('📄 Store state role changed to:', newRole)
+      console.log('Store state role changed to:', newRole)
       if (newRole === 'superadmin') {
         console.log('Superadmin role detected in store state!')
       }
@@ -339,7 +357,8 @@ export default {
     // Check if user can request (never requested OR was rejected)
     const canRequest = computed(() => {
       const status = requestStatus.value
-      return !isSuperadmin.value &&
+      return isAuthenticated.value &&
+             !isSuperadmin.value &&
              !isTrustedMember.value &&
              (!status || status === 'rejected')
     })
@@ -387,21 +406,24 @@ export default {
 
 /* Main Container */
 .profile-container {
-  max-width: 700px;
-  margin: auto;
-  padding: 3rem 1rem;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
 }
 
 /* Page Title */
-.page-title {
-  text-align: center;
+h2.page-header {
   font-size: 2rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  margin-bottom: 2rem;
   color: var(--wiki-dark);
   border-bottom: 2px solid var(--wiki-primary);
   padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+  width: fit-content;
+}
+
+[data-theme="dark"] h2.page-header {
+  color: #ffffff !important;
 }
 
 /* Profile Card Container */

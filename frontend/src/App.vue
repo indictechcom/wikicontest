@@ -3,9 +3,9 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container">
-        <!-- Left: WikiContest -->
+        <!-- Left: WikiEval -->
         <router-link class="navbar-brand" to="/">
-          WikiContest
+          WikiEval
         </router-link>
 
         <button class="navbar-toggler"
@@ -16,40 +16,33 @@ data-bs-target="#navbarNav">
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-          <!-- Middle: Navigation Links (Centered) -->
-          <ul class="navbar-nav mx-auto">
-            <li class="nav-item">
-              <!-- Home link - will show active indicator when on exact / route -->
-              <router-link class="nav-link" to="/">Home</router-link>
-            </li>
-            <li class="nav-item" v-if="isAuthenticated">
-              <!-- Contests link - shows active indicator when on /contests page -->
-              <router-link class="nav-link" to="/contests">Contests</router-link>
-            </li>
-            <li class="nav-item" v-if="isAuthenticated">
-              <!-- Dashboard link - shows active indicator when on /dashboard page -->
-              <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
-            </li>
-          </ul>
-
-          <!-- Right: Theme Toggle and Login/User Menu -->
-          <ul class="navbar-nav">
-            <!-- Theme Toggle Button - Always visible -->
-            <li class="nav-item me-2">
-              <button class="btn btn-outline-secondary theme-toggle"
-type="button"
-@click="toggleTheme"
-                :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'">
-                <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
-              </button>
-            </li>
+          <!-- Right: Login/User Menu -->
+          <ul class="navbar-nav ms-auto">
+              <li class="nav-item me-2 d-none d-lg-inline">
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/43/?title=Bug:%20WikiEval%20&projects=Tool-wikicontest&subscribers=Agamyasamuel"
+  target="_blank"
+  rel="noopener noreferrer"
+                  class="nav-link text-muted small py-1"
+  title="Report a bug">
+                  <i class="fas fa-bug me-1"></i>Report a bug
+                </a>
+              </li>
+              <li class="nav-item d-none d-lg-inline">
+                <a href="https://phabricator.wikimedia.org/maniphest/task/edit/form/102/?title=Feature%20Request:%20WikiEval%20&projects=Tool-wikicontest&subscribers=Agamyasamuel"
+  target="_blank"
+  rel="noopener noreferrer"
+                  class="nav-link text-muted small py-1"
+  title="Request a feature">
+                  <i class="fas fa-lightbulb me-1"></i>Request a feature
+                </a>
+              </li>
             <!-- Show login button when not authenticated -->
             <template v-if="!isAuthenticated">
               <li class="nav-item">
                 <a :href="`${getApiBaseUrl()}/user/oauth/login`"
-class="btn btn-login-brand"
+ class="btn btn-login-brand"
                   style="text-decoration: none; display: inline-block;"
-title="Log in using Wikimedia OAuth 1.0a">
+ title="Log in using Wikimedia OAuth 1.0a">
                   <i class="fab fa-wikipedia-w me-2"></i>Log in
                 </a>
               </li>
@@ -59,32 +52,35 @@ title="Log in using Wikimedia OAuth 1.0a">
               <li class="nav-item">
                 <div class="dropdown">
                   <button class="btn btn-outline-secondary dropdown-toggle"
-type="button"
-id="userDropdown"
+ type="button"
+ id="userDropdown"
                     data-bs-toggle="dropdown">
                     <i class="fas fa-user me-1"></i>{{ currentUser?.username || 'User' }}
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end">
+                    <li><router-link class="dropdown-item" to="/">Home</router-link></li>
+                    <li><router-link class="dropdown-item" to="/contests">Contests</router-link></li>
+                    <li v-if="isAuthenticated">
+                      <router-link class="dropdown-item" to="/dashboard">Dashboard</router-link>
+                    </li>
+                    <li v-if="dashboardAccess?.organizer">
+                      <router-link class="dropdown-item" to="/organizer/dashboard">Organizer</router-link>
+                    </li>
+                    <li v-if="dashboardAccess?.jury">
+                      <router-link class="dropdown-item" to="/jury/dashboard">Jury</router-link>
+                    </li>
+                    <li v-if="isSuperadmin">
+                      <router-link class="dropdown-item" to="/manage-trusted-members">
+                        Manage Trusted Members
+                      </router-link>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
                     <li>
                       <router-link class="dropdown-item" to="/profile">
                         <i class="fas fa-user me-2"></i>Profile
                       </router-link>
                     </li>
-                    <!-- Trusted Members link - only visible to superadmins -->
-                    <li v-if="isSuperadmin">
-                      <router-link class="dropdown-item" to="/trusted-members">
-                        <i class="fas fa-user-shield me-2"></i>Trusted Members
-                      </router-link>
-                    </li>
-                    <!-- Jury Dashboard link - only visible to jury members -->
-                    <li v-if="isJury">
-                      <router-link class="dropdown-item" to="/jurydashboard">
-                        <i class="fas fa-tachometer-alt me-2"></i>Jury Dashboard
-                      </router-link>
-                    </li>
-                    <li>
-                      <hr class="dropdown-divider" />
-                    </li>
+                    <li><hr class="dropdown-divider" /></li>
                     <li>
                       <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
                         <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -94,6 +90,30 @@ id="userDropdown"
                 </div>
               </li>
             </template>
+            <!-- Show theme switcher for all users -->
+            <li class="nav-item">
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle"
+ type="button"
+ id="themeDropdown"
+                  data-bs-toggle="dropdown"
+                  title="Switch theme">
+                  <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="#" @click.prevent="setTheme('light')">
+                      <i class="fas fa-sun me-2"></i>Light mode
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="#" @click.prevent="setTheme('dark')">
+                      <i class="fas fa-moon me-2"></i>Dark mode
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -110,11 +130,10 @@ id="userDropdown"
 </template>
 
 <script>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useStore } from './store'
 import { useRouter } from 'vue-router'
 import AlertContainer from './components/AlertContainer.vue'
-import api from './services/api'
 
 export default {
   name: 'App',
@@ -124,12 +143,12 @@ export default {
   setup() {
     const store = useStore()
     const router = useRouter()
-    const isJury = ref(false)
 
     // Access reactive store properties directly without wrapping
     const isAuthenticated = store.isAuthenticated
     const currentUser = store.currentUser
     const theme = store.theme
+    const dashboardAccess = store.dashboardAccess
 
     // Check if user is superadmin
     const isSuperadmin = computed(() => {
@@ -137,9 +156,9 @@ export default {
       return String(role).toLowerCase() === 'superadmin'
     })
 
-    // Toggle between light and dark theme
-    const toggleTheme = () => {
-      store.toggleTheme()
+    // Set theme to light or dark mode
+    const setTheme = (mode) => {
+      store.setTheme(mode)
     }
 
     // Return appropriate API base URL based on environment
@@ -162,23 +181,13 @@ export default {
 
       // Verify user authentication status
       try {
-        // Force a fresh auth check - this will clear state if not authenticated
         await store.checkAuth()
       } catch (error) {
-        // Silently fail - user is not authenticated
-        // This is normal for users who aren't logged in
-        // checkAuth already clears state on error
         console.log('Auth check completed - user not logged in')
       }
-      // Determine if user has jury privileges
-      try {
-        const data = await api.get('/user/dashboard')
 
-        // Frontend-only check: user is jury if they have assigned contests
-        isJury.value = Array.isArray(data.jury_contests) && data.jury_contests.length > 0
-      } catch (e) {
-        isJury.value = false
-      }
+      // Load dashboard access permissions
+      await store.loadDashboardAccess()
     })
 
     // Handle user logout and cleanup
@@ -213,10 +222,10 @@ export default {
       isAuthenticated,
       currentUser,
       theme,
-      toggleTheme,
+      dashboardAccess,
+      setTheme,
       handleLogout,
       getApiBaseUrl,
-      isJury,
       isSuperadmin
     }
   }
@@ -292,7 +301,7 @@ input {
   text-decoration: none !important;
 }
 
-/* Dark mode - WikiContest in white, no underline */
+/* Dark mode - WikiEval in white, no underline */
 [data-theme="dark"] .navbar-brand {
   color: #ffffff !important;
   text-decoration: none !important;
@@ -402,24 +411,6 @@ input {
 }
 
 /* Theme Toggle Button - professional */
-.theme-toggle {
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  border: 1px solid var(--wiki-border);
-  background-color: transparent;
-  color: var(--wiki-text);
-}
-
-.theme-toggle:hover {
-  background: var(--wiki-hover-bg);
-  border-color: var(--wiki-primary);
-  color: var(--wiki-primary);
-}
-
-[data-theme="dark"] .theme-toggle:hover {
-  background: var(--wiki-hover-bg);
-}
-
 .dropdown-menu {
   border-radius: 4px;
   padding: 0.25rem 0;

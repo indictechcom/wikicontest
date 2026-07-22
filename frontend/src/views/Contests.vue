@@ -2,7 +2,7 @@
   <div class="container py-5">
     <!-- Page Header with Create Button -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
-      <h2 class="mb-3 mb-sm-0">Contests</h2>
+      <h2 class="page-header mb-0">Contests</h2>
       <!-- Show Create Contest button for superadmin users (they can create contests directly) -->
       <button
         v-if="isAuthenticated && isSuperadmin"
@@ -29,41 +29,52 @@
       <!-- Show Re-request Contest Creator Rights button for users whose request was rejected -->
       <button
         v-else-if="isAuthenticated && requestStatus === 'rejected'"
-        class="btn btn-secondary"
+        class="btn btn-outline-primary"
         @click="showRequestTrustedMemberModal"
       >
-        <i class="fas fa-redo me-2"></i>Re-request Contest Creator Rights
+        <i class="fas fa-redo me-2"></i>Apply Again
       </button>
       <!-- Show Request Contest Creator Rights button for users who have never requested -->
       <button
         v-else-if="isAuthenticated && canRequest"
-        class="btn btn-secondary"
+        class="btn btn-outline-primary"
         @click="showRequestTrustedMemberModal"
       >
-        <i class="fas fa-user-plus me-2"></i>Request Contest Creator Rights
+        <i class="fas fa-user-plus me-2"></i>Request Creator Access
       </button>
+    </div>
+
+    <!-- Login CTA for unauthenticated visitors -->
+    <div v-if="!isAuthenticated" class="alert alert-info d-flex align-items-center justify-content-between mb-4">
+      <span>
+        <i class="fas fa-info-circle me-2"></i>
+        Log in with Wikimedia to participate in contests and track your progress.
+      </span>
+      <a :href="loginUrl" class="btn btn-sm btn-primary ms-3" style="white-space: nowrap;">
+        <i class="fab fa-wikipedia-w me-1"></i>Log in
+      </a>
     </div>
 
     <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
-        <button class="nav-link"
+          <button class="nav-link"
 :class="{ active: activeCategory === 'current' }"
-          @click="setActiveCategory('current')">
-          Current
-        </button>
+            @click="setActiveCategory('current')">
+            Current <span class="tab-count">({{ currentCount }})</span>
+          </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link"
+          <button class="nav-link"
 :class="{ active: activeCategory === 'upcoming' }"
-          @click="setActiveCategory('upcoming')">
-          Upcoming
-        </button>
+            @click="setActiveCategory('upcoming')">
+            Upcoming <span class="tab-count">({{ upcomingCount }})</span>
+          </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
-          Past
-        </button>
+          <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
+            Past <span class="tab-count">({{ pastCount }})</span>
+          </button>
       </li>
     </ul>
 
@@ -159,11 +170,6 @@ class="organizer-avatar organizer-more"
       @submitted="handleArticleSubmitted"
     />
 
-    <CreateContestModal
-      ref="createContestModal"
-      @created="handleContestCreated"
-    />
-
     <RequestContestModal
       ref="requestContestModal"
       @requested="handleContestRequested"
@@ -178,12 +184,10 @@ class="organizer-avatar organizer-more"
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useStore } from '../store'
 import { showAlert } from '../utils/alerts'
-import { slugify } from '../utils/slugify'
-import CreateContestModal from '../components/CreateContestModal.vue'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import RequestContestModal from '../components/RequestContestModal.vue'
 import RequestTrustedMemberModal from '../components/RequestTrustedMemberModal.vue'
@@ -191,18 +195,32 @@ import RequestTrustedMemberModal from '../components/RequestTrustedMemberModal.v
 export default {
   name: 'Contests',
   components: {
-    CreateContestModal,
     SubmitArticleModal,
     RequestContestModal,
     RequestTrustedMemberModal
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const store = useStore()
+    const VALID_CATEGORIES = ['current', 'upcoming', 'past']
     const activeCategory = ref('current')
+
+    // Restore the active subsection from the URL query parameter (?tab=...)
+    const getCategoryFromUrl = () => {
+      const tab = route.query.tab
+      return VALID_CATEGORIES.includes(tab) ? tab : 'current'
+    }
+
+    // Reflect the active subsection in the URL and push into browser history.
+    // The URL always shows the current tab, including the default "current".
+    const syncUrlWithCategory = (category) => {
+      if (route.query.tab !== category) {
+        router.push({ name: route.name, query: { ...route.query, tab: category } })
+      }
+    }
     const loading = ref(false)
     const submittingToContestId = ref(null)
-    const createContestModal = ref(null)
     const showRequestTrustedMemberForm = ref(false)
 
     // Get contests for currently selected category
@@ -210,7 +228,24 @@ export default {
       return store.getContestsByCategory(activeCategory.value)
     })
 
+    const currentCount = computed(() =>
+      store.contests.value.current?.length || 0
+    )
+    const upcomingCount = computed(() =>
+      store.contests.value.upcoming?.length || 0
+    )
+    const pastCount = computed(() =>
+      store.contests.value.past?.length || 0
+    )
+
     const isAuthenticated = computed(() => store.isAuthenticated)
+
+    const loginUrl = computed(() => {
+      if (import.meta.env.DEV) {
+        return 'http://localhost:5000/api/user/oauth/login'
+      }
+      return '/api/user/oauth/login'
+    })
 
     // Check if user is superadmin (explicit check for button visibility)
     // Access currentUser.value since it's a computed property
@@ -271,7 +306,8 @@ export default {
     // Check if user can request (never requested OR was rejected)
     const canRequest = computed(() => {
       const status = requestStatus.value
-      return !isSuperadmin.value &&
+      return isAuthenticated.value &&
+             !isSuperadmin.value &&
              !canCreateContests.value &&
              (!status || status === 'rejected')
     })
@@ -330,6 +366,7 @@ export default {
     // Switch between current, upcoming, and past contests
     const setActiveCategory = (category) => {
       activeCategory.value = category
+      syncUrlWithCategory(category)
     }
 
     // Truncate long text with ellipsis
@@ -420,13 +457,12 @@ export default {
         contestData = currentContests.value.find(c => c.id === parseInt(contest))
       }
 
-      if (!contestData || !contestData.name) {
+      if (!contestData || !contestData.id) {
         showAlert('Contest not found', 'danger')
         return
       }
 
-      const contestSlug = slugify(contestData.name)
-      router.push({ name: 'ContestView', params: { name: contestSlug } })
+      router.push({ name: 'ContestView', params: { contestId: contestData.id } })
     }
 
     // Open modal to create new contest
@@ -436,11 +472,7 @@ export default {
         return
       }
 
-      const modalElement = document.getElementById('createContestModal')
-      if (modalElement) {
-        const modal = new bootstrap.Modal(modalElement)
-        modal.show()
-      }
+      router.push({ name: 'CreateContest' })
     }
 
     // Open modal to request contest creation
@@ -532,6 +564,10 @@ export default {
 
     // Load contests on component mount
     onMounted(async () => {
+      // Restore the active subsection from the shared URL, if present
+      activeCategory.value = getCategoryFromUrl()
+      // Default the URL bar to showing the current tab
+      syncUrlWithCategory(activeCategory.value)
       loading.value = true
       try {
         await store.loadContests()
@@ -542,17 +578,32 @@ export default {
       }
     })
 
+    // Keep the active subsection in sync when the URL changes
+    // (e.g. a shared link is opened, or the user uses back/forward navigation)
+    watch(
+      () => route.query.tab,
+      (tab) => {
+        const category = VALID_CATEGORIES.includes(tab) ? tab : 'current'
+        if (category !== activeCategory.value) {
+          activeCategory.value = category
+        }
+      }
+    )
+
     return {
       activeCategory,
       currentContests,
+      currentCount,
+      upcomingCount,
+      pastCount,
       loading,
       isAuthenticated,
+      loginUrl,
       isSuperadmin,
       canCreateContests,
       requestStatus,
       canRequest,
       submittingToContestId,
-      createContestModal,
       showRequestTrustedMemberForm,
       setActiveCategory,
       truncateText,
@@ -581,7 +632,7 @@ export default {
 <style scoped>
 /* Contests Page Styling with Wikipedia Colors */
 
-/* Page Header */
+/* Page Title / Header */
 h2 {
   color: var(--wiki-dark);
   font-weight: 700;
@@ -590,6 +641,19 @@ h2 {
 }
 
 [data-theme="dark"] h2 {
+  color: #ffffff !important;
+}
+
+h2.page-header {
+  font-size: 2rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--wiki-primary);
+  padding-bottom: 0.5rem;
+  margin-bottom: 2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] h2.page-header {
   color: #ffffff !important;
 }
 
@@ -642,6 +706,18 @@ h2 {
   border-bottom: 1px solid var(--wiki-border);
   margin-bottom: 2rem;
   transition: border-color 0.3s ease;
+}
+
+.tab-count {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--wiki-text-muted);
+  margin-left: 0.35rem;
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .tab-count {
+  color: #aaa;
 }
 
 .nav-tabs .nav-link {

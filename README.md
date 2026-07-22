@@ -1,4 +1,4 @@
-# WikiContest Platform
+# WikiEval Platform
 
 A comprehensive web platform for hosting and managing collaborative Wikipedia article competitions. Built with Flask (Python) backend and Vue.js 3 frontend.
 
@@ -11,7 +11,7 @@ A comprehensive web platform for hosting and managing collaborative Wikipedia ar
 - [Running the Application](#running-the-application)
 - [OAuth Setup](#oauth-setup)
 - [Testing](#testing)
-- [Production Deployment](#production-deployment)
+- [Production Deployment](#production-deployment-toolforge)
 - [Project Structure](#project-structure)
 - [Frontend Technology](#frontend-technology)
 - [Contributing](#contributing)
@@ -43,13 +43,13 @@ Before you begin, ensure you have the following installed:
 
 ## Quick Start
 
-Follow these steps to get the WikiContest platform running locally:
+Follow these steps to get the WikiEval platform running locally:
 
 ### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
-cd wikicontest/backend
+cd WikiEval/backend
 ```
 
 ### 2. Create Virtual Environment
@@ -79,14 +79,14 @@ pip install -r requirements.txt
 mysql -u root -p
 
 # Create database
-CREATE DATABASE wikicontest;
+CREATE DATABASE WikiEval;
 ```
 
 **Option B: SQLite (Quick Testing)**
 
 Skip MySQL setup and use SQLite by editing `.env` (step 5) to use:
 ```env
-DATABASE_URL=sqlite:///wikicontest.db
+DATABASE_URL=sqlite:///WikiEval.db
 ```
 
 ### 5. Configure Environment
@@ -101,7 +101,7 @@ cp .env.example .env
 
 **Example `.env` configuration:**
 ```env
-DATABASE_URL=mysql+pymysql://root:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://root:password@localhost/WikiEval
 SECRET_KEY=your-secret-key-here
 JWT_SECRET_KEY=your-jwt-secret-here
 ```
@@ -164,7 +164,8 @@ python main.py
 - **Development Mode:** `http://localhost:5173`
 - **Production Build:** `http://localhost:5000`
 
-You should see the WikiContest login page. Register a new account to get started!
+You should see the WikiEval login page. Register a new account to get started!
+
 
 
 
@@ -176,7 +177,7 @@ The `.env.example` file contains all available configuration options. Copy it to
 
 ```env
 # Database Configuration
-DATABASE_URL=mysql+pymysql://username:password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://username:password@localhost/WikiEval
 
 # Security Keys (CHANGE IN PRODUCTION!)
 SECRET_KEY=your-secret-key-here
@@ -279,27 +280,6 @@ CONSUMER_SECRET=your-consumer-secret-from-registration
 
 ## Testing
 
-### Manual Testing
-
-```bash
-# Ensure migrations are applied
-alembic upgrade head
-
-# Start the application
-python main.py
-
-# Open http://localhost:5000 (or http://localhost:5173 in dev mode)
-```
-
-### Test the Following Features:
-
-- User registration and login
-- Contest creation
-- Article submission
-- Dashboard functionality
-- Leaderboard display
-- OAuth login (if configured)
-
 ### Automated Tests
 
 ```bash
@@ -313,73 +293,97 @@ pytest
 pytest --cov=app tests/
 ```
 
+### Pre-Push Hook
 
-
-## Production Deployment
-
-### 1. Setup Production Environment
-
-Configure production environment variables:
+This repository includes a pre-push hook that runs the full backend test suite before allowing a push. To install it:
 
 ```bash
-export FLASK_ENV=production
-export FLASK_DEBUG=False
-export DATABASE_URL=mysql+pymysql://user:pass@prod-host/wikicontest
-export SECRET_KEY=strong-random-production-key
-export JWT_SECRET_KEY=strong-random-jwt-key
+# Copy the hook to git's hooks directory (already done if you cloned the repo)
+cp .git/hooks/pre-push .git/hooks/pre-push
+
+# Or use the shared hooks directory
+git config core.hooksPath .githooks
 ```
 
-### 2. Build Frontend
+The hook runs `pytest tests/ -v` from the `backend` directory. If any tests fail, the push is aborted.
+
+### Continuous Integration
+
+Tests are also run automatically via GitHub Actions on every push and pull request to `main`. See `.github/workflows/test.yml` for the workflow configuration.
+
+
+
+## Production Deployment (Toolforge)
+
+WikiEval is deployed on [Wikimedia Toolforge](https://wikitech.wikimedia.org/wiki/Help:Toolforge) as a single tool.
+Flask (Gunicorn) serves both the API and the Vue.js static frontend — no separate Node.js proxy needed.
+
+**Live URL:** https://wikieval.toolforge.org
+
+### Quick Deploy
 
 ```bash
-cd frontend
-npm install
-npm run build
+# SSH to Toolforge
+ssh login.toolforge.org
+
+# Become the tool account
+become wikieval
+
+# Build from the ft/toolforge branch
+toolforge build start https://github.com/Agamya-Samuel/wikicontest.git --ref ft/toolforge
+
+# Start the service
+toolforge webservice --mount none buildservice start
 ```
 
-### 3. Apply Database Migrations
+### Environment Variables
+
+Set via `toolforge envvars create`:
 
 ```bash
-cd backend
+toolforge envvars create FLASK_ENV "production"
+toolforge envvars create CONSUMER_KEY "..."
+toolforge envvars create CONSUMER_SECRET "..."
+toolforge envvars create OAUTH_USE_OOB "True"
+toolforge envvars create OAUTH_CALLBACK_PATH "/oauth/callback"
+toolforge envvars create SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create JWT_SECRET_KEY "$(openssl rand -hex 32)"
+toolforge envvars create FRONTEND_URL "https://wikieval.toolforge.org"
+toolforge envvars create TOOL_TOOLSDB_USER "..."
+toolforge envvars create TOOL_TOOLSDB_PASSWORD "..."
+toolforge envvars create TOOL_TOOLSDB_DBNAME "WikiEval"
+```
+
+### Full Guide
+
+See [`docs/TOOLFORGE_DEPLOYMENT.md`](docs/TOOLFORGE_DEPLOYMENT.md) for detailed instructions.
+
+### Generic Production (Non-Toolforge)
+
+For other hosting environments:
+
+```bash
+# Build frontend
+cd frontend && npm install && npm run build
+
+# Install dependencies
+cd ../backend && pip install -r requirements.txt
+
+# Run migrations
 alembic upgrade head
+
+# Start Gunicorn
+gunicorn -w 4 -b 0.0.0.0:5000 "wsgi:application"
 ```
 
-### 4. Run with Production Server
-
-```bash
-# Install Gunicorn
-pip install gunicorn
-
-# Run with 4 worker processes
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
-```
-
-### 5. Use Reverse Proxy (Recommended)
-
-Set up Nginx or Apache as a reverse proxy:
-
-**Example Nginx configuration:**
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Flask will serve the API at `/api/*` and the Vue.js SPA from `frontend/dist/` for all other routes.
 
 
 
 ## Project Structure
 
 ```
-wikicontest/
+WikiEval/
 ├── backend/                    # Flask backend application
 │   ├── main.py                # Application entry point
 │   ├── app/                   # Main application package
@@ -468,7 +472,7 @@ npm run preview
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### How to Contribute
 
@@ -503,6 +507,7 @@ We welcome contributions to the WikiContest platform!
 
 - **Backend Documentation:** [`backend/README.md`](backend/README.md)
 - **Frontend Setup Guide:** [`docs/VUE_FRONTEND_SETUP.md`](docs/VUE_FRONTEND_SETUP.md)
+- **OAuth 1.0a Registration Guide:** [`docs/OAUTH_1.0A_REGISTRATION_GUIDE.md`](docs/OAUTH_1.0A_REGISTRATION_GUIDE.md)
 - **Database Migrations:** [`docs/ALEMBIC_USAGE_GUIDE.md`](docs/ALEMBIC_USAGE_GUIDE.md)
 - **API Documentation:** See backend README for complete endpoint list
 
@@ -510,8 +515,8 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 
 
-**WikiContest Platform** - Empowering collaborative Wikipedia article competitions! 
+**WikiEval Platform** - Empowering collaborative Wikipedia article competitions! 

@@ -21,8 +21,8 @@ Register an OAuth consumer for local development on Wikimedia Meta.
    
    | Field                       | Value                                                  |
    |-----------------------------|--------------------------------------------------------|
-   | **Application name**        | WikiContest Local Development (or your preferred name) |
-   | **Application description** | Local development instance of WikiContest              |
+   | **Application name**        | WikiEval Local Development (or your preferred name) |
+   | **Application description** | Local development instance of WikiEval              |
    | **OAuth "callback" URL**    | `http://localhost:5000/api/user/oauth/callback`        |
    | **Contact email**           | Your email address                                     |
    | **Grant settings**          | Request authorization for "Basic rights" (or required permissions) |
@@ -36,7 +36,7 @@ Register an OAuth consumer for local development on Wikimedia Meta.
 3. **Submit and save credentials:**
    
    After submission, you'll receive:
-   - **Consumer Key** (e.g., `3f383c834a07a181723f1a1de566f7cf`)
+   - **Consumer Key** (e.g., ``)
    - **Consumer Secret** (a long hexadecimal string)
    
    Copy both values – you'll need them in the next step.
@@ -70,7 +70,7 @@ Verify that OAuth authentication is working correctly.
 1. **Start the Flask server:**
 ```bash
    cd backend
-   python app.py
+   python main.py
 ```
 
 2. **Open your browser and navigate to:**
@@ -155,7 +155,7 @@ You should maintain separate OAuth consumers for different environments:
 | Environment | Callback URL |
 |-------------|-------------|
 | **Local Development** | `http://localhost:5000/api/user/oauth/callback` |
-| **Production/Toolforge** | `https://wikicontest.toolforge.org/oauth/callback` |
+| **Production/Toolforge** | `https://wikieval.toolforge.org/oauth/callback` |
 
 This separation ensures:
 - Local testing doesn't affect production authentication
@@ -175,6 +175,266 @@ Create a dedicated OAuth consumer for local development to:
 - Avoid conflicts with production OAuth settings
 - Test authentication flows safely
 - Maintain separate credentials for security
+
+
+## URL Components
+
+| Component    | Value                      | Notes |
+|--------------|----------------------------|-------|
+| **Protocol** | `http://`                  | NOT `https://` |
+| **Host**     | `localhost`                | NOT `127.0.0.1` or any domain name |
+| **Port**     | `5000`                     | Must match your Flask server port |
+| **Path**     | `/api/user/oauth/callback` | Exact path, no trailing slash |
+
+## Custom Port Configuration
+
+If your Flask server runs on a different port, adjust the callback URL accordingly.
+
+**Example for port 8000:**
+```
+http://localhost:8000/api/user/oauth/callback
+```
+
+**Example for port 3000:**
+```
+http://localhost:3000/api/user/oauth/callback
+```
+
+
+## Common Mistakes
+
+### Incorrect URLs
+
+| Wrong URL                                          | Issue                                      |
+|----------------------------------------------------|--------------------------------------------|
+| `https://localhost:5000/api/user/oauth/callback`   | Using `https://` instead of `http://`      |
+| `http://127.0.0.1:5000/api/user/oauth/callback`    | Using IP address instead of `localhost`    |
+| `http://localhost:5000/oauth/callback`             | Missing `/api/user` prefix                 |
+| `http://localhost/api/user/oauth/callback`         | Missing port number (`:5000`)              |
+| `http://localhost:5000/api/user/oauth/callback/`   | Extra trailing slash                       |
+| `https://wikieval.toolforge.org/oauth/callback` | Using production URL for local development |
+
+### Correct URL
+```
+http://localhost:5000/api/user/oauth/callback
+```
+
+
+## Post-Registration Steps
+
+After successfully registering your OAuth consumer:
+
+1. **Copy the credentials:**
+   - Consumer Key
+   - Consumer Secret
+
+2. **Update your configuration file:**
+
+   **File: `backend/.env`**
+```env
+   CONSUMER_KEY=your-consumer-key-here
+   CONSUMER_SECRET=your-consumer-secret-here
+   OAUTH_USE_OOB=False
+```
+
+3. **Restart the Flask server:**
+```bash
+   cd backend
+   python main.py
+```
+
+4. **Test OAuth authentication:**
+   - Navigate to `http://localhost:5000`
+   - Click "Login with Wikimedia"
+   - Authorize the application
+   - Verify successful redirect and login
+
+
+## Detailed Registration Form
+
+When completing the OAuth consumer registration form on Wikimedia Meta:
+
+#### Application Name
+```
+WikiEval Local Development
+```
+**Note:** Use a different name from your Toolforge consumer to distinguish between environments.
+
+#### OAuth Protocol Version
+```
+OAuth 1.0a
+```
+
+#### Application Description
+```
+Local development instance of WikiEval for testing and development purposes
+```
+
+#### OAuth "callback" URL
+```
+http://localhost:5000/api/user/oauth/callback
+```
+
+**CRITICAL - Must be EXACTLY:**
+- **Protocol:** `http://` (NOT `https://`)
+- **Host:** `localhost` (NOT `127.0.0.1` or any domain)
+- **Port:** `5000` (must match your Flask server port)
+- **Path:** `/api/user/oauth/callback` (exact path, no trailing slash)
+
+#### Allow Consumer to Specify a Callback in Requests
+```
+☐ No (Leave unchecked)
+```
+
+#### Owner-only
+```
+☐ No (Leave unchecked)
+```
+
+#### Applicable Grants / Permissions
+```
+☑ Basic rights (user rights)
+```
+
+### Step 3: Submit and Save Credentials
+
+After clicking **"Propose consumer"**, you'll receive:
+
+- **Consumer Key:**
+- **Consumer Secret:**
+
+**CRITICAL:** Copy BOTH credentials immediately! The consumer secret is only displayed once. If you lose it, you'll need to create a new consumer.
+
+
+## Why You Need Separate Consumers
+
+OAuth consumers are environment-specific because callback URLs are fixed and cannot be changed after registration.
+
+| Environment                                           | Consumer | Callback URL       |
+|--|-|--|
+| **Local Development**                                 | WikiEval Local Development | `http://localhost:5000/api/user/oauth/callback` |
+| **Production (Toolforge)**                            | WikiEval                   | `https://wikieval.toolforge.org/oauth/callback` |
+
+**Benefits of separation:**
+- Test OAuth flows safely without affecting production
+- Different callback URLs for different environments
+- Separate credentials for better security
+- Independent consumer management
+
+
+## Debugging Callback Issues
+
+### Possibility 1: Consumer Registered with "oob"
+
+Your OAuth consumer may have been registered with **"oob"** (out-of-band) authentication instead of a specific callback URL.
+
+**Check Your Consumer Registration:**
+1. Navigate to: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
+2. Find your consumer and click **"Update"** or **"Manage"**
+3. Check the callback URL field:
+
+| Callback URL Value                              | Status   | Issue                          |
+|-------------------------------------------------|----------|--------------------------------|
+| `oob`                                           | Problem  | Consumer registered for out-of-band authentication |
+| `http://localhost:5000/api/user/oauth/callback` | Correct  | Consumer properly configured for callback |
+| Empty or missing                                | Problem  | No callback URL specified      |
+
+**Solution Options:**
+
+**Option 1: Update the Consumer (If Possible)**
+1. Click **"Update"** on your consumer
+2. Change **"OAuth 'callback' URL"** to: `http://localhost:5000/api/user/oauth/callback`
+3. Save changes
+4. Restart your Flask server
+
+**Note:** Not all consumer settings can be modified after approval. If the callback URL field is read-only, use Option 2.
+
+**Option 2: Use Out-of-Band Authentication**
+If you cannot update the consumer, configure your application to use out-of-band authentication:
+
+**File: `backend/.env`**
+```env
+OAUTH_USE_OOB=True
+```
+
+**Restart Flask:**
+```bash
+cd backend
+python main.py
+```
+
+**How it works:**
+1. Click "Login with Wikimedia"
+2. You'll be redirected to Wikimedia and receive a verification code
+3. Manually enter the verification code in your application
+4. Authentication completes
+
+**Limitation:** This is less user-friendly than automatic callback authentication.
+
+### Possibility 2: Callback URL Mismatch
+
+The callback URL your application is sending doesn't match the registered callback URL.
+
+**What Must Match Exactly:**
+
+| Component | Registered Value           | Application Value          | Must Match |
+|-----------|----------------------------|----------------------------|------------|
+| Protocol  | `http://`                  | `http://`                  | Yes        |
+| Host      | `localhost`                | `localhost`                | Yes        |
+| Port      | `5000`                     | `5000`                     | Yes        |
+| Path      | `/api/user/oauth/callback` | `/api/user/oauth/callback` | Yes        |
+
+**Common Mismatches:**
+- **Wrong Protocol:** Registered: `http://...` Sent: `https://...`
+- **Wrong Host:** Registered: `http://localhost...` Sent: `http://127.0.0.1...`
+- **Wrong Port:** Registered: `http://localhost:5000...` Sent: `http://localhost:8000...`
+- **Wrong Path:** Registered: `/api/user/oauth/callback` Sent: `/oauth/callback`
+
+**How to Debug:**
+1. Check Flask console logs when you click "Login with Wikimedia"
+2. Look for the callback URL being used
+3. Compare with your registered callback URL at: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
+4. They must match exactly
+5. Check for common issues:
+   - Extra trailing slash: `/api/user/oauth/callback/`
+   - Missing path prefix: `/oauth/callback`
+   - Wrong protocol: `https://` instead of `http://`
+
+
+## Owner-only Consumer
+
+**Cause:** The OAuth consumer is set to "Owner-only: Yes", which restricts access to only the consumer owner.
+
+**Solution:**
+1. Create a new OAuth consumer
+2. Set **"Owner-only"** to **"No"** during registration
+3. Update your `.env` file with the new credentials
+
+
+## Consumer Not Approved Yet
+
+**Cause:** New OAuth consumers may require approval by Wikimedia administrators.
+
+**Solution:**
+- Most consumers with basic rights are approved automatically within a few minutes
+- Check your consumer status at: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
+- If approval is delayed, you may need to contact Wikimedia administrators
+
+
+## Verification Checklist
+
+After applying your fix, verify:
+
+- [ ] OAuth consumer found at https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
+- [ ] Callback URL is either `oob` or `http://localhost:5000/api/user/oauth/callback`
+- [ ] `.env` file has correct `CONSUMER_KEY` and `CONSUMER_SECRET`
+- [ ] `.env` file has `OAUTH_USE_OOB` set correctly:
+  - `True` if consumer uses "oob"
+  - `False` if consumer uses callback URL
+- [ ] Flask server restarted after configuration changes
+- [ ] OAuth login redirects properly
+- [ ] Authentication completes successfully
+
 
 ---
 

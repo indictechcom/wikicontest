@@ -1,6 +1,6 @@
-# WikiContest Flask Backend
+# WikiEval Flask Backend
 
-A Python Flask backend application for the WikiContest platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
+A Python Flask backend application for the WikiEval platform, converted from Node.js/Express to Python/Flask with SQLAlchemy ORM and MySQL database support.
 
 ## Table of Contents
 
@@ -71,12 +71,6 @@ backend/
 │   ├── init_db.py               # Database initialization
 │   ├── backfill_article_info.py # Backfill article metadata
 │   └── get_article_metadata.py  # Fetch article metadata
-├── toolforge/                   # Toolforge deployment files
-│   ├── toolforge_app.py
-│   ├── toolforge_config.toml
-│   ├── toolforge_index.html
-│   ├── toolforge_login.html
-│   └── toolforge_requirements.txt
 ├── tests/                       # Test files (pytest)
 ├── logs/                        # Application logs
 ├── docs/                        # Documentation
@@ -86,10 +80,8 @@ backend/
 │   └── SETUP_NEW_DATABASE.md
 ├── main.py                      # Application entry point
 ├── alembic.ini                  # Alembic configuration
-├── Makefile                     # Common commands
 ├── requirements.txt             # Python dependencies
 ├── setup.py                     # Setup script
-├── deploy_to_toolforge.sh       # Deployment script
 └── README.md                    # This file
 ```
 
@@ -143,9 +135,9 @@ pip install -r requirements.txt
 Run the following SQL commands to create the database and user:
 
 ```sql
-CREATE DATABASE wikicontest;
-CREATE USER 'wikicontest_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON wikicontest.* TO 'wikicontest_user'@'localhost';
+CREATE DATABASE WikiEval;
+CREATE USER 'WikiEval_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON WikiEval.* TO 'WikiEval_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -157,7 +149,7 @@ Create a `.env` file in the backend directory with the following variables:
 
 ```env
 # Database Configuration
-DATABASE_URL=mysql+pymysql://wikicontest_user:your_password@localhost/wikicontest
+DATABASE_URL=mysql+pymysql://WikiEval_user:your_password@localhost/WikiEval
 
 # Security Keys
 SECRET_KEY=your_secret_key_here
@@ -187,20 +179,6 @@ For detailed setup instructions, see [`docs/SETUP_NEW_DATABASE.md`](docs/SETUP_N
 
 ## Running the Application
 
-### Using Makefile (Recommended)
-
-The Makefile provides convenient commands for common tasks:
-
-```bash
-# Run the development server
-make run
-# or
-make dev
-
-# View all available commands
-make help
-```
-
 ### Manual Running
 
 **Start the Flask development server:**
@@ -225,7 +203,7 @@ For production environments, use a WSGI server like Gunicorn:
 
 ```bash
 pip install gunicorn
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
+gunicorn -w 4 -b 0.0.0.0:5000 "main:app"
 ```
 
 ## API Documentation
@@ -491,7 +469,7 @@ Deploy with Gunicorn for production:
 pip install gunicorn
 
 # Run with 4 worker processes
-gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
+gunicorn -w 4 -b 0.0.0.0:5000 "main:app"
 ```
 
 ### Using Nginx Reverse Proxy
@@ -516,8 +494,7 @@ server {
 ### Toolforge Deployment
 
 For Wikimedia Toolforge deployment:
-- See the `toolforge/` directory for deployment files
-- Use the `deploy_to_toolforge.sh` script for automated deployment
+- See [`docs/TOOLFORGE_DEPLOYMENT.md`](../docs/TOOLFORGE_DEPLOYMENT.md) for deployment instructions
 
 ## Project Architecture
 
@@ -613,7 +590,7 @@ Application logs are written to console by default.
 
 ## Contributing
 
-We welcome contributions to the WikiContest platform!
+We welcome contributions to the WikiEval platform!
 
 ### Guidelines
 
@@ -627,10 +604,11 @@ We welcome contributions to the WikiContest platform!
 
 ## License
 
-This project is part of the WikiContest platform.
+This project is part of the WikiEval platform.
 
 ## Additional Resources
 
+- [OAuth 1.0a Registration Guide](../docs/OAUTH_1.0A_REGISTRATION_GUIDE.md) - Step-by-step OAuth consumer registration
 - [Alembic Usage Guide](docs/ALEMBIC_USAGE_GUIDE.md)
 - [Database Setup Guide](docs/SETUP_NEW_DATABASE.md)
 - [Model Compatibility Guide](docs/ALEMBIC_MODEL_COMPATIBILITY.md)

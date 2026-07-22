@@ -1,5 +1,5 @@
 """
-Base Model for WikiContest Application
+Base Model for WikiEval Application
 Contains common database operations shared by all models
 """
 
@@ -29,8 +29,7 @@ class BaseModel(db.Model):
 
     def save(self):
         """
-        Save model instance to database
-        Adds instance to session and commits changes
+        Persist the model instance and its pending changes to the database.
         """
         # Add instance to current session (marks as pending)
         db.session.add(self)
@@ -41,8 +40,7 @@ class BaseModel(db.Model):
 
     def delete(self):
         """
-        Delete model instance from database
-        Removes instance from session and commits changes
+        Delete this model instance from the database.
         """
         # Mark instance for deletion in current session
         db.session.delete(self)

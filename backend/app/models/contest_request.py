@@ -1,13 +1,14 @@
 """
-Contest Request Model for WikiContest Application
+Contest Request Model for WikiEval Application
 Defines the ContestRequest table for tracking contest creation requests from non-privileged users
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import db
 from app.models.base_model import BaseModel
 from app.models.contest_mixin import ContestMixin
+import sqlalchemy as sa
 
 
 # ------------------------------------------------------------------------
@@ -87,13 +88,31 @@ class ContestRequest(BaseModel, ContestMixin):
     marks_setting_rejected = db.Column(db.Integer, default=0, nullable=False)
 
     # Request status and review information
-    status = db.Column(db.String(20), default="pending", nullable=False)  # pending, approved, rejected
+    status = db.Column(
+        sa.Enum('pending', 'approved', 'rejected',
+                name='contest_request_status_enum'),
+        nullable=False,
+        default="pending",
+    )
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
-    rejection_reason = db.Column(db.Text, nullable=True)  # Optional reason for rejection
+    rejection_reason = db.Column(db.Text, nullable=True)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        db.Index("ix_contest_requests_user_id", "user_id"),
+        db.Index("ix_contest_requests_status", "status"),
+    )
 
     # ------------------------------------------------------------------------
     # Relationships
@@ -111,13 +130,15 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def __init__(self, user_id, name, project_name, **kwargs):
         """
-        Initialize a new ContestRequest instance
+        Initialize a pending contest creation request.
         
-        Args:
-            user_id: ID of user making the request
-            name: Name of the contest
-            project_name: Name of the associated project
-            **kwargs: Additional contest attributes
+        Parameters:
+            user_id: ID of the user submitting the request.
+            name: Contest name.
+            project_name: Name of the associated project.
+            **kwargs: Optional contest details and configuration, including dates,
+                submission limits, participant lists, categories, rules, scoring
+                parameters, and template link.
         """
         self.user_id = user_id
         self.name = name
@@ -157,10 +178,10 @@ class ContestRequest(BaseModel, ContestMixin):
 
     def to_dict(self):
         """
-        Convert contest request instance to dictionary for JSON serialization
+        Serialize the contest request and its review metadata for API responses.
         
         Returns:
-            dict: Contest request data
+            dict: Contest request data with date values in ISO 8601 format and the requester's username when available.
         """
         return {
             "id": self.id,
@@ -191,5 +212,5 @@ class ContestRequest(BaseModel, ContestMixin):
         }
 
     def __repr__(self):
-        """String representation of ContestRequest instance"""
+        """Return a concise string representation identifying the contest request, its name, and submitting user."""
         return f"<ContestRequest {self.id}: {self.name} by user {self.user_id}>"

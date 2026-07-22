@@ -1,5 +1,5 @@
 """
-Submission Routes for WikiContest Application
+Submission Routes for WikiEval Application
 Handles submission management and review functionality
 """
 
@@ -7,7 +7,6 @@ import json
 from urllib.parse import urlparse
 from datetime import datetime
 
-import requests
 from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy.orm import joinedload
 
@@ -18,6 +17,7 @@ from app.middleware.auth import (
     require_submission_permission,
     validate_json_data,
 )
+from app.utils.url_validation import validate_wiki_url
 from app.models.contest import Contest
 from app.models.submission import Submission
 from app.utils import (
@@ -25,10 +25,9 @@ from app.utils import (
     extract_page_title_from_url,
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
-    get_mediawiki_headers,
     get_detailed_reference_counts,
-    MEDIAWIKI_API_TIMEOUT,
 )
+from app.services.mediawiki import MediaWikiClient
 
 # Create blueprint
 submission_bp = Blueprint("submission", __name__)
@@ -43,10 +42,10 @@ submission_bp = Blueprint("submission", __name__)
 @handle_errors
 def get_all_submissions():
     """
-    Get all submissions (admin only)
-
+    Retrieve all submissions for an administrator.
+    
     Returns:
-        JSON response with all submissions
+        JSON response containing serialized submissions with submitter information.
     """
     user = request.current_user
 
@@ -70,13 +69,13 @@ def get_all_submissions():
 @handle_errors
 def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
     """
-    Get a specific submission by ID
-
-    Args:
-        submission_id: Submission ID
-
+    Retrieve a submission by its identifier.
+    
+    Parameters:
+        submission_id: The identifier of the submission to retrieve.
+    
     Returns:
-        JSON response with submission data
+        A JSON response containing the submission data and a 200 status code.
     """
     # Submission is pre-loaded by middleware and attached to request
     submission = request.current_submission
@@ -91,13 +90,13 @@ def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
 @handle_errors
 def get_user_submissions(user_id):
     """
-    Get all submissions by a specific user
-
-    Args:
-        user_id: User ID
-
+    Retrieve submissions belonging to a user, subject to access permissions.
+    
+    Parameters:
+        user_id: ID of the user whose submissions are requested.
+    
     Returns:
-        JSON response with user's submissions
+        JSON response containing the user's submissions ordered from newest to oldest.
     """
     current_user = request.current_user
 
@@ -125,16 +124,13 @@ def get_user_submissions(user_id):
 @handle_errors
 def get_contest_submissions(contest_id):
     """
-    Retrieve all submissions for a specific contest.
-
-    This endpoint returns submissions with basic information.
-    Access is restricted to admins, contest creators, and jury members.
-
-    Args:
-        contest_id: The ID of the contest to get submissions for
-
+    Retrieve all submissions associated with a contest.
+    
+    Parameters:
+        contest_id (int): The ID of the contest.
+    
     Returns:
-        JSON response containing list of submission data
+        JSON response containing the contest's submissions, ordered from newest to oldest.
     """
     user = request.current_user
 
@@ -167,10 +163,10 @@ def get_contest_submissions(contest_id):
 @handle_errors
 def get_pending_submissions():
     """
-    Get all pending submissions that the user can judge
-
+    List pending submissions that the current user is authorized to judge.
+    
     Returns:
-        JSON response with pending submissions
+        Response: A JSON array of serialized judgeable submissions.
     """
     user = request.current_user
 
@@ -196,10 +192,10 @@ def get_pending_submissions():
 @handle_errors
 def get_submission_stats():
     """
-    Get submission statistics for the current user
-
+    Summarize the current user's submission activity and scores.
+    
     Returns:
-        JSON response with submission statistics
+        JSON response containing submission counts by status, total score, and acceptance rate.
     """
     user = request.current_user
 
@@ -215,13 +211,9 @@ def get_submission_stats():
         user_id=user.id, status="pending"
     ).count()
 
-    # Get total score from all submissions
-    total_score = (
-        db.session.query(db.func.sum(Submission.score))
-        .filter_by(user_id=user.id)
-        .scalar()
-        or 0
-    )
+    # Get total score from the user's denormalized score column
+    # (kept consistent via Submission.update_status() delta-based updates)
+    total_score = user.score
 
     return (
         jsonify(
@@ -251,23 +243,17 @@ def get_submission_stats():
 @handle_errors
 def refresh_metadata(contest_id):
     """
-    Refresh article metadata for submissions in a contest.
-
-    Supports offset-based pagination so large contests can be processed in
-    multiple smaller batches without hitting server or MediaWiki API timeouts.
-
+    Refresh article metadata for submissions in a contest and evaluate submissions in automated contests.
+    
+    Parameters:
+        contest_id (int): Identifier of the contest whose submissions are refreshed.
+    
     Query parameters:
-        offset     (int, default 0)  — how many submissions to skip before
-                                       starting this batch.
-        batch_size (int, default 50) — how many submissions to process in this
-                                       call. Capped at 100 to prevent timeouts.
-
-    Response includes pagination fields:
-        has_more    — True if there are more submissions after this batch.
-        next_offset — Pass this as `offset` in the next request.
-        total_count — Total number of submissions in the contest.
-
-    PR #198 Comment #11.
+        offset (int): Number of submissions to skip before processing.
+        batch_size (int): Number of submissions to process, limited to 50.
+    
+    Returns:
+        JSON response containing update counts and, for automated contests, pagination metadata.
     """
     user = request.current_user
 
@@ -297,48 +283,37 @@ def refresh_metadata(contest_id):
     # For simple / multi-parameter contests we preserve the original       #
     # behaviour: process every submission in a single request.             #
     # ------------------------------------------------------------------ #
-    if is_automated:
-        # IMPORTANT: Each article requires ~6 Wikipedia API calls in
-        # automated mode (revisions, refs, incoming/outgoing links,
-        # images, infoboxes).  A batch of 50 = ~300 network calls which
-        # can easily take 10+ minutes and appear "stuck".
-        # Default is 10 (≈60 calls, completes in under 60 s).
-        _DEFAULT_BATCH_SIZE = 10
-        _MAX_BATCH_SIZE = 50
+    # IMPORTANT: Each article requires ~6 Wikipedia API calls in
+    # automated mode (revisions, refs, incoming/outgoing links,
+    # images, infoboxes).  A batch of 50 = ~300 network calls which
+    # can easily take 10+ minutes and appear "stuck".
+    # Default is 10 (≈60 calls, completes in under 60 s).
+    _DEFAULT_BATCH_SIZE = 10
+    _MAX_BATCH_SIZE = 50
 
-        try:
-            offset = max(0, int(request.args.get("offset", 0)))
-        except (ValueError, TypeError):
-            offset = 0
-
-        try:
-            batch_size = min(
-                max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
-                _MAX_BATCH_SIZE,
-            )
-        except (ValueError, TypeError):
-            batch_size = _DEFAULT_BATCH_SIZE
-
-        total_count = Submission.query.filter_by(contest_id=contest_id).count()
-
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .offset(offset)
-            .limit(batch_size)
-            .all()
-        )
-    else:
-        # Non-automated: fetch ALL submissions at once (original behaviour)
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+    except (ValueError, TypeError):
         offset = 0
-        submissions = (
-            Submission.query
-            .filter_by(contest_id=contest_id)
-            .order_by(Submission.id)
-            .all()
+
+    try:
+        batch_size = min(
+            max(1, int(request.args.get("batch_size", _DEFAULT_BATCH_SIZE))),
+            _MAX_BATCH_SIZE,
         )
-        total_count = len(submissions)
+    except (ValueError, TypeError):
+        batch_size = _DEFAULT_BATCH_SIZE
+
+    total_count = Submission.query.filter_by(contest_id=contest_id).count()
+
+    submissions = (
+        Submission.query
+        .filter_by(contest_id=contest_id)
+        .order_by(Submission.id)
+        .offset(offset)
+        .limit(batch_size)
+        .all()
+    )
 
     if not submissions:
         return (
@@ -362,7 +337,17 @@ def refresh_metadata(contest_id):
     # --- Helper Functions for Metadata Refresh ---
 
     def fetch_article_info(article_link):
-        """Fetch article information from MediaWiki API"""
+        """
+        Fetch metadata for a submitted MediaWiki article.
+        
+        Parameters:
+            article_link (str): URL of the submitted article.
+        
+        Returns:
+            dict | None: Article metadata containing authorship, creation timestamp,
+                current size, page ID, and latest revision timestamp, or `None` when
+                the article or usable revision data cannot be retrieved.
+        """
         try:
             # Extract page title from URL using shared utility function
             page_title = extract_page_title_from_url(article_link)
@@ -370,22 +355,19 @@ def refresh_metadata(contest_id):
                 return None
 
             # Parse the article URL to extract base URL
-            url_obj = urlparse(article_link)
-            base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+            base_url, error = validate_wiki_url(article_link)
+            if error:
+                return None
 
             # Build API request - get 2 revisions (newest and oldest)
             api_url = f"{base_url}/w/api.php"
             # Build API parameters using shared utility function
             api_params = build_mediawiki_revisions_api_params(page_title)
-            # Get headers using shared utility function
-            headers = get_mediawiki_headers()
 
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
-
-            if response.status_code != 200:
+            client = MediaWikiClient()
+            data = client.get(api_url, params=api_params)
+            if data is None:
                 return None
-
-            data = response.json()
 
             if "error" in data:
                 return None
@@ -444,11 +426,11 @@ def refresh_metadata(contest_id):
 
     def calculate_expansion_bytes(submission_item, article_info):
         """
-        Calculate expansion bytes relative to submission time.
-
-        Expansion bytes = current size - size at submission time (article_word_count)
-        This shows how much the article has grown or shrunk since it was submitted.
-        Only updates if there's an actual change in size.
+        Update the submission's article expansion bytes from its current and submission-time sizes.
+        
+        Parameters:
+            submission_item: Submission whose expansion value is updated.
+            article_info: Article metadata containing the current article size.
         """
         if not submission_item.article_link:
             return
@@ -458,9 +440,8 @@ def refresh_metadata(contest_id):
             # This is the current/latest size of the article from the API
             current_size = article_info.get("current_size")
 
-            # Get original size at submission time (article_word_count)
-            # This is the size when the article was submitted
-            original_size_at_submission = submission_item.article_word_count
+            # Get original size at submission time (article_byte_count)
+            original_size_at_submission = submission_item.article_byte_count
 
             # Calculate expansion bytes: current size - size at submission time
             # This shows the change since submission (can be positive or negative)
@@ -517,10 +498,10 @@ def refresh_metadata(contest_id):
                 else:
                     submission.article_created_at = None
 
-            # For crawler-imported submissions (no article_word_count), fetch it from API
+            # For crawler-imported submissions (no article_byte_count), fetch it from API
             # This is needed for automated evaluation
-            if not submission.article_word_count and info.get("current_size"):
-                submission.article_word_count = info["current_size"]
+            if not submission.article_byte_count and info.get("current_size"):
+                submission.article_byte_count = info["current_size"]
 
             if info.get("article_page_id"):
                 submission.article_page_id = info["article_page_id"]
@@ -582,7 +563,7 @@ def refresh_metadata(contest_id):
 
                     # Evaluate submission against automated criteria
                     submission_data = {
-                        "article_word_count": submission.article_word_count,
+                        "article_word_count": submission.article_byte_count,
                         "incoming_links": incoming,
                         "outgoing_links": outgoing,
                         "ref_new_count": submission.ref_new_count,
@@ -694,25 +675,20 @@ def refresh_metadata(contest_id):
 @handle_errors
 def delete_submission(submission_id):
     """
-    Delete a specific submission by ID.
-
-    Only admins, jury members of the contest, and contest creators/organizers
-    are allowed to delete submissions.  When a submission is deleted its score
-    is subtracted from the submitter's total so the leaderboard stays accurate.
-
-    Args:
-        submission_id: Submission ID
-
+    Delete a submission and adjust the submitter's total score.
+    
+    Parameters:
+        submission_id: ID of the submission to delete.
+    
     Returns:
-        JSON response confirming deletion
+        JSON response confirming deletion, or an error response with status 404,
+        403, or 500 when the submission is missing, deletion is unauthorized, or
+        deletion fails.
     """
     user = request.current_user
 
     # Load submission with related data for permission check and score update
-    submission = Submission.query.options(
-        joinedload(Submission.submitter),
-        joinedload(Submission.contest),
-    ).get(submission_id)
+    submission = db.session.get(Submission, submission_id)
 
     if not submission:
         return jsonify({"error": "Submission not found"}), 404
@@ -754,6 +730,16 @@ def delete_submission(submission_id):
 @handle_errors
 @validate_json_data(["status"])
 def review_submission(submission_id):  # pylint: disable=too-many-return-statements
+    """
+    Review a submission and apply the configured scoring rules.
+    
+    Parameters:
+        submission_id (int): Identifier of the submission to review.
+    
+    Returns:
+        tuple: A JSON response containing the reviewed submission, or an error
+            response when permission, validation, or update checks fail.
+    """
     user = request.current_user
     data = request.validated_data
 
@@ -837,7 +823,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (multi-parameter): {str(review_err)}")
+                current_app.logger.error(f"Review error (multi-parameter): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
@@ -854,7 +840,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
                 )
             except Exception as review_err:  # pylint: disable=broad-exception-caught
                 db.session.rollback()
-                print(f"Review error (rejected, multi): {str(review_err)}")
+                current_app.logger.error(f"Review error (rejected, multi): {str(review_err)}")
                 return jsonify({"error": "Internal server error"}), 500
 
     # --- Simple Scoring Mode ---
@@ -891,7 +877,7 @@ def review_submission(submission_id):  # pylint: disable=too-many-return-stateme
             )
         except Exception as review_err:  # pylint: disable=broad-exception-caught
             db.session.rollback()
-            print(f"Review error (simple): {str(review_err)}")
+            current_app.logger.error(f"Review error (simple): {str(review_err)}")
             return jsonify({"error": "Internal server error"}), 500
 
     return (

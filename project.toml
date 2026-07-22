@@ -1,0 +1,17 @@
+# Toolforge Build Service configuration
+[build-system]
+requires = ["heroku/nodejs", "heroku/python", "heroku/procfile"]
+
+[[build.buildpacks]]
+uri = "heroku/nodejs"
+
+[[build.buildpacks]]
+uri = "heroku/python"
+
+[[build.buildpacks]]
+uri = "heroku/procfile"
+
+# Enable npm install (including devDependencies) and run build scripts during build
+[build.env]
+USE_NPM_INSTALL = "true"
+NPM_RUN_SCRIPTS = "build,postinstall"

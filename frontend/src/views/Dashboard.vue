@@ -9,61 +9,76 @@
       </div>
     </div>
 
+    <!-- Error State -->
+    <div v-else-if="error" class="alert alert-danger">
+      <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+      <button class="btn btn-sm btn-outline-danger ms-3" @click="loadDashboard">Retry</button>
+    </div>
+
     <!-- Dashboard Content -->
     <div v-else-if="dashboardData">
-      <!-- Statistics Cards -->
-      <div class="row mb-4">
-        <div class="col-12 col-sm-6 col-md-4 mb-3 mb-md-4">
-          <div class="card text-center h-100">
+
+      <!-- Summary Stats Row (4 cards) -->
+      <div class="row mb-4 g-3">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Total Score</h5>
-              <h2 class="text-primary">{{ dashboardData.total_score || 0 }}</h2>
+              <h6 class="stat-label">Total Score</h6>
+              <h3 class="stat-value">{{ dashboardData.total_score || 0 }}</h3>
             </div>
           </div>
         </div>
-        <div class="col-12 col-sm-6 col-md-4 mb-3 mb-md-4">
-          <div class="card text-center h-100">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Participated Contests</h5>
-              <h2 class="text-success">{{ dashboardData.participated_contests?.length || 0 }}</h2>
+              <h6 class="stat-label">Contests Joined</h6>
+              <h3 class="stat-value">{{ dashboardData.participated_contests?.length || 0 }}</h3>
             </div>
           </div>
         </div>
-        <div class="col-12 col-sm-6 col-md-4 mb-3 mb-md-4">
-          <div class="card text-center h-100">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
             <div class="card-body">
-              <h5 class="card-title">Jury Member</h5>
-              <h2 class="text-warning">{{ dashboardData.jury_contests?.length || 0 }}</h2>
+              <h6 class="stat-label">Contests Organized</h6>
+              <h3 class="stat-value">{{ dashboardData.organized_contests?.length || 0 }}</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body">
+              <h6 class="stat-label">Jury Assignments</h6>
+              <h3 class="stat-value">{{ dashboardData.jury_contests?.length || 0 }}</h3>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Submissions and Scores -->
-      <div class="row">
-        <!-- Recent Submissions -->
-        <div class="col-12 col-md-6 mb-3 mb-md-4">
-          <h4 class="mb-3">Recent Submissions</h4>
-          <div class="card h-100">
+      <div class="row mb-4">
+        <div class="col-12 col-md-6 d-flex flex-column">
+          <h4 class="section-title">Recent Submissions</h4>
+          <div class="card flex-grow-1">
             <div class="card-body p-0">
               <div v-if="dashboardData.submissions_by_contest?.length > 0" class="scroll-area">
                 <div class="scroll-inner">
-                  <div v-for="contest in dashboardData.submissions_by_contest" :key="contest.contest_id"
-                    class="contest-group">
+                  <div
+                    v-for="contest in dashboardData.submissions_by_contest"
+                    :key="contest.contest_id"
+                    class="contest-group"
+                  >
                     <h6 class="contest-group-title">{{ contest.contest_name }}</h6>
-                    <div v-for="submission in contest.submissions" :key="submission.id"
+                    <div v-for="submission in contest.submissions"
+:key="submission.id"
                       class="submission-item d-flex justify-content-between align-items-center mb-2 flex-wrap"
                       :class="{ 'submission-clickable': submission.reviewed_at }"
                       @click="handleSubmissionClick(submission)">
-                      <span class="me-2 mb-1 submission-title">
-                        {{ submission.article_title }}
-                      </span>
+                      <span class="me-2 mb-1 submission-title">{{ submission.article_title }}</span>
                       <div class="d-flex align-items-center gap-2">
-                        <span :class="`badge bg-${getStatusColor(submission.status)}`">
-                          {{ submission.status }}
-                        </span>
-                        <button v-if="submission.reviewed_at" class="btn btn-sm btn-info feedback-btn"
-                          @click.stop="openFeedbackModal(submission)" title="View Feedback">
+                        <span :class="`badge bg-${getStatusColor(submission.status)}`">{{ submission.status }}</span>
+                        <button v-if="submission.reviewed_at"
+class="btn btn-sm btn-info feedback-btn"
+                          @click.stop="openFeedbackModal(submission)"
+ title="View Feedback">
                           <i class="fas fa-comment-dots"></i>
                         </button>
                       </div>
@@ -71,146 +86,140 @@
                   </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-submissions px-3 py-3">No submissions yet.</p>
+              <div v-else class="empty-state-inline">
+                <i class="fas fa-inbox empty-icon"></i>
+                <p class="empty-text">No submissions yet</p>
+                <p class="empty-subtext">Your submitted articles will appear here</p>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Contest Scores -->
-        <div class="col-12 col-md-6 mb-3 mb-md-4">
-          <h4 class="mb-3">Contest Scores</h4>
-          <div class="card h-100">
+        <div class="col-12 col-md-6 d-flex flex-column">
+          <h4 class="section-title">Contest Scores</h4>
+          <div class="card flex-grow-1">
             <div class="card-body p-0">
               <div v-if="dashboardData.contest_wise_scores?.length > 0" class="scroll-area">
                 <div class="scroll-inner">
-                  <div v-for="score in dashboardData.contest_wise_scores" :key="score.contest_id"
+                  <div v-for="score in dashboardData.contest_wise_scores"
+:key="score.contest_id"
                     class="score-item d-flex justify-content-between align-items-center flex-wrap">
                     <span class="score-name me-2">{{ score.contest_name }}</span>
                     <span class="badge bg-primary">{{ score.contest_score }} points</span>
                   </div>
                 </div>
               </div>
-              <p v-else class="text-muted no-scores px-3 py-3">No scores yet.</p>
+              <div v-else class="empty-state-inline">
+                <i class="fas fa-chart-bar empty-icon"></i>
+                <p class="empty-text">No scores yet</p>
+                <p class="empty-subtext">Scores from contests will appear here</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Participated Contests Table -->
-      <div class="row mt-4">
-        <div class="col-12">
-          <h4 class="mb-3">Participated Contests</h4>
-          <div class="card contests-table-card">
-            <div class="card-body p-0">
-
-              <div v-if="dashboardData.participated_contests?.length > 0" class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead>
-                    <tr>
-                      <th scope="col">Contest Name</th>
-                      <th scope="col">Project</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Submitted On</th>
-                      <th scope="col">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="contest in paginatedContests" :key="contest.id" @click="viewContest(contest.id)"
-                      class="table-row-clickable">
-                      <td>
-                        <div class="contest-name-cell">
-                          <i class="fas fa-trophy contest-icon"></i>
-                          <strong>{{ contest.name }}</strong>
-                        </div>
-                      </td>
-                      <td>
-                        <span class="project-name">{{ contest.project_name || 'N/A' }}</span>
-                      </td>
-                      <td>
-                        <span class="status-badge" :class="`status-${getStatusBadgeColor(contest.status)}`">
-                          <i :class="getStatusIcon(contest.status)"></i>
-                          {{ contest.status || 'Unknown' }}
-                        </span>
-                      </td>
-                      <td>
-                        <span class="date-cell">
-                          <i class="fas fa-calendar-alt date-icon"></i>
-                          {{ formatDate(contest.submitted_at) }}
-                        </span>
-                      </td>
-                      <td>
-                        <button class="btn btn-sm view-btn" @click.stop="viewContest(contest.id)">
-                          <i class="fas fa-eye me-1"></i>View
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <!-- Pagination Controls -->
-                <div v-if="totalPages > 1"
-                  class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-2 border-top pagination-bar">
-                  <span class="pagination-info">
-                    Showing {{ (currentPage - 1) * itemsPerPage + 1 }}–{{ Math.min(currentPage * itemsPerPage,
-                      dashboardData.participated_contests.length) }}
-                    of {{ dashboardData.participated_contests.length }} contests
-                  </span>
-                  <div class="d-flex gap-1 flex-wrap">
-                    <button class="btn btn-sm btn-outline-secondary pg-btn" :disabled="currentPage === 1"
-                      @click="currentPage--">
-                      ‹ Prev
+      <h4 class="section-title">Participated Contests</h4>
+      <div class="card contests-table-card">
+        <div class="card-body p-0">
+          <div v-if="dashboardData.participated_contests?.length > 0" class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Contest Name</th>
+                  <th>Project</th>
+                  <th>Status</th>
+                  <th>Submitted On</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="contest in paginatedParticipated"
+:key="contest.id"
+                  @click="viewContest(contest.id)"
+ class="table-row-clickable">
+                  <td>
+                    <div class="contest-name-cell">
+                      <i class="fas fa-trophy contest-icon"></i>
+                      <strong>{{ contest.name }}</strong>
+                    </div>
+                  </td>
+                  <td><span class="project-name">{{ contest.project_name || 'N/A' }}</span></td>
+                  <td>
+                    <span class="status-badge" :class="`status-${getStatusBadgeColor(contest.status)}`">
+                      <i :class="getStatusIcon(contest.status)"></i>
+                      {{ contest.status || 'Unknown' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="date-cell">
+                      <i class="fas fa-calendar-alt date-icon"></i>
+                      {{ formatDate(contest.submitted_at) }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-sm view-btn" @click.stop="viewContest(contest.id)">
+                      <i class="fas fa-eye me-1"></i>View
                     </button>
-                    <button v-for="page in totalPages" :key="page" class="btn btn-sm pg-btn"
-                      :class="page === currentPage ? 'btn-primary pg-active' : 'btn-outline-secondary'"
-                      @click="currentPage = page">
-                      {{ page }}
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary pg-btn" :disabled="currentPage === totalPages"
-                      @click="currentPage++">
-                      Next ›
-                    </button>
-                  </div>
-                </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
+            <!-- Pagination -->
+            <div v-if="participatedTotalPages > 1"
+              class="d-flex align-items-center flex-wrap gap-2 px-3 py-2 border-top pagination-bar">
+              <span class="pagination-info">
+                Showing {{ firstShown }}&ndash;{{ lastShown }}
+                of {{ participatedLength }} contests
+              </span>
+              <div class="d-flex gap-1 flex-wrap">
+                <button class="btn btn-sm btn-outline-secondary pg-btn"
+                  :disabled="participatedPage === 1"
+@click="participatedPage--">‹ Prev</button>
+                <button v-for="page in participatedTotalPages"
+:key="page"
+                  class="btn btn-sm pg-btn"
+                  :class="page === participatedPage ? 'btn-primary pg-active' : 'btn-outline-secondary'"
+                  @click="participatedPage = page">{{ page }}</button>
+                <button class="btn btn-sm btn-outline-secondary pg-btn"
+                  :disabled="participatedPage === participatedTotalPages"
+@click="participatedPage++">Next ›</button>
               </div>
+            </div>
+          </div>
 
-              <div v-else class="text-center py-5 px-3">
-                <div class="empty-state">
-                  <i class="fas fa-inbox empty-icon"></i>
-                  <p class="text-muted mb-0 no-contests">
-                    You haven't participated in any contests yet.
-                  </p>
-                </div>
+          <div v-else class="empty-state-block">
+            <div class="empty-state-content">
+              <div class="empty-state-icon">
+                <i class="fas fa-inbox"></i>
               </div>
-
+              <p class="empty-state-title">No participated contests yet</p>
+              <p class="empty-state-desc">Browse contests and join one to see your participation history here</p>
             </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="alert alert-danger">
-      {{ error }}
     </div>
 
     <!-- Submit Article Modal -->
-    <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+    <SubmitArticleModal v-if="submittingToContestId"
+:contest-id="submittingToContestId"
       @submitted="handleArticleSubmitted" />
 
     <!-- Jury Feedback Modal -->
-    <JuryFeedbackModal :submission="selectedSubmission" :reviewer-name="reviewerName"
+    <JuryFeedbackModal :submission="selectedSubmission"
+:reviewer-name="reviewerName"
       :loading-reviewer="loadingReviewer" />
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '../store'
 import api from '../services/api'
 import { showAlert } from '../utils/alerts'
-import { slugify } from '../utils/slugify'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import JuryFeedbackModal from '../components/JuryFeedbackModal.vue'
 
@@ -233,28 +242,39 @@ export default {
     const reviewerName = ref('')
     const loadingReviewer = ref(false)
 
-    // Pagination state
-    const currentPage = ref(1)
+    // Pagination for participated contests
+    const participatedPage = ref(1)
     const itemsPerPage = 5
 
-    // Paginated contests computed
-    const paginatedContests = computed(() => {
+    // Paginated participated contests
+    const paginatedParticipated = computed(() => {
       const contests = dashboardData.value?.participated_contests || []
-      const start = (currentPage.value - 1) * itemsPerPage
+      const start = (participatedPage.value - 1) * itemsPerPage
       return contests.slice(start, start + itemsPerPage)
     })
 
-    // Total pages computed
-    const totalPages = computed(() => {
+    const participatedTotalPages = computed(() => {
       const total = dashboardData.value?.participated_contests?.length || 0
       return Math.ceil(total / itemsPerPage)
+    })
+
+    const participatedLength = computed(() => {
+      return dashboardData.value?.participated_contests?.length || 0
+    })
+
+    const firstShown = computed(() => {
+      return (participatedPage.value - 1) * itemsPerPage + 1
+    })
+
+    const lastShown = computed(() => {
+      return Math.min(participatedPage.value * itemsPerPage, participatedLength.value)
     })
 
     // Load dashboard data
     const loadDashboard = async () => {
       loading.value = true
       error.value = null
-      currentPage.value = 1
+      participatedPage.value = 1
       try {
         const data = await api.get('/user/dashboard')
         dashboardData.value = data
@@ -266,12 +286,13 @@ export default {
       }
     }
 
-    // Get status color for badges
+    // Get status color for submission badges
     const getStatusColor = (status) => {
       const statusColors = {
         accepted: 'success',
         rejected: 'danger',
-        pending: 'warning'
+        pending: 'warning',
+        auto_rejected: 'danger'
       }
       return statusColors[status] || 'secondary'
     }
@@ -300,6 +321,19 @@ export default {
       return icons[status?.toLowerCase()] || 'fas fa-circle'
     }
 
+    // Get status label for contest status
+    const getStatusLabel = (status) => {
+      const labels = {
+        current: 'Active',
+        upcoming: 'Upcoming',
+        past: 'Past',
+        active: 'Active',
+        completed: 'Completed',
+        unknown: 'Unknown'
+      }
+      return labels[status?.toLowerCase()] || 'Unknown'
+    }
+
     // Format date for display
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
@@ -313,6 +347,28 @@ export default {
       } catch (e) {
         return dateString
       }
+    }
+
+    // Format date range for display
+    const formatDateRange = (startDate, endDate) => {
+      if (!startDate && !endDate) return ''
+      const format = (dateStr) => {
+        if (!dateStr) return ''
+        try {
+          const date = new Date(dateStr)
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        } catch (e) {
+          return dateStr
+        }
+      }
+      if (startDate && endDate) {
+        return `${format(startDate)} - ${format(endDate)}`
+      } else if (startDate) {
+        return `Starts: ${format(startDate)}`
+      } else if (endDate) {
+        return `Ends: ${format(endDate)}`
+      }
+      return ''
     }
 
     // Handle submission click (only if reviewed)
@@ -374,31 +430,30 @@ export default {
     const viewContest = (contestId) => {
       let contestData = null
 
-      if (dashboardData.value?.created_contests) {
-        contestData = dashboardData.value.created_contests.find(c => c.id === contestId)
+      if (dashboardData.value?.organized_contests) {
+        contestData = dashboardData.value.organized_contests.find(c => c.id === contestId)
       }
 
       if (!contestData && dashboardData.value?.participated_contests) {
         contestData = dashboardData.value.participated_contests.find(c => c.id === contestId)
       }
 
-      if (!contestData) {
+      if (!contestData && dashboardData.value?.jury_contests) {
+        contestData = dashboardData.value.jury_contests.find(c => c.id === contestId)
+      }
+
+      if (contestData?.id) {
+        router.push({ name: 'ContestView', params: { contestId: contestData.id } })
+      } else {
         api.get(`/contest/${contestId}`)
           .then(contest => {
-            if (contest?.name) {
-              router.push({ name: 'ContestView', params: { name: slugify(contest.name) } })
+            if (contest?.id) {
+              router.push({ name: 'ContestView', params: { contestId: contest.id } })
             } else {
               showAlert('Contest not found', 'danger')
             }
           })
           .catch(err => showAlert('Failed to load contest: ' + err.message, 'danger'))
-        return
-      }
-
-      if (contestData?.name) {
-        router.push({ name: 'ContestView', params: { name: slugify(contestData.name) } })
-      } else {
-        showAlert('Contest not found', 'danger')
       }
     }
 
@@ -438,14 +493,19 @@ export default {
       selectedSubmission,
       reviewerName,
       loadingReviewer,
-      currentPage,
+      participatedPage,
       itemsPerPage,
-      totalPages,
-      paginatedContests,
+      participatedTotalPages,
+      paginatedParticipated,
+      participatedLength,
+      firstShown,
+      lastShown,
       getStatusColor,
       getStatusBadgeColor,
       getStatusIcon,
+      getStatusLabel,
       formatDate,
+      formatDateRange,
       viewContest,
       handleSubmitArticle,
       handleArticleSubmitted,
@@ -465,13 +525,14 @@ h2.page-header {
   padding-bottom: 0.5rem;
   margin-bottom: 2rem;
   letter-spacing: -0.01em;
+  width: fit-content;
 }
 
 [data-theme="dark"] h2.page-header {
   color: #ffffff !important;
 }
 
-h4 {
+.section-title {
   color: var(--wiki-dark);
   font-size: 1.25rem;
   font-weight: 600;
@@ -479,27 +540,75 @@ h4 {
   letter-spacing: -0.01em;
 }
 
-[data-theme="dark"] h4 {
+[data-theme="dark"] .section-title {
   color: #ffffff !important;
 }
 
-
-
-.card {
-  border-radius: 4px;
+/* Stat Cards */
+.stat-card {
+  border-radius: 8px;
   border: 1px solid var(--wiki-border);
   background-color: var(--wiki-card-bg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-top: 3px solid var(--wiki-primary);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.08);
+  border-color: var(--wiki-primary);
+}
+
+[data-theme="dark"] .stat-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border-top-color: #006699;
+}
+
+[data-theme="dark"] .stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-color: #006699;
+}
+
+.stat-label {
+  color: var(--wiki-text-muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .stat-label {
+  color: #b8b8b8 !important;
+}
+
+.stat-value {
+  color: var(--wiki-dark);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+[data-theme="dark"] .stat-value {
+  color: #ffffff !important;
+}
+
+.card {
+  border-radius: 8px;
+  border: 1px solid var(--wiki-border);
+  background-color: var(--wiki-card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme="dark"] .card {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
   border-color: var(--wiki-primary);
-  box-shadow: 0 2px 8px rgba(0, 102, 153, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 102, 153, 0.08);
 }
 
 [data-theme="dark"] .card:hover {
@@ -507,44 +616,141 @@ h4 {
 }
 
 .card-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
-.card-title {
+/* Empty States */
+.empty-state-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.empty-state-inline .empty-icon {
+  font-size: 2rem;
+  color: var(--wiki-text-muted);
+  opacity: 0.35;
+  margin-bottom: 0.25rem;
+}
+
+.empty-state-inline .empty-text {
   color: var(--wiki-text-muted);
   font-weight: 500;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-[data-theme="dark"] .card-title {
-  color: #b8b8b8 !important;
-}
-
-h2.text-primary,
-h2.text-success,
-h2.text-warning {
-  font-size: 2.5rem !important;
-  font-weight: 700;
+  font-size: 0.95rem;
   margin: 0;
 }
 
-[data-theme="dark"] h2.text-primary {
-  color: #006699 !important;
+.empty-state-inline .empty-subtext {
+  color: var(--wiki-text-muted);
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin: 0;
 }
 
-[data-theme="dark"] h2.text-success {
-  color: #339966 !important;
+[data-theme="dark"] .empty-state-inline .empty-icon,
+[data-theme="dark"] .empty-state-inline .empty-text,
+[data-theme="dark"] .empty-state-inline .empty-subtext {
+  color: #b8b8b8 !important;
 }
 
-[data-theme="dark"] h2.text-warning {
-  color: #ffc107 !important;
+.empty-state-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(0, 102, 153, 0.02) 0%, rgba(0, 102, 153, 0.04) 100%);
+  border-radius: 0 0 8px 8px;
 }
 
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 360px;
+}
 
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 102, 153, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--wiki-primary);
+  margin-bottom: 0.5rem;
+}
 
+[data-theme="dark"] .empty-state-icon {
+  background: rgba(0, 102, 153, 0.15);
+  color: #5db8e6 !important;
+}
+
+.empty-state-title {
+  color: var(--wiki-dark);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+[data-theme="dark"] .empty-state-title {
+  color: #ffffff !important;
+}
+
+.empty-state-desc {
+  color: var(--wiki-text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .empty-state-desc {
+  color: #b8b8b8 !important;
+}
+
+/* Contest Management Card */
+.contest-management-card {
+  transition: all 0.2s ease;
+}
+
+.contest-management-card:hover {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.1);
+}
+
+.contest-card-title {
+  color: var(--wiki-dark);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .contest-card-title {
+  color: #ffffff !important;
+}
+
+.contest-management-card .card-footer {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Jury Card */
+.jury-card {
+  transition: all 0.2s ease;
+}
+
+.jury-card:hover {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 4px 12px rgba(0, 102, 153, 0.1);
+}
+
+/* Scroll areas */
 .scroll-area {
   max-height: 700px;
   overflow-y: auto;
@@ -580,9 +786,7 @@ h2.text-warning {
   padding: 1rem;
 }
 
-
-
-
+/* Contest group in submissions */
 .contest-group {
   margin-bottom: 1rem;
 }
@@ -605,7 +809,7 @@ h2.text-warning {
   border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
-
+/* Score item */
 .score-item {
   background-color: var(--wiki-light-bg);
   border: 1px solid var(--wiki-border);
@@ -637,8 +841,7 @@ h2.text-warning {
   color: #ffffff !important;
 }
 
-
-
+/* Submission item */
 .submission-item {
   background-color: var(--wiki-light-bg);
   border: 1px solid var(--wiki-border);
@@ -685,22 +888,20 @@ h2.text-warning {
   font-size: 0.875rem;
 }
 
-h6 {
-  font-weight: 600;
-  color: var(--wiki-dark);
-  margin: 0;
-  font-size: 1rem;
-}
-
-[data-theme="dark"] h6 {
-  color: #ffffff !important;
-}
-
-.badge {
-  padding: 0.35em 0.7em;
-  border-radius: 4px;
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3em 0.65em;
+  border-radius: 20px;
+  font-size: 0.8rem;
   font-weight: 500;
-  font-size: 0.85rem;
+  letter-spacing: 0.2px;
+}
+
+.status-badge i {
+  font-size: 0.65rem;
 }
 
 [data-theme="dark"] .badge.bg-primary {
@@ -723,8 +924,7 @@ h6 {
   color: #ffffff !important;
 }
 
-
-
+/* Table styles */
 .contests-table-card {
   overflow: hidden;
 }
@@ -846,22 +1046,7 @@ h6 {
   color: #b8b8b8 !important;
 }
 
-/* Status badge (custom — replaces plain Bootstrap badge in table) */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3em 0.65em;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.2px;
-}
-
-.status-badge i {
-  font-size: 0.65rem;
-}
-
+/* Status badge variants */
 .status-success {
   background-color: rgba(51, 153, 102, 0.12);
   color: #2a7a52;
@@ -961,8 +1146,7 @@ h6 {
   opacity: 0.4;
 }
 
-
-
+/* Pagination */
 .pagination-bar {
   background-color: var(--wiki-light-bg);
   border-top: 1px solid var(--wiki-border) !important;
@@ -1021,16 +1205,13 @@ h6 {
   border-color: #333 !important;
 }
 
-
-
+/* Spinner */
 .spinner-border.text-primary {
   width: 3rem;
   height: 3rem;
   border-width: 0.25em;
   color: var(--wiki-primary);
 }
-
-
 
 [data-theme="dark"] .text-muted {
   color: #b8b8b8 !important;
@@ -1042,8 +1223,7 @@ h6 {
   color: #b8b8b8 !important;
 }
 
-
-
+/* Responsive */
 @media (max-width: 768px) {
   h2.page-header {
     font-size: 1.75rem;
@@ -1059,7 +1239,8 @@ h6 {
 
   h2.text-primary,
   h2.text-success,
-  h2.text-warning {
+  h2.text-warning,
+  h2.text-info {
     font-size: 2rem !important;
   }
 

@@ -5,7 +5,7 @@
       <div class="modal-content">
         <!-- Modal header with Wikipedia primary color -->
         <div class="modal-header py-2">
-          <div class="text-white">WikiContest Tool</div>
+          <div class="text-white">WikiEval Tool</div>
           <button type="button"
 class="btn-close"
 data-bs-dismiss="modal"
@@ -970,7 +970,7 @@ export default {
       if (isCurrentUser(username)) {
         // Show confirmation dialog before adding
         const confirmed = window.confirm(
-          '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
+          'WARNING: Self-Selection as Jury Member\n\n' +
           'You are about to select yourself as a jury member.\n\n' +
           'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
           'Are you sure you want to proceed with selecting yourself?'

@@ -1,5 +1,5 @@
 /**
- * API Service for WikiContest Backend Communication
+ * API Service for WikiEval Backend Communication
  *
  * This module handles all HTTP requests to the Flask backend API.
  * It includes:
@@ -20,7 +20,11 @@ const api = axios.create({
   }
 })
 
-// Extract cookie value by name from document.cookie string
+/**
+ * Retrieves a cookie value by name.
+ * @param {string} name - The name of the cookie to retrieve.
+ * @return {string|null} The cookie value, or `null` if the cookie is not found.
+ */
 function getCookie(name) {
   const value = `; ${document.cookie}`
   const parts = value.split(`; ${name}=`)
@@ -82,5 +86,8 @@ export default {
   patch: (url, data = {}, config = {}) => api.patch(url, data, config),
 
   // Delete a submission
-  deleteSubmission: (submissionId) => api.delete(`/submission/${submissionId}`)
+  deleteSubmission: (submissionId) => api.delete(`/submission/${submissionId}`),
+
+  // Get contest submissions
+  getContestSubmissions: (contestId) => api.get(`/submission/contest/${contestId}`)
 }

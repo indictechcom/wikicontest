@@ -17,7 +17,7 @@
           <!-- Alert message text -->
           <span class="alert-message">{{ alert.message }}</span>
           <!-- Close button for manual dismissal -->
-          <button type="button" class="close-btn" @click="removeAlert(alert.id)">✕</button>
+          <button type="button" class="close-btn" @click="removeAlert(alert.id)">×</button>
         </div>
       </div>
     </transition-group>
