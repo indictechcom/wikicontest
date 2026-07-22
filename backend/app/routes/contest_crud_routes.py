@@ -103,37 +103,20 @@ def get_contest_by_id(contest_id):
 def get_contest_by_name(name):
     """
     Retrieve a contest by its normalized slug.
-    
+
     Parameters:
-        name (str): Contest slug to match against contest names.
-    
+        name (str): Contest slug to match against stored contest slug.
+
     Returns:
         tuple: The matching contest data with status 200, or an error response
             with status 404 if no contest matches.
     """
     import re
 
-    # Fetch all contests for slug matching
-    contests = Contest.query.all()
-    contest = None
-
     # Normalize the input slug (lowercase, collapse multiple hyphens)
     normalized_slug = re.sub(r"[-\s]+", "-", name.lower().strip())
 
-    # Find matching contest by generating slug from each contest name
-    for contest_item in contests:
-        # Generate slug using same logic as frontend
-        contest_slug = contest_item.name.lower().strip()
-        contest_slug = re.sub(r"\s+", "-", contest_slug)  # Spaces to hyphens
-        contest_slug = re.sub(r"[^\w\-]+", "", contest_slug)  # Remove special chars
-        contest_slug = re.sub(r"\-\-+", "-", contest_slug)  # Collapse hyphens
-        contest_slug = contest_slug.strip("-")  # Remove leading/trailing hyphens
-
-        # Compare normalized slugs
-        if contest_slug == normalized_slug:
-            contest = contest_item
-            break
-
+    contest = Contest.query.filter_by(slug=normalized_slug).first()
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
@@ -613,7 +596,7 @@ def create_contest():
         contest = Contest(
             name=name,
             project_name=project_name,
-            created_by=user.username,
+            created_by=user.id,
             description=description,
             start_date=start_date,
             end_date=end_date,
@@ -671,12 +654,7 @@ def delete_contest(contest_id):
         return jsonify({"error": "You are not allowed to delete this contest"}), 403
 
     try:
-        # Delete associated submissions first to maintain referential integrity
-        Submission.query.filter_by(contest_id=contest_id).delete()
-
-        # Delete the contest itself
         contest.delete()
-
         return jsonify({"message": "Contest deleted successfully"}), 200
 
     except Exception:  # pylint: disable=broad-exception-caught
@@ -713,7 +691,7 @@ def update_contest(contest_id):
         # Permission check: creator or admin only
         if (
             not (hasattr(user, "is_admin") and user.is_admin())
-            and user.username != contest.created_by
+            and user.id != contest.created_by
         ):
             return jsonify({"error": "Permission denied"}), 403
 
@@ -1055,14 +1033,12 @@ def update_contest(contest_id):
 
             if organizers_payload is not None:
                 if isinstance(organizers_payload, list):
-                    # List of usernames provided
-                    contest.set_organizers(organizers_payload, contest.created_by)
+                    contest.set_organizers(organizers_payload)
                 elif isinstance(organizers_payload, str):
-                    # Comma-separated string provided
                     organizers_list = [
                         u.strip() for u in organizers_payload.split(",") if u.strip()
                     ]
-                    contest.set_organizers(organizers_list, contest.created_by)
+                    contest.set_organizers(organizers_list)
 
         # Persist all changes to database
         db.session.add(contest)

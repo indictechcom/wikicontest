@@ -54,7 +54,7 @@ def get_contest_organizers(contest_id):
             {
                 "contest_id": contest_id,
                 "organizers": organizers,
-                "creator": contest.created_by,
+                "creator": contest.creator.username if contest.creator else None,
             }
         ),
         200,

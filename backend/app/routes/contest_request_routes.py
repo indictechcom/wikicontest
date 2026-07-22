@@ -321,7 +321,7 @@ def approve_contest_request(request_id):
         contest = Contest(
             name=contest_request.name,
             project_name=contest_request.project_name,
-            created_by=requester.username,
+            created_by=requester.id,
             description=contest_request.description,
             start_date=contest_request.start_date,
             end_date=contest_request.end_date,
