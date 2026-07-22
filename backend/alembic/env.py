@@ -28,6 +28,10 @@ from app.database import db
 from app.models.user import User  # pylint: disable=unused-import
 from app.models.contest import Contest  # pylint: disable=unused-import
 from app.models.submission import Submission  # pylint: disable=unused-import
+from app.models.contest_request import ContestRequest  # pylint: disable=unused-import
+from app.models.contest_jury import ContestJury  # pylint: disable=unused-import
+from app.models.contest_organizers import ContestOrganizer  # pylint: disable=unused-import
+from app.models.trusted_member_request import TrustedMemberRequest  # pylint: disable=unused-import
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
