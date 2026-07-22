@@ -4,11 +4,16 @@ Defines the Contest table and related functionality
 """
 
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 
 from app.database import db
 from app.models.base_model import BaseModel
 from app.models.contest_mixin import ContestMixin
+
+import sqlalchemy as sa
+from sqlalchemy import event, select, inspect
+from app.models.contest_jury import ContestJury
+from app.models.contest_organizers import ContestOrganizer
 
 
 # ------------------------------------------------------------------------
@@ -45,11 +50,12 @@ class Contest(BaseModel, ContestMixin):
 
     # Contest basic information
     name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(250), unique=True, nullable=False, index=True)
     project_name = db.Column(db.String(100), nullable=False)
 
-    # Contest creator (foreign key to users.username)
+    # Contest creator (foreign key to users.id)
     created_by = db.Column(
-        db.String(50), db.ForeignKey("users.username"), nullable=False
+        db.Integer, db.ForeignKey("users.id"), nullable=False, index=True
     )
 
     # Contest details
@@ -94,11 +100,8 @@ class Contest(BaseModel, ContestMixin):
     categories = db.Column(db.Text, nullable=True)
 
     # ------------------------------------------------------------------------
-    # Database Columns - People Management
+    # Database Columns - People Management (via junction tables)
     # ------------------------------------------------------------------------
-
-    # Jury members who can review submissions (comma-separated usernames)
-    jury_members = db.Column(db.Text, nullable=True)
 
     # Template link for contest (URL to Wiki template page)
     # Used to enforce template attachment on submitted articles
@@ -108,16 +111,41 @@ class Contest(BaseModel, ContestMixin):
     # Used to link contest with Outreach Dashboard course data
     outreach_dashboard_url = db.Column(db.Text, nullable=True)
 
-    # Contest organizers who can manage the contest (comma-separated usernames)
-    # Creator is always included as an organizer
-    organizers = db.Column(db.Text, nullable=True)
+    # jury_members and organizers are stored in contest_jury / contest_organizers
+    # tables. See relationships below and contest_jury.py / contest_organizers.py.
 
     # ------------------------------------------------------------------------
-    # Database Columns - Metadata
+    # Relationships - People Management
     # ------------------------------------------------------------------------
+
+    # Many-to-many: Contest jury members via contest_jury junction table
+    jury_members_rel = db.relationship(
+        "User", secondary=ContestJury.__table__, backref="jury_contests", lazy="selectin"
+    )
+
+    # Many-to-many: Contest organizers via contest_organizers junction table
+    organizers_rel = db.relationship(
+        "User", secondary=ContestOrganizer.__table__, backref="organized_contests", lazy="selectin"
+    )
+
+    # Many-to-one: Contest creator
+    creator = db.relationship(
+        "User",
+        foreign_keys=[created_by],
+        back_populates="created_contests",
+        lazy="joined",
+    )
 
     # Timestamp when contest was created (UTC)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
     # ------------------------------------------------------------------------
     # Relationships
@@ -126,7 +154,11 @@ class Contest(BaseModel, ContestMixin):
     # One-to-many: Contest has many submissions
     # lazy='dynamic' returns a query object instead of loading all submissions
     submissions = db.relationship(
-        "Submission", back_populates="contest", lazy="dynamic"
+        "Submission",
+        back_populates="contest",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     # ------------------------------------------------------------------------
@@ -136,11 +168,11 @@ class Contest(BaseModel, ContestMixin):
     def __init__(self, name, project_name, created_by, **kwargs):
         """
         Initialize a contest with required details and optional configuration.
-        
+
         Parameters:
             name: Contest name.
             project_name: Associated project name.
-            created_by: Username of the contest creator.
+            created_by: ID of the contest creator (FK to users.id).
             **kwargs: Optional dates, scoring settings, submission requirements, links,
                 categories, rules, jury members, and organizers.
         """
@@ -176,15 +208,89 @@ class Contest(BaseModel, ContestMixin):
         # Set complex fields using setter methods (handle JSON/list conversion)
         self.set_categories(kwargs.get("categories", []))
         self.set_rules(kwargs.get("rules", {}))
+
+        # Jury and organizers are set via junction-table-aware overrides below.
+        # set_jury_members / set_organizers are overridden in this class to resolve
+        # usernames into User records stored in contest_jury / contest_organizers.
         self.set_jury_members(kwargs.get("jury_members", []))
-        # Set organizers (creator is automatically added by set_organizers)
-        self.set_organizers(kwargs.get("organizers", []), creator_username=created_by)
+        self.set_organizers(kwargs.get("organizers", []))
 
         # Initialize scoring mode cache (per-instance, request-scoped)
         self._scoring_mode_cache = None
 
-    # Note: set_rules, get_rules, set_jury_members, get_jury_members,
-    # set_categories, and get_categories are inherited from ContestMixin
+    # ------------------------------------------------------------------------
+    # PEOPLE MANAGEMENT (JURY / ORGANIZERS) — JUNCTION TABLE OVERRIDES
+    # ------------------------------------------------------------------------
+    # ContestMixin provides string-based getters/setters for jury_members and
+    # organizers. Contest overrides them here to use the contest_jury and
+    # contest_organizers junction tables instead. ContestRequest inherits the
+    # string-based versions from ContestMixin unchanged.
+
+    def get_jury_members(self):
+        return [u.username for u in self.jury_members_rel]
+
+    def set_jury_members(self, jury_list):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        if not isinstance(jury_list, list):
+            self.jury_members_rel = []
+            return
+        if jury_list:
+            users = User.query.filter(User.username.in_(jury_list)).all()
+            self.jury_members_rel = users
+        else:
+            self.jury_members_rel = []
+
+    def get_organizers(self):
+        return [u.username for u in self.organizers_rel]
+
+    def set_organizers(self, organizers_list):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        if not isinstance(organizers_list, list):
+            organizers_list = []
+        if organizers_list:
+            users = User.query.filter(User.username.in_(organizers_list)).all()
+        else:
+            users = []
+        creator_user = db.session.get(User, self.created_by)
+        if creator_user and creator_user not in users:
+            users.insert(0, creator_user)
+        self.organizers_rel = users
+
+    def is_organizer(self, username):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return False
+        return user in self.organizers_rel
+
+    def add_organizer(self, username):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return False, f'User "{username}" not found'
+        if user in self.organizers_rel:
+            return False, f"{username} is already an organizer"
+        self.organizers_rel.append(user)
+        return True, None
+
+    def remove_organizer(self, username):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+        if not user or user not in self.organizers_rel:
+            return False, f"{username} is not an organizer"
+        if user.id == self.created_by:
+            return False, "Cannot remove the contest creator from organizers"
+        if len(self.organizers_rel) <= 1:
+            return False, "Cannot remove the last organizer"
+        self.organizers_rel.remove(user)
+        return True, None
+
+    def is_jury_member_by_username(self, username):
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return False
+        return user in self.jury_members_rel
 
     # ------------------------------------------------------------------------
     # ARTICLE VALIDATION
@@ -471,6 +577,11 @@ class Contest(BaseModel, ContestMixin):
         if not username:
             return False, "Invalid username"
 
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return False, f'User "{username}" not found'
+
         # Check for duplicate
         current_organizers = self.get_organizers()
         if username in current_organizers:
@@ -478,7 +589,7 @@ class Contest(BaseModel, ContestMixin):
 
         # Add to list and persist
         current_organizers.append(username)
-        self.set_organizers(current_organizers, self.created_by)
+        self.set_organizers(current_organizers)
 
         return True, None
 
@@ -496,13 +607,16 @@ class Contest(BaseModel, ContestMixin):
         if not username:
             return False, "Invalid username"
 
+        from app.models.user import User  # pylint: disable=import-outside-toplevel
+        user = User.query.filter_by(username=username).first()
+
         # Verify user is actually an organizer
         current_organizers = self.get_organizers()
-        if username not in current_organizers:
+        if not user or username not in current_organizers:
             return False, f"{username} is not an organizer"
 
         # Prevent removing the contest creator
-        if username == self.created_by:
+        if user.id == self.created_by:
             return False, "Cannot remove the contest creator from organizers"
 
         # Prevent removing the last organizer (contest must have at least one)
@@ -511,7 +625,7 @@ class Contest(BaseModel, ContestMixin):
 
         # Remove from list and persist
         current_organizers.remove(username)
-        self.set_organizers(current_organizers, self.created_by)
+        self.set_organizers(current_organizers)
 
         return True, None
 
@@ -713,7 +827,7 @@ class Contest(BaseModel, ContestMixin):
     def to_dict(self):
         """
         Convert the contest to a JSON-serializable dictionary.
-        
+
         Returns:
             dict: Contest fields, configuration settings, organizer information,
                 serialized dates, scoring data, automated settings, submission count,
@@ -729,8 +843,9 @@ class Contest(BaseModel, ContestMixin):
         return {
             "id": self.id,
             "name": self.name,
+            "slug": self.slug,
             "project_name": self.project_name,
-            "created_by": self.created_by,
+            "created_by": self.creator.username if self.creator else None,
             "description": self.description,
             "start_date": self.start_date.isoformat() if self.start_date else None,
             "end_date": self.end_date.isoformat() if self.end_date else None,
@@ -760,3 +875,57 @@ class Contest(BaseModel, ContestMixin):
     def __repr__(self):
         """Provide a concise representation of the contest."""
         return f"<Contest {self.name}>"
+
+
+# ------------------------------------------------------------------------
+# SLUG AUTO-GENERATION (before insert / before update)
+# ------------------------------------------------------------------------
+# generate_slug is imported lazily to avoid circular imports:
+#   contest.py -> utils/slugify -> utils/__init__ -> utils/access_control -> contest.py
+
+def _generate_contest_slug(mapper, connection, target):
+    """Ensure target has a unique slug before INSERT or UPDATE."""
+    from app.utils.slugify import generate_slug  # pylint: disable=import-outside-toplevel
+
+    if not target.name:
+        target.slug = None
+        return
+
+    insp = inspect(target)
+    is_new = target.id is None
+    name_changed = not is_new and insp.attrs.name.history.has_changes()
+
+    if is_new and (not target.slug):
+        needs_slug = True
+    elif name_changed:
+        needs_slug = True
+        target.slug = None
+    else:
+        needs_slug = False
+
+    if not needs_slug:
+        return
+
+    base_slug = generate_slug(target.name)
+    if not base_slug:
+        target.slug = None
+        return
+
+    slug = base_slug
+    counter = 2
+    exclude_id = target.id
+    while True:
+        stmt = select(Contest.id).where(Contest.slug == slug)
+        if exclude_id is not None:
+            stmt = stmt.where(Contest.id != exclude_id)
+        if connection.execute(stmt).first() is None:
+            break
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+        if counter > 100:
+            break
+    target.slug = slug
+
+
+event.listens_for(Contest, "before_insert")(_generate_contest_slug)
+event.listens_for(Contest, "before_update")(_generate_contest_slug)

@@ -3,11 +3,12 @@ Contest Request Model for WikiEval Application
 Defines the ContestRequest table for tracking contest creation requests from non-privileged users
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import db
 from app.models.base_model import BaseModel
 from app.models.contest_mixin import ContestMixin
+import sqlalchemy as sa
 
 
 # ------------------------------------------------------------------------
@@ -87,13 +88,31 @@ class ContestRequest(BaseModel, ContestMixin):
     marks_setting_rejected = db.Column(db.Integer, default=0, nullable=False)
 
     # Request status and review information
-    status = db.Column(db.String(20), default="pending", nullable=False)  # pending, approved, rejected
+    status = db.Column(
+        sa.Enum('pending', 'approved', 'rejected',
+                name='contest_request_status_enum'),
+        nullable=False,
+        default="pending",
+    )
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
-    rejection_reason = db.Column(db.Text, nullable=True)  # Optional reason for rejection
+    rejection_reason = db.Column(db.Text, nullable=True)
 
     # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        db.Index("ix_contest_requests_user_id", "user_id"),
+        db.Index("ix_contest_requests_status", "status"),
+    )
 
     # ------------------------------------------------------------------------
     # Relationships

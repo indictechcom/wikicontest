@@ -5,6 +5,8 @@ Defines the Submission table and related functionality
 
 from datetime import datetime, timezone
 import json
+import sqlalchemy as sa
+
 from app.database import db
 from app.models.base_model import BaseModel
 
@@ -40,7 +42,9 @@ class Submission(BaseModel):
 
     # Foreign keys - link to user and contest
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    contest_id = db.Column(db.Integer, db.ForeignKey("contests.id"), nullable=False)
+    contest_id = db.Column(
+        db.Integer, db.ForeignKey("contests.id", ondelete="CASCADE"), nullable=False
+    )
 
     # Article identification
     article_title = db.Column(db.String(500), nullable=False)
@@ -58,10 +62,10 @@ class Submission(BaseModel):
     article_created_at = db.Column(db.DateTime, nullable=True)
 
     # Article size in bytes (MediaWiki calls this "size", not word count)
-    article_word_count = db.Column(db.Integer, nullable=True)
+    article_byte_count = db.Column(db.Integer, nullable=True)
 
-    # MediaWiki internal page identifier
-    article_page_id = db.Column(db.String(50), nullable=True)
+    # MediaWiki internal page identifier (integer, not string)
+    article_page_id = db.Column(db.Integer, nullable=True)
 
     # Article size in bytes at contest start date
     article_size_at_start = db.Column(db.Integer, nullable=True)
@@ -99,7 +103,12 @@ class Submission(BaseModel):
 
     # Submission status and scoring
     # pending | accepted | rejected | auto_rejected
-    status = db.Column(db.String(20), nullable=False, default="pending")
+    status = db.Column(
+        sa.Enum('pending', 'accepted', 'rejected', 'auto_rejected',
+                name='submission_status_enum'),
+        nullable=False,
+        default="pending",
+    )
 
     # Total score awarded to this submission
     score = db.Column(db.Integer, default=0, nullable=False)
@@ -136,7 +145,20 @@ class Submission(BaseModel):
     # ------------------------------------------------------------------------
 
     # When the submission was created (UTC)
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    submitted_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Note: unique constraint on (user_id, contest_id, article_link) is created
+    # via Alembic migration with mysql_length prefix. Not defined here to avoid
+    # key-too-long errors on MySQL utf8mb4 with VARCHAR(1000) article_link.
+    __table_args__ = {}
 
 
     # ------------------------------------------------------------------------
@@ -168,14 +190,9 @@ class Submission(BaseModel):
 
     # Prevent duplicate submissions: same user + contest + article combination
     # Users can submit multiple articles to a contest, but not the same article twice
-    __table_args__ = (
-        db.UniqueConstraint(
-            "user_id",
-            "contest_id",
-            "article_link",
-            name="unique_user_contest_article_submission",
-        ),
-    )
+    # Note: unique index on (user_id, contest_id, article_link) is created
+    # via Alembic migration with mysql_length prefix to avoid key-too-long on MySQL.
+    __table_args__ = {}
 
 
     # ------------------------------------------------------------------------
@@ -191,7 +208,7 @@ class Submission(BaseModel):
         status="pending",
         article_author=None,
         article_created_at=None,
-        article_word_count=None,
+        article_byte_count=None,
         article_page_id=None,
         article_size_at_start=None,
         article_expansion_bytes=None,
@@ -231,7 +248,7 @@ class Submission(BaseModel):
         # Set article metadata (fetched from MediaWiki API)
         self.article_author = article_author
         self.article_created_at = article_created_at
-        self.article_word_count = article_word_count
+        self.article_byte_count = article_byte_count
         self.article_page_id = article_page_id
         self.article_size_at_start = article_size_at_start
         self.article_expansion_bytes = article_expansion_bytes
@@ -362,26 +379,6 @@ class Submission(BaseModel):
             return json.loads(self.score_breakdown)
         except json.JSONDecodeError:
             return None
-
-
-    # ------------------------------------------------------------------------
-    # BYTE COUNT ALIAS  (PR #198 Comment #9)
-    # ------------------------------------------------------------------------
-
-    @property
-    def article_byte_count(self):
-        """
-        Return the article's byte count.
-        
-        Returns:
-        	int: The article byte count.
-        """
-        return self.article_word_count
-
-    @article_byte_count.setter
-    def article_byte_count(self, value):
-        """Set the article byte count (stored in the article_word_count column)."""
-        self.article_word_count = value
 
 
     # ------------------------------------------------------------------------
@@ -597,7 +594,7 @@ class Submission(BaseModel):
                 if self.article_created_at
                 else None
             ),
-            "article_word_count": self.article_word_count,
+            "article_byte_count": self.article_byte_count,
             "article_page_id": self.article_page_id,
             "article_size_at_start": self.article_size_at_start,
             "article_expansion_bytes": self.article_expansion_bytes,

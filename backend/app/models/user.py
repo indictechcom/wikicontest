@@ -3,7 +3,7 @@ User Model for WikiEval Application
 Defines the User table and related functionality
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -45,7 +45,11 @@ class User(BaseModel):
     email = db.Column(db.String(100), unique=True, nullable=False, index=True)
 
     # Role-based access control: 'user', 'admin', or 'superadmin'
-    role = db.Column(db.String(20), nullable=False, default="user")
+    role = db.Column(
+        sa.Enum('user', 'admin', 'superadmin', name='user_role_enum'),
+        nullable=False,
+        default="user",
+    )
 
     # Password stored as bcrypt hash (never store plaintext)
     password = db.Column(db.String(255), nullable=False)
@@ -64,25 +68,16 @@ class User(BaseModel):
     # Regular users can still submit and participate in contests
     is_trusted_member = db.Column(db.Boolean, default=False, nullable=False)
 
-    # Track if user has requested trusted member status
-    # Superadmins can view all requests and approve/reject them
-    trusted_member_request = db.Column(db.Boolean, default=False, nullable=False)
-
-    # Reason provided by user when requesting trusted member status
-    # This is required when user has less than 300 edits
-    # Superadmins can view this reason when reviewing requests
-    trusted_member_request_reason = db.Column(db.Text, nullable=True)
-
-    # Status of trusted member request
-    # Values: 'pending' (awaiting review), 'approved' (granted), 'rejected' (denied)
-    # This allows tracking the complete request lifecycle
-    trusted_member_request_status = db.Column(
-        sa.Enum('pending', 'approved', 'rejected', name='trusted_member_request_status_enum'),
-        nullable=True
-    )
-
     # Account creation timestamp (UTC)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
 
     # ------------------------------------------------------------------------
@@ -90,7 +85,12 @@ class User(BaseModel):
     # ------------------------------------------------------------------------
 
     # One-to-many: User has created many contests
-    created_contests = db.relationship("Contest", backref="creator", lazy="dynamic")
+    created_contests = db.relationship(
+        "Contest",
+        foreign_keys="Contest.created_by",
+        back_populates="creator",
+        lazy="dynamic",
+    )
 
     # One-to-many: User has submitted many submissions
     submissions = db.relationship(
@@ -228,61 +228,48 @@ class User(BaseModel):
     def is_jury_member(self, contest):
         """
         Determine whether the user is assigned to a contest's jury.
-        
+
         Parameters:
             contest: The contest whose jury membership to check.
-        
+
         Returns:
-            bool: True if the user's username is listed among the contest's jury members, False otherwise.
+            bool: True if the user is in the contest's jury, False otherwise.
         """
-        # No jury members assigned
-        if not contest.jury_members:
+        if not contest:
             return False
-
-        # Parse comma-separated list and check for username match
-        jury_usernames = [
-            username.strip() for username in contest.jury_members.split(",")
-        ]
-        return self.username in jury_usernames
-
+        return self in contest.jury_members_rel
 
     def is_contest_creator(self, contest):
         """
         Determine whether the user created the specified contest.
-        
+
         Parameters:
             contest: Contest whose creator is checked.
-        
-        Returns:
-            `True` if the user's username matches the contest creator, `False` otherwise.
-        """
-        return self.username == contest.created_by
 
+        Returns:
+            `True` if the user's id matches the contest's created_by FK, `False` otherwise.
+        """
+        if not contest:
+            return False
+        return self.id == contest.created_by
 
     def is_contest_organizer(self, contest):
         """
         Determine whether the user organizes the contest.
-        
+
         Parameters:
             contest: The contest to check.
-        
+
         Returns:
             bool: `True` if the user is listed as an organizer or is the contest creator when no organizers are listed, and `False` otherwise.
         """
         if not contest:
             return False
-
-        # Get organizers list from contest
-        organizers = contest.get_organizers()
-        if not organizers:
-            # Fallback: creator is always an organizer even if organizers field is empty
-            return self.username.strip().lower() == (contest.created_by or '').strip().lower()
-
-        # Normalize usernames for case-insensitive comparison
-        username_lower = self.username.strip().lower()
-        organizer_usernames = [org.strip().lower() for org in organizers]
-
-        return username_lower in organizer_usernames
+        if self in contest.organizers_rel:
+            return True
+        # Fallback: creator is always treated as an organizer even before
+        # the junction-table backfill runs.
+        return self.id == contest.created_by
 
 
     # ------------------------------------------------------------------------
@@ -329,7 +316,7 @@ class User(BaseModel):
     def to_dict(self):
         """
         Serialize the user's data for JSON responses.
-        
+
         Returns:
         	dict: User data excluding the password, including trust information and the creation timestamp in ISO format when available. Superadmins are represented as trusted members.
         """
@@ -337,6 +324,15 @@ class User(BaseModel):
         is_trusted = bool(getattr(self, 'is_trusted_member', False))
         if self.is_superadmin():
             is_trusted = True
+
+        # Find the most recent trusted member request for this user
+        latest_request = None
+        if hasattr(self, 'trusted_member_requests') and self.trusted_member_requests:
+            latest_request = sorted(
+                self.trusted_member_requests,
+                key=lambda r: r.created_at or datetime.min.replace(tzinfo=None),
+                reverse=True,
+            )[0]
 
         return {
             "id": self.id,
@@ -346,11 +342,11 @@ class User(BaseModel):
             "score": self.score,
             # Trusted member status (superadmins are automatically trusted)
             "is_trusted_member": is_trusted,
-            "trusted_member_request": bool(getattr(self, 'trusted_member_request', False)),
-            "trusted_member_request_reason": getattr(self, 'trusted_member_request_reason', None),
-            "trusted_member_request_status": getattr(self, 'trusted_member_request_status', None),
+            "trusted_member_request_status": latest_request.status if latest_request else None,
+            "trusted_member_request_reason": latest_request.reason if latest_request else None,
             # Convert datetime to ISO format string
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
 
