@@ -306,7 +306,8 @@ export default {
     // Check if user can request (never requested OR was rejected)
     const canRequest = computed(() => {
       const status = requestStatus.value
-      return !isSuperadmin.value &&
+      return isAuthenticated.value &&
+             !isSuperadmin.value &&
              !canCreateContests.value &&
              (!status || status === 'rejected')
     })

@@ -96,8 +96,15 @@ class TestTrustedMemberRequest:
         assert resp.status_code == 200
 
         from app.models.user import User
+        from app.models.trusted_member_request import TrustedMemberRequest
         updated = db.session.get(User, user.id)
         assert updated.is_trusted_member is True
+
+        latest_request = TrustedMemberRequest.query.filter_by(
+            user_id=user.id
+        ).order_by(TrustedMemberRequest.created_at.desc()).first()
+        assert latest_request is not None
+        assert latest_request.status == "approved"
 
     @patch("app.utils.get_mediawiki_user_edit_count", return_value=50)
     def test_reject_trusted_member(self, mock_edit_count, client, db, factories):
@@ -113,8 +120,14 @@ class TestTrustedMemberRequest:
         assert resp.status_code == 200
 
         from app.models.user import User
+        from app.models.trusted_member_request import TrustedMemberRequest
         updated = db.session.get(User, user.id)
-        assert updated.trusted_member_request_status == "rejected"
+        assert updated.is_trusted_member is False
+        latest_request = TrustedMemberRequest.query.filter_by(
+            user_id=user.id
+        ).order_by(TrustedMemberRequest.created_at.desc()).first()
+        assert latest_request is not None
+        assert latest_request.status == "rejected"
 
     @patch("app.utils.get_mediawiki_user_edit_count", return_value=50)
     def test_non_superadmin_cannot_approve(self, mock_edit_count, client, db, factories):

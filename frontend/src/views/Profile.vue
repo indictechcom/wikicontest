@@ -72,7 +72,7 @@
           </div>
 
           <!-- Request Trusted Member Button -->
-          <div v-if="canRequest" class="info-item">
+          <div v-if="isAuthenticated && canRequest" class="info-item">
             <button
               class="btn btn-primary w-100"
               @click="requestTrustedMember"
@@ -130,6 +130,7 @@ export default {
     const store = useStore()
     const route = useRoute()
     const currentUser = computed(() => store.currentUser)
+    const isAuthenticated = computed(() => store.isAuthenticated)
 
     // Direct profile data state (bypasses store cache)
     const directProfileData = ref(null)
@@ -356,7 +357,8 @@ export default {
     // Check if user can request (never requested OR was rejected)
     const canRequest = computed(() => {
       const status = requestStatus.value
-      return !isSuperadmin.value &&
+      return isAuthenticated.value &&
+             !isSuperadmin.value &&
              !isTrustedMember.value &&
              (!status || status === 'rejected')
     })
