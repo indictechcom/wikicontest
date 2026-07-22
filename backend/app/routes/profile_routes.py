@@ -67,17 +67,14 @@ def get_dashboard():
             }
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
-    # Organized contests (created by user OR listed as additional organizer)
-    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
-    escaped_username = user.username.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
-    organized_candidates = Contest.query.filter(
-        db.or_(
-            Contest.created_by == user.username,
-            Contest.organizers == escaped_username,  # Exact match (only organizer)
-            Contest.organizers.ilike(f'{escaped_username},%', escape='\\'),  # First in list
-            Contest.organizers.ilike(f'%,{escaped_username},%', escape='\\'),  # Middle of list
-            Contest.organizers.ilike(f'%,{escaped_username}', escape='\\')  # Last in list
-        )
+    # Organized contests (user is creator OR listed as organizer via junction table)
+    from app.models.contest_organizers import ContestOrganizer
+    from app.models.contest_jury import ContestJury
+
+    organized_candidates = Contest.query.join(
+        ContestOrganizer, Contest.id == ContestOrganizer.contest_id
+    ).filter(
+        ContestOrganizer.user_id == user.id
     ).order_by(Contest.created_at.desc()).all()
     organized_contests_data = []
     for contest in organized_candidates:
@@ -86,14 +83,10 @@ def get_dashboard():
         organized_contests_data.append(contest_data)
 
     # Jury contests
-    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
-    jury_contests = Contest.query.filter(
-        db.or_(
-            Contest.jury_members == escaped_username,  # Exact match (only jury member)
-            Contest.jury_members.ilike(f'{escaped_username},%', escape='\\'),  # First in list
-            Contest.jury_members.ilike(f'%,{escaped_username},%', escape='\\'),  # Middle of list
-            Contest.jury_members.ilike(f'%,{escaped_username}', escape='\\')  # Last in list
-        )
+    jury_contests = Contest.query.join(
+        ContestJury, Contest.id == ContestJury.contest_id
+    ).filter(
+        ContestJury.user_id == user.id
     ).all()
     jury_contests_data = []
     for contest in jury_contests:
@@ -151,29 +144,21 @@ def get_dashboard_access():
     user = request.current_user
 
     from app.models.contest import Contest
-
-    # Escape SQL LIKE wildcards to prevent false matches via % or _ characters
-    escaped_username = user.username.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    from app.models.contest_organizers import ContestOrganizer
+    from app.models.contest_jury import ContestJury
 
     # Check if user is organizer of any contest
-    is_organizer = Contest.query.filter(
-        db.or_(
-            Contest.created_by == user.username,
-            Contest.organizers == escaped_username,
-            Contest.organizers.ilike(f'{escaped_username},%', escape='\\'),
-            Contest.organizers.ilike(f'%,{escaped_username},%', escape='\\'),
-            Contest.organizers.ilike(f'%,{escaped_username}', escape='\\')
-        )
+    is_organizer = Contest.query.join(
+        ContestOrganizer, Contest.id == ContestOrganizer.contest_id
+    ).filter(
+        ContestOrganizer.user_id == user.id
     ).first() is not None
 
     # Check if user is jury of any contest
-    is_jury = Contest.query.filter(
-        db.or_(
-            Contest.jury_members == escaped_username,
-            Contest.jury_members.ilike(f'{escaped_username},%', escape='\\'),
-            Contest.jury_members.ilike(f'%,{escaped_username},%', escape='\\'),
-            Contest.jury_members.ilike(f'%,{escaped_username}', escape='\\')
-        )
+    is_jury = Contest.query.join(
+        ContestJury, Contest.id == ContestJury.contest_id
+    ).filter(
+        ContestJury.user_id == user.id
     ).first() is not None
 
     # Trusted members and superadmins always have access to the organizer dashboard

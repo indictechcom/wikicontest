@@ -37,7 +37,7 @@ def validate_contest_submission_access(contest_id, user, Contest) -> tuple:
         if user.is_admin():
             return contest, None
 
-    if getattr(user, "username", None) == getattr(contest, "created_by", None):
+    if user.id == getattr(contest, "created_by", None):
         return contest, None
 
     try:
@@ -51,10 +51,5 @@ def validate_contest_submission_access(contest_id, user, Contest) -> tuple:
                 return contest, None
         except Exception:
             pass
-
-    jury_members_raw = getattr(contest, "jury_members", "") or ""
-    jury_usernames = [u.strip() for u in jury_members_raw.split(",") if u.strip()]
-    if getattr(user, "username", None) in jury_usernames:
-        return contest, None
 
     return None, (jsonify({"error": "Permission denied"}), 403)

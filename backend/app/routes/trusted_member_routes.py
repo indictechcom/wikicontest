@@ -7,12 +7,15 @@ monolithic user_routes.py. Registered at /api/user along with the other
 user blueprints.
 """
 
+from datetime import datetime, timezone
+
 from flask import Blueprint, request, jsonify, current_app
 
 from app.database import db
 from app.extensions import limiter
 from app.middleware.auth import require_auth, require_role, handle_errors
 from app.models.user import User
+from app.models.trusted_member_request import TrustedMemberRequest
 
 # Create blueprint
 trusted_bp = Blueprint('trusted_member', __name__)
@@ -52,8 +55,10 @@ def request_trusted_member():
 
     # Check if request is already pending
     # Users can re-request if their previous request was rejected
-    request_status = getattr(user, 'trusted_member_request_status', None)
-    if request_status == 'pending':
+    existing_pending = TrustedMemberRequest.query.filter_by(
+        user_id=user.id, status='pending'
+    ).first()
+    if existing_pending:
         return jsonify({
             'error': 'You have already requested trusted member status. Please wait for approval.'
         }), 400
@@ -91,9 +96,12 @@ def request_trusted_member():
             }), 400
 
         # Store request with reason for superadmin review
-        user.trusted_member_request = True
-        user.trusted_member_request_reason = reason
-        user.trusted_member_request_status = 'pending'
+        request_record = TrustedMemberRequest(
+            user_id=user.id,
+            reason=reason,
+            status='pending',
+        )
+        db.session.add(request_record)
         user.save()
 
         return jsonify({
@@ -107,9 +115,14 @@ def request_trusted_member():
     if edit_count >= MIN_EDIT_COUNT:
         # User has >= 300 edits: automatically grant trusted member status
         user.is_trusted_member = True
-        user.trusted_member_request = False  # No need for request flag
-        user.trusted_member_request_reason = None  # Clear any previous reason
-        user.trusted_member_request_status = 'approved'
+        request_record = TrustedMemberRequest(
+            user_id=user.id,
+            reason=None,
+            status='approved',
+            reviewed_by=user.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db.session.add(request_record)
         user.save()
 
         return jsonify({
@@ -134,9 +147,12 @@ def request_trusted_member():
         }), 400
 
     # Store request with reason for superadmin review
-    user.trusted_member_request = True
-    user.trusted_member_request_reason = reason
-    user.trusted_member_request_status = 'pending'
+    request_record = TrustedMemberRequest(
+        user_id=user.id,
+        reason=reason,
+        status='pending',
+    )
+    db.session.add(request_record)
     user.save()
 
     return jsonify({
@@ -160,19 +176,22 @@ def get_trusted_member_requests():
         A JSON response containing each request's user ID, username, email, role,
         creation timestamp, request timestamp, and reason.
     """
-    # Get all users with pending requests
-    requests = User.query.filter_by(trusted_member_request=True, is_trusted_member=False).all()
+    # Get all pending requests, ordered by creation time (newest first)
+    requests = TrustedMemberRequest.query.filter_by(status='pending').order_by(
+        TrustedMemberRequest.created_at.desc()
+    ).all()
 
     return jsonify({
         'requests': [{
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'role': user.role,
-            'created_at': user.created_at.isoformat() if user.created_at else None,
-            'requested_at': user.created_at.isoformat() if user.created_at else None,  # Using created_at as proxy
-            'request_reason': getattr(user, 'trusted_member_request_reason', None)  # Include reason for review
-        } for user in requests]
+            'id': req.id,
+            'user_id': req.user_id,
+            'username': req.requester.username if req.requester else None,
+            'email': req.requester.email if req.requester else None,
+            'role': req.requester.role if req.requester else None,
+            'created_at': req.requester.created_at.isoformat() if req.requester and req.requester.created_at else None,
+            'requested_at': req.created_at.isoformat() if req.created_at else None,
+            'request_reason': req.reason,
+        } for req in requests]
     }), 200
 
 
@@ -232,11 +251,24 @@ def approve_trusted_member(user_id):
             'error': 'Superadmins are automatically trusted members'
         }), 400
 
-    # Approve the request
+    # Approve the request — update the latest pending TrustedMemberRequest
     user.is_trusted_member = True
-    user.trusted_member_request = False  # Clear the request flag
-    user.trusted_member_request_reason = None  # Clear the reason
-    user.trusted_member_request_status = 'approved'
+    existing_request = TrustedMemberRequest.query.filter_by(
+        user_id=user.id, status='pending'
+    ).order_by(TrustedMemberRequest.created_at.desc()).first()
+    if existing_request:
+        existing_request.status = 'approved'
+        existing_request.reviewed_by = user.id
+        existing_request.reviewed_at = datetime.now(timezone.utc)
+    else:
+        request_record = TrustedMemberRequest(
+            user_id=user.id,
+            reason=None,
+            status='approved',
+            reviewed_by=user.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db.session.add(request_record)
     user.save()
 
     return jsonify({
@@ -262,10 +294,24 @@ def reject_trusted_member(user_id):
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
-    # Clear the request flag and reason (rejection)
-    user.trusted_member_request = False
-    user.trusted_member_request_reason = None
-    user.trusted_member_request_status = 'rejected'
+    # Clear request info and reject
+    user.is_trusted_member = False
+    existing_request = TrustedMemberRequest.query.filter_by(
+        user_id=user.id, status='pending'
+    ).order_by(TrustedMemberRequest.created_at.desc()).first()
+    if existing_request:
+        existing_request.status = 'rejected'
+        existing_request.reviewed_by = user.id
+        existing_request.reviewed_at = datetime.now(timezone.utc)
+    else:
+        request_record = TrustedMemberRequest(
+            user_id=user.id,
+            reason=None,
+            status='rejected',
+            reviewed_by=user.id,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db.session.add(request_record)
     user.save()
 
     return jsonify({
@@ -300,9 +346,14 @@ def add_trusted_member(user_id):
 
     # Add as trusted member
     user.is_trusted_member = True
-    user.trusted_member_request = False  # Clear any pending request
-    user.trusted_member_request_reason = None  # Clear any reason
-    user.trusted_member_request_status = 'approved'
+    request_record = TrustedMemberRequest(
+        user_id=user.id,
+        reason=None,
+        status='approved',
+        reviewed_by=user.id,
+        reviewed_at=datetime.now(timezone.utc),
+    )
+    db.session.add(request_record)
     user.save()
 
     return jsonify({
